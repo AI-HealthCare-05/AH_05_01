@@ -1,14 +1,55 @@
 __pycache__/
 *.py[oc]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 build/
 dist/
 wheels/
 *.egg-info
-.venv
+.venv/
 .*.env
 .env
+.env.*
 .idea/
-.vscode
+.vscode/
 .coverage
 *.coverage
 .coverage.*
+htmlcov/
+
+# OS and local files
+.DS_Store
+Thumbs.db
+*.log
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.apks
+*.jks
+*.keystore
+google-services.json
+
+# Certificates and credentials
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Large data and model artifacts
+data/raw/
+datasets/
+artifacts/
+*.parquet
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx

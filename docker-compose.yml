@@ -1,7 +1,7 @@
 services:
   # 1. Redis (메시지 브로커 및 캐싱)
   redis:
-    image: redis:alpine
+    image: redis:7.2.15-alpine
     container_name: redis
     networks:
       - ws
@@ -16,7 +16,7 @@ services:
 
   # 2. Database
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.46
     container_name: mysql
     restart: always
     environment:
@@ -33,6 +33,7 @@ services:
       - ws
     volumes:
       - mysql_data:/var/lib/mysql  # 컨테이너가 삭제돼도 데이터는 호스트 파일시스템에 남음
+      - ./infra/mysql/init:/docker-entrypoint-initdb.d:ro  # 새 볼륨 생성 시 test DB 권한 자동 설정
     command: # 한글 저장을 위한 문자셋 설정 (필수!)
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -94,7 +95,7 @@ services:
   # 5. Nginx (웹 서버 - 요청 리버스 프록시로 전달)
   nginx:
     container_name: nginx
-    image: nginx:latest
+    image: nginx:1.28.3-alpine
     volumes:
       - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf
       - static_volume:/vol/web/static

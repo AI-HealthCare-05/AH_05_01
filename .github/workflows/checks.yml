@@ -25,12 +25,13 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
+          version: '0.12.5'
           enable-cache: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.13.15'
 
       - name: Install dependencies
         run: uv sync --frozen
@@ -45,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.0.46
         env:
           MYSQL_ROOT_PASSWORD: pw1234
           MYSQL_DATABASE: ai_health
@@ -58,12 +59,13 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
+          version: '0.12.5'
           enable-cache: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.13.15'
 
       - name: Install dependencies
         run: uv sync --group app --frozen

@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.13.15-slim
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 1. uv 설치 (공식 이미지에서 복사해오는 가장 깔끔한 방법)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /bin/uv
 
 # 2. 의존성 패키지 관리 파일을 컨테이너 내부에 복사합니다.
 COPY pyproject.toml uv.lock ./
