@@ -1,0 +1,25 @@
+task: waist
+task_type: regression
+dataset_version: canonical_v0_1_split_v0_1
+id_column: participant_id
+year_column: source_year
+label_column: waist_cm
+feature_columns:
+  - age_years
+  - sex_code
+  - height_cm
+  - weight_kg
+  - leisure_aerobic_moderate_equivalent_min_week
+  - strength_days_week
+development_years: [2019, 2020, 2021]
+temporal_validation_years: [2022]
+locked_test_years: [2023]
+forbidden_years: [2024]
+random_validation_size: 0.20
+random_seed: 42
+classification_stratify: false
+regression_stratify: quantile
+regression_stratify_bins: 10
+csv_encoding: utf-8-sig
+output_format: csv
+do_not_split: true

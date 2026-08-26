@@ -1,0 +1,444 @@
+schema_version: 1
+contract_version: v0.3-draft
+supersedes: v0.2-draft
+status: value_audit_passed_blocked_for_training
+do_not_train: true
+
+decision_basis:
+  decided_at: 2026-08-24
+  decision_document: docs/CLINICAL_REFERENCE_DECISION_2026_08_24.md
+  collaborator_feedback: docs/BYEONGHAK_VER3_FEEDBACK_FINAL.md
+  decisions:
+    A1_prime: current_single_visit_measurement_abnormality_primary
+    A2_prime: exclude_pregnancy_from_p0_models_and_apply_serving_guard
+    A3_prime: leisure_aerobic_days_minutes_and_typical_intensity
+    A4: separate_F_feature_sets_and_D_disease_pipelines
+    A5: development_2019_2021_validation_2022_locked_test_2023_opened_diagnostic_2024
+
+evidence:
+  schema_audit:
+    status: passed
+    audit_spec: contracts/variable_audit_spec_v0_2.yaml
+    integrated_report: docs/VARIABLE_AUDIT_2019_2024_v0_2.md
+    years_passed: [2019, 2020, 2021, 2022, 2023, 2024]
+    participant_values_read: false
+  value_audit:
+    status: passed_2019_2023
+    audit_spec: contracts/value_audit_spec_v0_2.yaml
+    final_report: docs/VALUE_AUDIT_2019_2023_FINAL_V0_2.md
+    aggregate_output: reports/value_audit/value_audit_2019_2023_v0_2_confirmation_r2.json
+    aggregate_output_sha256: 7b4d15bfd54fb829ea9df8c9d7fb4a2c43e818c0a44df903d0151a5aae00c6be
+    implementation_version: v0.2.1-binary-complement-suppression
+    implementation_sha256: 81ab65b239d2eeace30f461dd3d1af60e50318ebee309ee423c4c58c14e26457
+    years_passed: [2019, 2020, 2021, 2022, 2023]
+    forbidden_years: [2024]
+    model_training_performed: false
+  official_knhanes_codebooks:
+    status: confirmed_for_current_contract_variables
+    periods:
+      - years: [2019, 2020, 2021]
+        title: 국민건강영양조사 제8기 원시자료 이용지침서
+      - years: [2022, 2023, 2024]
+        title: 국민건강영양조사 제9기 원시자료 이용지침서
+  clinical_and_activity_references:
+    status: reviewed
+    documents:
+      - 2025 당뇨병 진료지침 전문 최종본
+      - 2022년 고혈압 진료지침
+      - 2026년 고혈압 진료지침
+      - WHO guidelines on physical activity and sedentary behaviour
+      - 한국인을 위한 신체활동 지침서 개정판
+  activity_feature_preprocessing:
+    status: raw_confirmation_passed_2019_2021_do_not_train
+    contract: contracts/activity_feature_contract_v0_1.yaml
+    implementation: src/activity_features.py
+    audit_implementation: src/audit_activity_features.py
+    tests:
+      - tests/test_activity_features.py
+      - tests/test_audit_activity_features.py
+    design_document: docs/ACTIVITY_FEATURE_PREPROCESSING_V0_1.md
+    reference_review: docs/CLINICAL_REFERENCE_NOTES_REVIEW_2026_08_24.md
+    final_report: docs/ACTIVITY_FEATURE_AUDIT_2019_2021_FINAL_V0_2.md
+    aggregate_output: reports/activity_audit/activity_confirmation_2019_2021_v0_2.json
+    aggregate_output_sha256: bf91f4d39899e418c2f5a0099b8d54efabd6d97568620813c432dffb00aa4b16
+    years_passed: [2019, 2020, 2021]
+    model_training_performed: false
+  measurement_harmonization:
+    status: aggregate_audit_passed_joint_policy_review_pending
+    contract: contracts/measurement_harmonization_contract_v0_1.yaml
+    implementation: src/measurement_harmonization.py
+    audit_implementation: src/audit_measurement_harmonization.py
+    tests:
+      - tests/test_measurement_harmonization.py
+      - tests/test_audit_measurement_harmonization.py
+    design_document: docs/MEASUREMENT_HARMONIZATION_HBA1C_BP_V0_1.md
+    final_report: docs/MEASUREMENT_HARMONIZATION_2019_2022_FINAL_V0_1.md
+    aggregate_output: reports/measurement_harmonization/measurement_harmonization_2019_2022_v0_1.json
+    aggregate_output_sha256: 9977e6ffb70f28882543af3137b7a5991d628066e9228d21d1a50f77487c6c9c
+    audit_years: [2019, 2020, 2021, 2022]
+    reserved_model_test_years: [2023]
+    forbidden_years: [2024]
+    model_training_performed: false
+  canonical_etl:
+    status: technical_aggregate_confirmation_passed_joint_approval_pending
+    contract: contracts/canonical_etl_contract_v0_1.yaml
+    implementation: src/canonical_etl.py
+    audit_implementation: src/audit_canonical_etl.py
+    tests:
+      - tests/test_canonical_etl.py
+      - tests/test_audit_canonical_etl.py
+    design_document: docs/CANONICAL_ETL_DESIGN_V0_1.md
+    final_review_document: docs/CANONICAL_ETL_2019_2022_FINAL_V0_1.md
+    aggregate_output: reports/canonical_etl/canonical_etl_confirmation_2019_2022_v0_1_r2.json
+    aggregate_output_sha256: ce23d311ec978da167c8233e7293442be54c622aea7fdacbd2d9f36a8b19ad11
+    implementation_years: [2019, 2020, 2021, 2022]
+    reserved_model_test_years: [2023]
+    forbidden_years: [2024]
+    row_export_performed: false
+    train_test_files_created: false
+    model_training_performed: false
+
+scope:
+  survey: KNHANES
+  schema_years: [2019, 2020, 2021, 2022, 2023, 2024]
+  value_audit_years: [2019, 2020, 2021, 2022, 2023]
+  minimum_age_years: 19
+  population: general_nonpregnant_adults
+  excluded_historical_years:
+    years: [2016, 2017, 2018]
+    reason: fixed_scope_requires_2019_2024_common_contract_and_hba1c
+  opened_diagnostic_years: [2024]
+  independent_final_holdout_years: []
+
+eligibility_and_safety:
+  pregnancy:
+    model_cohort_policy: exclude_from_all_p0_models
+    raw_columns: [HE_prg, HE_dprg]
+    value_level_rule_status: confirmed_0_and_8_include_1_and_missing_exclude
+    app_field: pregnancy_status
+    app_field_role: eligibility_safety_not_model_feature
+    serving_rule: return_unsupported_population_without_general_adult_scores
+    challenge_service_policy: separate_safe_path_not_blanket_exclusion
+  age:
+    minimum: 19
+    top_coded_raw_age:
+      raw_value: 80
+      meaning: 80_plus
+      serving_rule_status: pending
+
+app_raw_inputs:
+  age_years:
+    dtype: integer
+    unit: years
+  sex_code:
+    dtype: categorical
+    knhanes_mapping_status: knhanes_1_male_2_female_confirmed_product_policy_pending
+  height_cm:
+    dtype: float
+    unit: cm
+  weight_kg:
+    dtype: float
+    unit: kg
+  aerobic_days_week:
+    dtype: integer
+    unit: days_per_week
+    valid_range_candidate: [0, 7]
+    scope: leisure_aerobic_exercise
+  aerobic_minutes_per_session:
+    dtype: float
+    unit: minutes_per_session
+    scope: leisure_aerobic_exercise
+  aerobic_typical_intensity:
+    dtype: categorical
+    allowed_values: [moderate, vigorous]
+    role: derive_moderate_equivalent_minutes
+  strength_days_week:
+    dtype: ordinal
+    unit: days_per_week
+    top_code: 5_plus
+  pregnancy_status:
+    dtype: eligibility_safety
+    model_feature: false
+
+model_input_count:
+  target_count: 6
+  note: aerobic_days_minutes_and_intensity_are_collapsed_to_one_derived_model_feature
+  model_features:
+    - age_years
+    - sex_code
+    - height_cm
+    - weight_kg
+    - leisure_aerobic_moderate_equivalent_min_week
+    - strength_days_week
+
+knhanes_input_concepts:
+  age_years:
+    raw_column: age
+    schema_status: confirmed_all_years
+  sex_code:
+    raw_column: sex
+    schema_status: confirmed_all_years
+  height_cm:
+    raw_column: HE_ht
+    schema_status: confirmed_all_years
+  weight_kg:
+    raw_column: HE_wt
+    schema_status: confirmed_all_years
+  aerobic_threshold:
+    raw_column: pa_aerobic
+    dtype: binary
+    role: F1_fallback_candidate
+    prohibit_reverse_inference_to_frequency_or_minutes: true
+    status: official_reproduction_confirmed_2019_2021
+  total_activity_moderate_equivalent_min_week:
+    raw_components:
+      - BE3_71
+      - BE3_72
+      - BE3_73
+      - BE3_74
+      - BE3_75
+      - BE3_76
+      - BE3_77
+      - BE3_78
+      - BE3_81
+      - BE3_82
+      - BE3_83
+      - BE3_84
+      - BE3_85
+      - BE3_86
+      - BE3_87
+      - BE3_88
+      - BE3_91
+      - BE3_92
+      - BE3_93
+      - BE3_94
+    formula_candidate: moderate_work_transport_leisure_plus_2x_vigorous_work_leisure
+    role: research_comparator_only
+    prohibit_MET_minute_label: true
+    status: raw_derivation_confirmed_2019_2021_research_comparator_only
+  leisure_aerobic_moderate_equivalent_min_week:
+    raw_components: [BE3_75, BE3_76, BE3_77, BE3_78, BE3_85, BE3_86, BE3_87, BE3_88]
+    formula_candidate: leisure_moderate_min_week_plus_2x_leisure_vigorous_min_week
+    unit: minutes_per_week
+    role: primary_app_aligned_activity_feature
+    prohibit_MET_minute_label: true
+    status: raw_derivation_confirmed_2019_2021_selected_primary_candidate
+  strength_days_week:
+    raw_column: BE5_1
+    unit: days_per_week
+    raw_to_contract_mapping:
+      1: 0_days
+      2: 1_day
+      3: 2_days
+      4: 3_days
+      5: 4_days
+      6: 5_plus_days
+      8: structural_not_applicable_candidate
+      9: unknown_or_no_response
+    status: codebook_value_audit_and_synthetic_mapping_confirmed
+
+derived_features:
+  bmi:
+    formula: weight_kg / ((height_cm / 100) ** 2)
+    server_recomputed: true
+    independent_app_input: false
+    raw_comparator_column: HE_BMI
+  app_leisure_aerobic_moderate_equivalent_min_week:
+    moderate_formula: aerobic_days_week * aerobic_minutes_per_session
+    vigorous_formula: 2 * aerobic_days_week * aerobic_minutes_per_session
+    limitation: typical_intensity_simplifies_mixed_intensity_sessions
+
+feature_sets:
+  F0:
+    features: [age_years, sex_code, height_cm, weight_kg]
+    role: baseline_and_optional_input_fallback
+    status: design_confirmed
+  F1:
+    features: [age_years, sex_code, height_cm, weight_kg, aerobic_threshold, strength_days_week]
+    role: binary_activity_fallback_candidate
+    status: pa_aerobic_reproduction_confirmed_candidate_only
+  F2_total:
+    features: [age_years, sex_code, height_cm, weight_kg, total_activity_moderate_equivalent_min_week, strength_days_week]
+    activity_scope: work_transport_leisure
+    role: research_comparator_only
+    status: research_comparator_raw_derivation_confirmed_2019_2021
+  F2_leisure:
+    features: [age_years, sex_code, height_cm, weight_kg, leisure_aerobic_moderate_equivalent_min_week, strength_days_week]
+    activity_scope: leisure_only
+    role: selected_primary_six_feature_candidate
+    status: primary_candidate_raw_derivation_confirmed_later_model_comparison_pending
+
+disease_pipelines:
+  D0:
+    inputs: selected_F_feature_set_only
+    role: direct_input_baseline
+  D1:
+    inputs: [selected_F_feature_set, out_of_fold_estimated_waist_cm]
+    role: p0_primary_candidate_pipeline
+  D2:
+    inputs: [selected_F_feature_set, out_of_fold_estimated_waist_cm, future_approved_submodel_outputs]
+    role: future_extension
+    status: deferred
+
+targets:
+  waist_cm:
+    task_type: regression
+    raw_column: HE_wc
+    unit: cm
+    estimand: measured_waist_in_general_nonpregnant_adults
+    pregnancy_policy: exclude
+    measurement_failure_rule_status: missing_values_confirmed_exclusion_implementation_pending
+    valid_range_status: candidate_audit_range_passed_final_serving_bounds_pending
+  diabetes_measurement_abnormality:
+    task_type: binary_classification_with_calibrated_probability
+    role: primary
+    output_semantics: current_single_visit_measurement_abnormality_probability
+    output_field_candidate: glucose_measurement_abnormality_probability
+    raw_columns: [HE_fst, HE_glu, HE_HbA1c]
+    eligibility_rule: "age >= 19 AND nonpregnant AND HE_fst >= 8 AND HE_glu available AND HE_HbA1c available"
+    positive_rule: "HE_glu >= 126 OR HE_HbA1c >= 6.5"
+    treatment_controlled_normal_rule: negative_in_measurement_primary
+    prohibit_future_incidence_interpretation: true
+    prohibit_clinical_diagnosis_interpretation: true
+    status: harmonization_audit_passed_primary_raw_policy_joint_review_pending
+  diabetes_official_composite:
+    raw_column: HE_DM_HbA1c
+    positive_code: 3
+    role: comparator_and_sensitivity_only
+    includes_diagnosis_or_treatment: true
+    status: codebook_and_value_audit_confirmed_comparator_only
+  hypertension_measurement_abnormality:
+    task_type: binary_classification_with_calibrated_probability
+    role: primary
+    output_semantics: current_single_visit_measurement_abnormality_probability
+    output_field_candidate: blood_pressure_measurement_abnormality_probability
+    raw_columns: [HE_sbp, HE_dbp]
+    raw_round_columns: [HE_sbp1, HE_sbp2, HE_sbp3, HE_dbp1, HE_dbp2, HE_dbp3]
+    eligibility_rule: "age >= 19 AND nonpregnant AND official SBP and DBP available"
+    positive_rule: "HE_sbp >= 140 OR HE_dbp >= 90"
+    treatment_controlled_normal_rule: negative_in_measurement_primary
+    prohibit_future_incidence_interpretation: true
+    prohibit_clinical_diagnosis_interpretation: true
+    status: harmonization_audit_passed_primary_raw_policy_joint_review_pending
+  hypertension_official_composite:
+    raw_column: HE_HP
+    positive_code_by_period:
+      2019_2021: 3
+      2022_2024: 4
+    role: comparator_and_sensitivity_only
+    includes_medication: true
+    status: codebook_and_value_audit_confirmed_comparator_only
+
+measurement_harmonization:
+  hba1c:
+    change_year: 2022
+    official_statistics_use_conversion: false
+    researcher_conversion_candidate: "y = 1.034 * x - 0.0448"
+    primary_policy: official_raw_HE_HbA1c
+    converted_policy: sensitivity_only
+    decision_rule: quantify_reclassification_without_model_performance_optimization
+    status: impact_audit_passed_primary_raw_policy_joint_review_pending
+  blood_pressure:
+    device_by_year:
+      2019: mercury_sphygmomanometer
+      2020: Greenlight300_nonmercury_auscultatory
+      2021_2024_adults: Microlife_WatchBP_Office_oscillometric
+    official_value_generation: mean_of_rounds_2_and_3
+    primary_policy: official_raw_HE_sbp_and_HE_dbp
+    converted_policy: sensitivity_only
+    adult_microlife_to_greenlight_formula_uses: [raw_sbp, raw_dbp, age, pulse_pressure]
+    decision_rule: quantify_reclassification_without_model_performance_optimization
+    status: impact_audit_passed_primary_raw_policy_joint_review_pending
+
+waist_serving_policy:
+  accepted_sources: [measured, estimated]
+  source_field: waist_source
+  estimator_version_field: waist_estimator_version
+  input_snapshot_field: input_snapshot_id
+  measured_value_overrides_estimate: true
+  disease_model_training_estimate_method: out_of_fold_cross_fitted
+  prohibit_training_on_measured_waist_when_serving_estimated_waist: true
+
+missing_data:
+  convert_unknown_to_zero: false
+  generic_special_code_conversion_prohibited: true
+  structural_skip_must_be_distinguished_from_unknown: true
+  per_variable_rules_status: canonical_candidate_guards_and_reason_flags_implemented_aggregate_confirmation_pending
+  imputation_fit_scope: train_only
+  target_imputation_allowed: false
+  optional_onboarding_fallback: F0
+
+survey_design:
+  weight_column: wt_itvex
+  strata_column: kstrata
+  psu_column: psu
+  evaluation_plan: report_weighted_and_unweighted
+  value_status: columns_and_positive_weights_confirmed_weighted_analysis_pending
+
+split_and_validation:
+  status: code_and_synthetic_tests_ready_joint_approval_pending
+  contract: contracts/split_contract_v0_1.yaml
+  implementation: src/split_dataset.py
+  validation: src/split_validation.py
+  tests: tests/test_split_dataset.py
+  primary_design:
+    development_years: [2019, 2020, 2021]
+    internal_resampling: repeated_stratified_cross_validation
+    temporal_validation_years: [2022]
+    locked_internal_test_years: [2023]
+    opened_diagnostic_years: [2024]
+  random_auxiliary_comparison:
+    years: [2019, 2020, 2021]
+    split: "80_20"
+    role: auxiliary_only
+    prohibit_reserved_years: [2022, 2023, 2024]
+  tuning_rules:
+    freeze_before_locked_test: true
+    tune_on_2023_result: false
+    tune_on_2024_result: false
+  final_release_evaluation:
+    dataset: future_knhanes_year_or_external_cohort
+    independent: true
+    custodian_required: true
+    status: not_available
+
+prohibited_features:
+  - HE_DM_HbA1c_as_diabetes_model_input
+  - HE_HP_as_hypertension_model_input
+  - HE_glu_as_diabetes_model_input
+  - HE_HbA1c_as_diabetes_model_input
+  - HE_sbp_as_hypertension_model_input
+  - HE_dbp_as_hypertension_model_input
+  - diagnosis_or_treatment_as_primary_model_input
+  - target_derived_columns
+  - post_outcome_information
+  - challenge_behavior_without_new_longitudinal_contract
+
+release_blockers:
+  - approve_app_activity_question_wording_and_input_limits
+  - freeze_valid_ranges_and_measurement_failure_rules
+  - freeze_hba1c_harmonization_policy
+  - freeze_blood_pressure_device_harmonization_policy
+  - freeze_app_sex_mapping_and_unsupported_category_policy
+  - approve_product_output_wording
+  - implement_pregnancy_serving_guard
+  - jointly_approve_and_authorize_splitter_for_A5_year_roles
+  - establish_future_independent_holdout_custodian
+  - obtain_joint_data_ai_approval
+  - remove_do_not_train_by_versioned_contract_change
+
+approvals:
+  data_ai_owner_kangho:
+    decision_status: approved_A1_prime_through_A5
+    contract_status: input_target_split_policy_approved_not_training
+    decided_at: 2026-08-24
+  data_ai_collaborator_byeonghak:
+    status: input_target_split_policy_approved
+  locked_test_custodian_hongju:
+    status: assigned_materialization_procedure_review_pending
+    raw_2023_held: true
+    locked_answer_key_access: custodian_only
+  product:
+    status: pending_output_wording_activity_ui_and_pregnancy_guard
+  qa:
+    status: pending

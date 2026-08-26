@@ -1,0 +1,79 @@
+schema_version: 1
+contract_version: v0.1
+materialization_version: locked_2023_canonical_v0_1
+status: code_review_pending
+do_not_materialize: true
+do_not_train: true
+
+scope:
+  source_year: 2023
+  raw_survey: KNHANES
+  developer_years_not_processed_here: [2019, 2020, 2021, 2022]
+  forbidden_years: [2024]
+  custodian: 홍주
+
+canonical:
+  frozen_base_contract: contracts/canonical_etl_contract_v0_1.yaml
+  frozen_base_implementation: src/canonical_etl.py
+  locked_extension: src/locked_2023_canonical.py
+  same_year_specific_rules_as_2022:
+    - activity_raw_mapping
+    - hba1c_2022_plus_sensitivity
+    - blood_pressure_2021_plus_sensitivity
+    - official_hypertension_comparator_codes
+  output_full_canonical_rows: prohibited
+
+record_identity:
+  columns: [source_year, participant_id]
+  missing_or_duplicate: fail
+
+features:
+  - age_years
+  - sex_code
+  - height_cm
+  - weight_kg
+  - leisure_aerobic_moderate_equivalent_min_week
+  - strength_days_week
+
+tasks:
+  waist:
+    eligibility: waist_target_eligible
+    label: waist_cm
+    task_type: regression
+  diabetes:
+    eligibility: diabetes_target_eligible
+    label: diabetes_measurement_label_raw
+    task_type: classification
+  hypertension:
+    eligibility: hypertension_target_eligible
+    label: hypertension_measurement_label_raw
+    task_type: classification
+
+outputs:
+  developer_package:
+    columns: [participant_id, source_year, six_features]
+    labels_included: false
+  locked_package:
+    columns: [participant_id, source_year, task_label]
+    access: custodian_only
+  aggregate_manifest:
+    row_counts_allowed: true
+    label_distribution: prohibited
+    label_statistics: prohibited
+    sample_rows: prohibited
+    participant_identifiers: prohibited
+
+security:
+  developer_and_locked_roots_must_not_overlap: true
+  raw_sha256_before_and_after: required
+  contract_and_code_sha256: required
+  overwrite_existing_version: prohibited
+  console_row_or_label_statistics: prohibited
+  model_training_or_evaluation: prohibited
+
+activation_gate:
+  required:
+    - custodian_reviews_code_and_document
+    - actual_output_paths_and_permissions_verified
+    - create_new_authorized_contract_version
+  activation_rule: only_new_version_may_set_do_not_materialize_false

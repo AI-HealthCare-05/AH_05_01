@@ -1,0 +1,166 @@
+schema_version: 1
+contract_version: v0.1
+status: aggregate_audit_passed_joint_policy_review_pending
+do_not_train: true
+
+scope:
+  survey: KNHANES
+  audit_years: [2019, 2020, 2021, 2022]
+  development_years: [2019, 2020, 2021]
+  temporal_validation_year_used_for_measurement_audit_only: 2022
+  reserved_model_test_years: [2023]
+  forbidden_years: [2024]
+  minimum_age_years: 19
+  pregnancy_exclusion:
+    raw_column: HE_prg
+    include_codes: [0, 8]
+    exclude_codes: [1]
+    missing_policy: exclude
+
+purpose:
+  - quantify_hba1c_2022_laboratory_transition
+  - quantify_blood_pressure_2021_device_transition
+  - reproduce_official_final_blood_pressure_from_rounds_2_and_3
+  - freeze_primary_and_sensitivity_measurement_policy_before_modeling
+
+evidence:
+  knhanes_eighth_cycle_codebook:
+    file: C:/Users/FORYOUCOM/PycharmProjects/AH_05_01/data/02_codebooks/year=2019/국민건강영양조사+제8기(2019-2021)+원시자료+이용지침서.pdf
+    pages: [18, 19]
+    role: 2019_mercury_2020_greenlight_2021_adult_microlife_lineage
+  knhanes_ninth_cycle_codebook:
+    file: C:/Users/FORYOUCOM/PycharmProjects/AH_05_01/data/02_codebooks/year=2022/국민건강영양조사+제9기(2022-2024)+원시자료+이용지침서.pdf
+    pages: [20, 21, 185, 189]
+    role: official_bp_round_mean_bp_conversion_and_hba1c_conversion
+
+pre_registered_policy:
+  primary_measurement_values: official_raw_values
+  hba1c_primary: HE_HbA1c_raw
+  blood_pressure_primary: [HE_sbp_raw, HE_dbp_raw]
+  researcher_converted_values: sensitivity_analysis_only
+  rationale:
+    - KNHANES_official_statistics_use_unconverted_raw_values
+    - conversions_are_provided_for_researcher_temporal_comparison
+    - bp_conversion_contains_age_and_pulse_pressure_and_must_not_define_the_primary_target
+    - measurement_audit_must_not_choose_policy_by_model_performance
+  prohibit_double_conversion: true
+  prohibit_clipping_converted_values: true
+  prohibit_using_2022_for_model_selection: true
+
+hba1c:
+  raw_column: HE_HbA1c
+  change_year: 2022
+  change: analysis_institution_changed_lower_measurement_tendency
+  analysis_method_or_equipment_major_change: false
+  official_statistics_use_conversion: false
+  researcher_conversion:
+    applies_to_years_from: 2022
+    target_scale: 2019_2021_comparability_scale
+    formula: "converted = 1.034 * raw - 0.0448"
+    version: knhanes_ninth_cycle_2022_plus
+  diabetes_measurement_label:
+    other_columns: [HE_fst, HE_glu]
+    eligibility: age_19_plus_nonpregnant_fasting_8h_plus_glucose_and_hba1c_available
+    raw_positive: HE_glu >= 126 OR raw_hba1c >= 6.5
+    sensitivity_positive: HE_glu >= 126 OR converted_hba1c >= 6.5
+
+blood_pressure:
+  official_columns: [HE_sbp, HE_dbp]
+  round_columns: [HE_sbp2, HE_sbp3, HE_dbp2, HE_dbp3]
+  official_final_formula:
+    systolic: mean_of_HE_sbp2_and_HE_sbp3
+    diastolic: mean_of_HE_dbp2_and_HE_dbp3
+    tolerance_mmHg: 0.1
+  device_by_year_adults:
+    2019: mercury_sphygmomanometer
+    2020: Greenlight300_nonmercury_auscultatory
+    2021: Microlife_WatchBP_Office_oscillometric
+    2022: Microlife_WatchBP_Office_oscillometric
+  official_statistics_use_conversion: false
+  researcher_conversion:
+    applies_to_years_from: 2021
+    target_scale: Greenlight300_2020_scale
+    pulse_pressure: raw_sbp_minus_raw_dbp
+    systolic_formula: "10.773 + 0.771 * raw_sbp + 0.039 * age + 0.374 * pulse_pressure"
+    diastolic_formula: "13.480 + 0.952 * raw_dbp - 0.051 * age - 0.098 * pulse_pressure"
+    version: knhanes_adult_microlife_to_greenlight
+    age_80_plus_limitation: raw_age_80_is_top_coded_and_is_used_as_80_for_sensitivity_only
+  hypertension_measurement_label:
+    eligibility: age_19_plus_nonpregnant_sbp_and_dbp_available
+    raw_positive: raw_sbp >= 140 OR raw_dbp >= 90
+    sensitivity_positive: converted_sbp >= 140 OR converted_dbp >= 90
+
+required_raw_columns:
+  - age
+  - HE_prg
+  - HE_fst
+  - HE_glu
+  - HE_HbA1c
+  - HE_sbp
+  - HE_dbp
+  - HE_sbp2
+  - HE_sbp3
+  - HE_dbp2
+  - HE_dbp3
+
+privacy:
+  aggregate_only: true
+  allow_sample_rows: false
+  allow_row_identifiers: false
+  allow_raw_value_export: false
+  minimum_cell_count: 5
+  complementary_suppression: true
+
+required_audit_outputs:
+  - source_file_sha256_by_year
+  - hba1c_raw_and_converted_distribution_by_year
+  - hba1c_raw_to_converted_label_transition_by_year
+  - diabetes_composite_measurement_label_transition_by_year
+  - bp_round_mean_reproduction_by_year
+  - bp_raw_and_converted_distribution_by_year
+  - hypertension_measurement_label_transition_by_year
+  - converted_value_missingness_and_nonfinite_counts
+  - no_participant_rows_or_identifiers
+
+decision_gate:
+  required_years: [2019, 2020, 2021, 2022]
+  acceptance:
+    - source_hashes_match_prior_value_audit
+    - official_bp_round_mean_mismatch_count_is_zero_or_documented
+    - conversion_formula_unit_tests_pass
+    - reclassification_impact_is_documented_not_optimized
+    - primary_raw_and_sensitivity_converted_policy_is_jointly_reviewed
+  status: technical_checks_passed_joint_review_pending
+  result:
+    report_json: reports/measurement_harmonization/measurement_harmonization_2019_2022_v0_1.json
+    report_json_sha256: 9977e6ffb70f28882543af3137b7a5991d628066e9228d21d1a50f77487c6c9c
+    audited_contract_sha256: a5410fa2a9dc354f473b27edd5e2bd7d115bf58283941c395f4680b10cad9deb
+    implementation_version: v0.1-aggregate-only
+    years_passed: [2019, 2020, 2021, 2022]
+    bp_round_mean_mismatch_count_by_year:
+      2019: 0
+      2020: 0
+      2021: 0
+      2022: 0
+    hba1c_2022_diabetes_label_reclassified_count: 45
+    bp_label_reclassified_count:
+      2021: 274
+      2022: 280
+    new_nonfinite_converted_values: 0
+    participant_rows_included: false
+    participant_identifiers_included: false
+    model_training_performed: false
+    model_performance_evaluation_performed: false
+
+prohibited:
+  - model_training
+  - feature_selection
+  - hyperparameter_tuning
+  - calibration
+  - model_performance_evaluation
+  - participant_row_export
+  - participant_identifier_export
+  - use_2023_values
+  - use_2024_values
+  - choose_harmonization_by_validation_model_score
+  - overwrite_raw_measurement_columns

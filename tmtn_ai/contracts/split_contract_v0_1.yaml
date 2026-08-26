@@ -1,0 +1,125 @@
+schema_version: 1
+contract_version: v0.1
+status: code_and_synthetic_tests_ready_joint_approval_pending
+do_not_split: true
+do_not_train: true
+
+year_roles:
+  development:
+    years: [2019, 2020, 2021]
+    random_auxiliary_split: {train: 0.80, validation: 0.20, seed: 42}
+    temporal_train_role: true
+  temporal_validation:
+    years: [2022]
+    labels_available_for_predeclared_validation: true
+  locked_internal_test:
+    years: [2023]
+    developer_output_contains_labels: false
+    answer_key_requires_separate_root: true
+    custodian_required: true
+    release_only_after_model_and_calibration_freeze: true
+  forbidden:
+    years: [2024]
+    action_if_present: fail_closed_without_filtering
+
+canonical_input:
+  contract: contracts/canonical_etl_contract_v0_1.yaml
+  task_specific_labeled_cohort_required: true
+  row_level_missing_label: prohibited
+  record_identity:
+    columns: [source_year, participant_id]
+    duplicate_policy: fail_within_year
+    repeated_id_string_across_different_years: allowed_as_distinct_cross_sectional_records
+  tasks:
+    waist:
+      config: configs/waist_split.yaml
+      label: waist_cm
+    diabetes:
+      config: configs/diabetes_split.yaml
+      label: diabetes_measurement_label_raw
+    hypertension:
+      config: configs/hypertension_split.yaml
+      label: hypertension_measurement_label_raw
+  six_feature_set:
+    - age_years
+    - sex_code
+    - height_cm
+    - weight_kg
+    - leisure_aerobic_moderate_equivalent_min_week
+    - strength_days_week
+
+outputs:
+  developer_visible:
+    - development/random/train.csv
+    - development/random/validation.csv
+    - development/temporal/train.csv
+    - development/temporal/validation.csv
+    - locked_internal_test/test_2023_features.csv
+  restricted_custodian:
+    - test_2023_labels.csv
+    - sealed_manifest.json
+  manifests_must_not_include:
+    - label_distribution
+    - class_counts
+    - target_statistics
+    - sample_rows
+    - participant_identifiers
+
+security:
+  source_sha256_before_and_after: required
+  config_snapshot_and_sha256: required
+  output_code_hashes: required
+  direct_identifier_like_features: blocked
+  output_overwrite_default: prohibited
+  locked_label_root_overlap_with_developer_root: prohibited
+  imputation_scaling_encoding_feature_selection: prohibited_in_splitter
+
+activation_gate:
+  current: blocked_by_do_not_split
+  required_before_authorized_config_version:
+    - joint_data_ai_approval
+    - locked_test_custodian_assigned
+    - canonical_2023_materialization_procedure_approved
+    - task_specific_cohort_export_procedure_approved
+    - output_access_permissions_verified
+  activation_method: create_new_versioned_configs_with_do_not_split_false
+
+joint_decisions:
+  decided_at: 2026-08-25
+  kangho_byeonghak:
+    year_roles: approved
+    six_model_features: approved
+    aerobic_p0:
+      app_raw_fields: [aerobic_days_week, aerobic_minutes_per_session, aerobic_typical_intensity]
+      intensity_mode: one_typical_intensity
+      canonical_output: leisure_aerobic_moderate_equivalent_min_week
+      future_p1: separate_moderate_and_vigorous_inputs
+      status: approved
+    age_sex_height_weight_strength_mapping: approved_as_documented
+    pregnancy:
+      p0: exclude_from_health_models_with_separate_app_checkbox
+      challenge_access: retain_separate_safe_path
+      p1: feasibility_audit_before_any_pregnancy_specific_model
+      status: approved
+    task_eligibility_and_labels: approved_as_canonical_v0_1
+    target_missing_imputation: prohibited
+  locked_test_custodian:
+    name: 홍주
+    role: team_lead
+    raw_2023_already_held: true
+    developer_must_not_materialize_2023_labels: true
+    status: assigned
+  still_pending:
+    - verify_actual_developer_and_locked_label_path_permissions
+    - review_and_approve_locked_2023_materialization_code
+    - create_authorized_versioned_config
+    - record_execution_and_handoff
+
+prohibited_actions:
+  - execute_shipped_configs_on_knhanes_while_do_not_split_true
+  - include_2022_or_2023_in_random_split
+  - expose_2023_labels_to_model_developer
+  - tune_or_select_model_on_2023_result
+  - read_or_filter_2024_rows_in_splitter
+  - call_2023_an_independent_final_holdout
+  - train_or_evaluate_models_in_this_stage

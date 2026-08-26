@@ -1,0 +1,93 @@
+schema_version: 1
+config_version: model_development_v0_1
+status: jointly_authorized
+authorized_at: 2026-08-26
+output_version: development_v0_1
+do_not_train: false
+
+authorization:
+  scope: 2019_2021_development_nested_cross_fitting_only
+  approvers:
+    kangho: {status: approved, approved_at: 2026-08-25}
+    byeonghak:
+      status: approved
+      approved_at: 2026-08-26
+      evidence: team_message_confirming_no_changes_and_acceptance_of_all_criteria_and_prohibitions
+  snapshots:
+    protocol:
+      path: contracts/model_experiment_protocol_v0_2.yaml
+      sha256: 567a56802a3a110417424a3b6fb27b5a893255ea3504bab9bbfb995b33d9f83c
+    canonical:
+      path: src/canonical_etl.py
+      sha256: 4ac23d3b7cf2b41692b95cb238726073646c77a203c936dd0d643d0851248735
+    canonical_audit:
+      path: reports/canonical_etl/canonical_etl_confirmation_2019_2022_v0_1_r2.json
+      sha256: ce23d311ec978da167c8233e7293442be54c622aea7fdacbd2d9f36a8b19ad11
+    environment_lock:
+      path: requirements.txt
+      sha256: 060b57d70ea2a187077f54d6d9ca0c0c04c1e46395a9c7f361de4a2871ec962f
+    implementation:
+      files:
+        src/experiment_setup.py: 428b49d2cb666538d062277fe4c2773a37e124b809a68fcb230234a35b60380d
+        src/materialize_development_canonical.py: ea8dd441d9194f456c557f713374e9f505a2e1b32267a96c5428708b049e4197
+        src/prepare_development_frames.py: 0a904e91fded1b0d57ed843599614a2a96020f20ee3fe3ec0489963c5ff24ca8
+        src/build_nested_fold_registry.py: b4116f12e7646ab2a8256595b19b4b95576045b9ed9dabd4c831280c3363de38
+
+year_access:
+  development_allowed: [2019, 2020, 2021]
+  evaluation_2022: blocked_until_full_freeze
+  opened_2023: custodian_only
+  forbidden_2024: fail_closed
+
+canonical_materialization:
+  audit_receipt: reports/canonical_etl/canonical_etl_confirmation_2019_2022_v0_1_r2.json
+  output_version: canonical_development_v0_1
+  source_years: [2019, 2020, 2021]
+  overwrite: prohibited
+
+features:
+  - age_years
+  - sex_code
+  - height_cm
+  - weight_kg
+  - leisure_aerobic_moderate_equivalent_min_week
+  - strength_days_week
+
+tasks:
+  waist:
+    type: regression
+    eligibility: waist_target_eligible
+    label: waist_cm
+  diabetes:
+    type: classification
+    eligibility: diabetes_target_eligible
+    label: diabetes_measurement_label_raw
+  hypertension:
+    type: classification
+    eligibility: hypertension_target_eligible
+    label: hypertension_measurement_label_raw
+
+task_preparation:
+  eligibility_required: true
+  label_required: true
+  six_feature_complete_case_required: true
+  feature_imputation: prohibited
+  feature_clipping: prohibited
+  measured_waist_as_disease_input: prohibited
+
+resampling:
+  type: nested_cross_fitting
+  outer_folds: 5
+  inner_folds: 4
+  primary_seed: 42
+  stability_seeds: [42, 1042, 2042]
+  assignment_key: [source_year, participant_id]
+  outer_holdout_in_inner_registry: prohibited
+
+execution:
+  overwrite: prohibited
+  fit_2022: prohibited
+  select_on_2022: prohibited
+  developer_row_access_2023: prohibited
+  access_2024: prohibited
+  actual_training_in_contaminated_review_chat: prohibited

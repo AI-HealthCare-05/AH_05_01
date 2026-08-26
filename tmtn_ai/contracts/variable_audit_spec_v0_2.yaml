@@ -1,0 +1,191 @@
+schema_version: 1
+audit_version: v0.2
+status: draft_pending_full_schema_audit
+survey: KNHANES
+years: [2019, 2020, 2021, 2022, 2023, 2024]
+
+privacy:
+  schema_only: true
+  allow_sample_rows: false
+  allow_value_counts: false
+  allow_missing_rates: false
+  allow_descriptive_statistics: false
+  holdout_years: []
+  opened_years: [2024]
+  temporal_evaluation_years: [2024]
+
+concepts:
+  participant_id:
+    description: 조사대상자 식별키
+    candidate_columns: [ID, id, record_key]
+    contract_required: true
+
+  survey_year:
+    description: 조사연도. 원자료에 없으면 year-file 인자에서 생성한다.
+    candidate_columns: [year, source_survey_year]
+    contract_required: false
+
+  age:
+    description: 만 나이. 80은 80세 이상 top-coded 범주인지 코드북으로 확인한다.
+    candidate_columns: [age, age_years]
+    contract_required: true
+
+  sex:
+    description: KNHANES 성별 코드. 앱의 확장 성별 선택지와 임의 매핑하지 않는다.
+    candidate_columns: [sex, sex_code]
+    contract_required: true
+
+  measured_height:
+    description: 실측 신장(cm)
+    candidate_columns: [HE_ht, height_cm]
+    contract_required: true
+
+  measured_weight:
+    description: 실측 체중(kg)
+    candidate_columns: [HE_wt, weight_kg]
+    contract_required: true
+
+  official_bmi:
+    description: KNHANES 생성 BMI. 제품에서는 키와 몸무게로 재계산하고 비교용으로만 사용한다.
+    candidate_columns: [HE_BMI, bmi]
+    contract_required: false
+
+  measured_waist:
+    description: 실측 허리둘레(cm)
+    candidate_columns: [HE_wc, waist_cm]
+    contract_required: true
+
+  aerobic_work_vigorous:
+    description: 일 관련 고강도 활동 여부·일수·하루 시간·분
+    required_columns: [BE3_71, BE3_72, BE3_73, BE3_74]
+    contract_required: false
+
+  aerobic_leisure_vigorous:
+    description: 여가 고강도 활동 여부·일수·하루 시간·분
+    required_columns: [BE3_75, BE3_76, BE3_77, BE3_78]
+    contract_required: false
+
+  aerobic_work_moderate:
+    description: 일 관련 중강도 활동 여부·일수·하루 시간·분
+    required_columns: [BE3_81, BE3_82, BE3_83, BE3_84]
+    contract_required: false
+
+  aerobic_leisure_moderate:
+    description: 여가 중강도 활동 여부·일수·하루 시간·분
+    required_columns: [BE3_85, BE3_86, BE3_87, BE3_88]
+    contract_required: false
+
+  aerobic_transport:
+    description: 이동 신체활동 여부·일수·하루 시간·분
+    required_columns: [BE3_91, BE3_92, BE3_93, BE3_94]
+    contract_required: false
+
+  walking:
+    description: 별도 걷기 일수·하루 시간·분. 공식 pa_aerobic과 구분한다.
+    required_columns: [BE3_31, BE3_32, BE3_33]
+    contract_required: false
+
+  strength_days:
+    description: 최근 1주일간 근력운동 일수. 최상위 값은 5일 이상 범주다.
+    candidate_columns: [BE5_1, strength_days_week, strength_frequency]
+    contract_required: false
+
+  aerobic_threshold:
+    description: 공식 유산소 신체활동 기준 충족 생성변수
+    candidate_columns: [pa_aerobic, aerobic_activity]
+    contract_required: false
+
+  fasting_hours:
+    description: 총 공복시간. 공복혈당 유효성 판단에 사용한다.
+    candidate_columns: [HE_fst, fasting_hours]
+    contract_required: true
+
+  fasting_glucose:
+    description: 공복혈당 측정값(mg/dL)
+    candidate_columns: [HE_glu, fasting_glucose]
+    contract_required: true
+
+  hba1c:
+    description: 당화혈색소 측정값(%)
+    candidate_columns: [HE_HbA1c, hba1c]
+    contract_required: true
+
+  official_diabetes_status:
+    description: 진단·치료 정보를 포함하는 공식 복합 당뇨 상태 생성변수. primary 측정 라벨과 구분한다.
+    candidate_columns: [HE_DM_HbA1c]
+    contract_required: false
+
+  diabetes_self_report:
+    description: 당뇨병 의사진단·진단나이·현재유병·현재치료 문항
+    required_columns: [DE1_dg, DE1_ag, DE1_pr, DE1_pt]
+    contract_required: false
+
+  diabetes_treatment_details:
+    description: 당뇨병 혈당관리 및 치료방법 상세 문항
+    required_columns: [DE1_3, DE1_31, DE1_32, DE1_33, DE1_34, DE1_35, DE1_4]
+    contract_required: false
+
+  diabetes_exam_day_medication:
+    description: 검진당일 당뇨병 약물 관련 후보 변수. 연도별 제공 여부를 확인한다.
+    candidate_columns: [HE_DMdr]
+    contract_required: false
+
+  official_systolic_blood_pressure:
+    description: KNHANES 공식 최종 수축기혈압. 연도별 기기·보정 상태를 코드북으로 확인한다.
+    candidate_columns: [HE_sbp, systolic_bp]
+    contract_required: true
+
+  raw_systolic_blood_pressure_rounds:
+    description: 수축기혈압 회차별 측정값
+    required_columns: [HE_sbp1, HE_sbp2, HE_sbp3]
+    contract_required: true
+
+  official_diastolic_blood_pressure:
+    description: KNHANES 공식 최종 이완기혈압. 연도별 기기·보정 상태를 코드북으로 확인한다.
+    candidate_columns: [HE_dbp, diastolic_bp]
+    contract_required: true
+
+  raw_diastolic_blood_pressure_rounds:
+    description: 이완기혈압 회차별 측정값
+    required_columns: [HE_dbp1, HE_dbp2, HE_dbp3]
+    contract_required: true
+
+  official_hypertension_status:
+    description: 약물복용을 포함하는 공식 복합 고혈압 상태 생성변수. primary 측정 라벨과 구분한다.
+    candidate_columns: [HE_HP]
+    contract_required: false
+
+  hypertension_self_report:
+    description: 고혈압 의사진단·진단나이·현재유병·현재치료 문항
+    required_columns: [DI1_dg, DI1_ag, DI1_pr, DI1_pt]
+    contract_required: false
+
+  hypertension_medication_detail:
+    description: 고혈압 약 복용 상세 문항 후보
+    candidate_columns: [DI1_2]
+    contract_required: false
+
+  hypertension_exam_day_medication:
+    description: 검진당일 고혈압 약 복용 후보 변수. 연도별 제공 여부를 확인한다.
+    candidate_columns: [HE_HPdr]
+    contract_required: false
+
+  pregnancy_status:
+    description: 임신 상태 후보. 허리둘레·대사 라벨 cohort 제외 규칙 수립에 사용한다.
+    candidate_columns: [HE_prg]
+    contract_required: false
+
+  examination_weight:
+    description: 검진·건강설문 결합 분석 가중치 후보
+    candidate_columns: [wt_itvex]
+    contract_required: false
+
+  strata:
+    description: 복합표본 층화변수 후보
+    candidate_columns: [kstrata]
+    contract_required: false
+
+  psu:
+    description: 복합표본 집락변수 후보
+    candidate_columns: [psu]
+    contract_required: false

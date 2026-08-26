@@ -1,0 +1,337 @@
+schema_version: 1
+contract_version: v0.1
+status: approved_for_synthetic_implementation_aggregate_confirmation_pending
+do_not_train: true
+
+scope:
+  survey: KNHANES
+  implementation_years: [2019, 2020, 2021, 2022]
+  development_years: [2019, 2020, 2021]
+  temporal_validation_year_contract_check_only: [2022]
+  reserved_model_test_years: [2023]
+  forbidden_years: [2024]
+  preserve_all_input_rows: true
+  task_datasets_filter_by_eligibility_later: true
+
+upstream_contracts:
+  data_contract: contracts/data_contract_v0_3.yaml
+  activity: contracts/activity_feature_contract_v0_1.yaml
+  measurement_harmonization: contracts/measurement_harmonization_contract_v0_1.yaml
+  value_audit: contracts/value_audit_spec_v0_2.yaml
+
+input:
+  participant_id_column: ID
+  required_columns:
+    identity_and_design: [ID, age, sex, wt_itvex, kstrata, psu]
+    eligibility: [HE_prg]
+    anthropometry: [HE_ht, HE_wt, HE_wc]
+    activity:
+      - BE3_71
+      - BE3_72
+      - BE3_73
+      - BE3_74
+      - BE3_75
+      - BE3_76
+      - BE3_77
+      - BE3_78
+      - BE3_81
+      - BE3_82
+      - BE3_83
+      - BE3_84
+      - BE3_85
+      - BE3_86
+      - BE3_87
+      - BE3_88
+      - BE3_91
+      - BE3_92
+      - BE3_93
+      - BE3_94
+      - BE5_1
+      - pa_aerobic
+    diabetes: [HE_fst, HE_glu, HE_HbA1c, HE_DM_HbA1c]
+    blood_pressure: [HE_sbp, HE_dbp, HE_sbp2, HE_sbp3, HE_dbp2, HE_dbp3, HE_HP]
+
+row_eligibility:
+  adult:
+    rule: age_years >= 19
+    age_80_top_coded: true
+  pregnancy:
+    raw_column: HE_prg
+    include_combinations:
+      - {sex_code: 1, pregnancy_code: 8, meaning: male_not_applicable}
+      - {sex_code: 2, pregnancy_code: 0, meaning: female_not_pregnant}
+    exclude_codes: [1]
+    missing_unexpected_or_sex_inconsistent: exclude_with_quality_flag
+  p0_general_adult:
+    rule: adult AND HE_prg in [0, 8]
+  preserve_excluded_rows_with_flags: true
+
+value_cleaning:
+  common:
+    numeric_conversion_failure: set_canonical_value_missing_and_flag
+    nonfinite: set_canonical_value_missing_and_flag
+    source_missing: keep_missing_and_flag
+    outside_candidate_guard: preserve_numeric_value_and_flag_pending_confirmation
+    row_deletion: prohibited
+    target_imputation: prohibited
+    feature_imputation_in_etl: prohibited
+    clipping: prohibited
+  candidate_guards_pending_aggregate_confirmation:
+    policy: audit_flag_only_not_an_automatic_exclusion_rule
+    age_years: {raw: age, minimum: 0, maximum: 80, integer: true}
+    height_cm: {raw: HE_ht, minimum: 100, maximum: 220}
+    weight_kg: {raw: HE_wt, minimum: 25, maximum: 250}
+    waist_cm: {raw: HE_wc, minimum: 40, maximum: 200}
+    fasting_hours: {raw: HE_fst, minimum: 0, maximum: 48}
+    fasting_glucose_mg_dl: {raw: HE_glu, minimum: 30, maximum: 600}
+    hba1c_raw_pct: {raw: HE_HbA1c, minimum: 3, maximum: 20}
+    sbp_raw_mmhg: {raw: HE_sbp, minimum: 60, maximum: 260}
+    dbp_raw_mmhg: {raw: HE_dbp, minimum: 30, maximum: 160}
+    examination_weight: {raw: wt_itvex, minimum_exclusive: 0}
+  hard_invalid_numeric:
+    policy: set_canonical_value_missing_and_flag
+    cases: [source_missing, numeric_conversion_failure, nonfinite]
+    additional_rules:
+      age_years: outside_0_80_or_noninteger
+      examination_weight: not_above_zero
+  categorical:
+    sex_code: {raw: sex, allowed: [1, 2], unexpected: missing_and_flag}
+    pregnancy_code: {raw: HE_prg, allowed: [0, 1, 8], unexpected: excluded_and_flag}
+    official_diabetes_status: {raw: HE_DM_HbA1c, allowed: [1, 2, 3]}
+    official_hypertension_status:
+      raw: HE_HP
+      allowed_by_year:
+        2019: [1, 2, 3]
+        2020: [1, 2, 3]
+        2021: [1, 2, 3]
+        2022: [1, 2, 3, 4]
+
+activity:
+  implementation: src/activity_features.py
+  leisure_feature: leisure_aerobic_moderate_equivalent_min_week
+  strength_feature: strength_days_week
+  missing_activity_is_not_zero: true
+  official_pa_aerobic_role: comparator_and_quality_only
+  total_activity_role: research_comparator_only
+
+measurement_harmonization:
+  implementation: src/measurement_harmonization.py
+  primary_values: official_raw
+  hba1c_converted_role: sensitivity_only
+  bp_converted_role: sensitivity_only
+  prohibit_overwriting_raw: true
+  provenance_fields_required: true
+
+derived_values:
+  bmi:
+    formula: weight_kg / ((height_cm / 100) ** 2)
+    compute_only_when_height_and_weight_valid: true
+  diabetes_measurement_primary:
+    eligibility: p0_general_adult AND fasting_hours >= 8 AND glucose valid AND raw_hba1c valid
+    positive: fasting_glucose_mg_dl >= 126 OR hba1c_raw_pct >= 6.5
+    negative_requires_both_measurements: true
+  diabetes_measurement_sensitivity:
+    eligibility: same_as_primary_with_converted_hba1c_available
+    positive: fasting_glucose_mg_dl >= 126 OR hba1c_sensitivity_pct >= 6.5
+  hypertension_measurement_primary:
+    eligibility: p0_general_adult AND raw_sbp valid AND raw_dbp valid
+    positive: sbp_raw_mmhg >= 140 OR dbp_raw_mmhg >= 90
+  hypertension_measurement_sensitivity:
+    eligibility: same_as_primary_with_converted_bp_available
+    positive: sbp_sensitivity_mmhg >= 140 OR dbp_sensitivity_mmhg >= 90
+  waist_regression_target:
+    eligibility: p0_general_adult AND waist_cm valid
+  official_comparators:
+    diabetes_positive_code: 3
+    hypertension_positive_code_by_year:
+      2019: 3
+      2020: 3
+      2021: 3
+      2022: 4
+
+feature_sets:
+  F0:
+    columns: [age_years, sex_code, height_cm, weight_kg]
+    complete_flag: feature_f0_complete
+  F1:
+    columns: [age_years, sex_code, height_cm, weight_kg, pa_aerobic_official, strength_days_week]
+    complete_flag: feature_f1_complete
+    role: fallback_candidate_only
+  F2_leisure:
+    columns: [age_years, sex_code, height_cm, weight_kg, leisure_aerobic_moderate_equivalent_min_week, strength_days_week]
+    complete_flag: feature_f2_leisure_complete
+    role: primary_six_feature_candidate
+
+output_columns:
+  identity_and_provenance:
+    - participant_id
+    - source_year
+    - canonical_contract_version
+    - hba1c_harmonization_version
+    - bp_harmonization_version
+  survey_design: [examination_weight, strata, psu]
+  eligibility:
+    - adult_eligible
+    - pregnancy_eligible
+    - p0_general_adult_eligible
+  model_candidates:
+    - age_years
+    - age_80_top_coded
+    - sex_code
+    - height_cm
+    - weight_kg
+    - bmi_kg_m2
+    - pa_aerobic_official
+    - leisure_aerobic_moderate_equivalent_min_week
+    - strength_days_week
+    - strength_top_coded
+    - feature_f0_complete
+    - feature_f1_complete
+    - feature_f2_leisure_complete
+  targets_and_measurements:
+    - waist_cm
+    - waist_target_eligible
+    - fasting_hours
+    - fasting_glucose_mg_dl
+    - hba1c_raw_pct
+    - hba1c_sensitivity_pct
+    - diabetes_target_eligible
+    - diabetes_measurement_label_raw
+    - diabetes_measurement_label_sensitivity
+    - sbp_raw_mmhg
+    - dbp_raw_mmhg
+    - sbp_sensitivity_mmhg
+    - dbp_sensitivity_mmhg
+    - hypertension_target_eligible
+    - hypertension_measurement_label_raw
+    - hypertension_measurement_label_sensitivity
+  comparators_and_quality:
+    - official_diabetes_comparator
+    - official_hypertension_comparator
+    - pa_aerobic_reproduced
+    - pa_aerobic_match
+    - total_activity_complete
+    - leisure_activity_complete
+    - anthropometry_quality_issue
+    - diabetes_measurement_quality_issue
+    - blood_pressure_quality_issue
+    - activity_quality_issue
+    - eligibility_quality_issue
+    - sex_pregnancy_consistency_issue
+    - age_quality_reason
+    - sex_quality_reason
+    - pregnancy_quality_reason
+    - height_quality_reason
+    - weight_quality_reason
+    - waist_quality_reason
+    - fasting_hours_quality_reason
+    - fasting_glucose_quality_reason
+    - hba1c_quality_reason
+    - sbp_quality_reason
+    - dbp_quality_reason
+    - survey_weight_quality_reason
+
+column_roles:
+  model_input_allowed:
+    - age_years
+    - sex_code
+    - height_cm
+    - weight_kg
+    - leisure_aerobic_moderate_equivalent_min_week
+    - strength_days_week
+    - pa_aerobic_official
+  target_only:
+    - waist_cm
+    - diabetes_measurement_label_raw
+    - diabetes_measurement_label_sensitivity
+    - hypertension_measurement_label_raw
+    - hypertension_measurement_label_sensitivity
+  label_source_only:
+    - fasting_hours
+    - fasting_glucose_mg_dl
+    - hba1c_raw_pct
+    - hba1c_sensitivity_pct
+    - sbp_raw_mmhg
+    - dbp_raw_mmhg
+    - sbp_sensitivity_mmhg
+    - dbp_sensitivity_mmhg
+  comparator_only:
+    - official_diabetes_comparator
+    - official_hypertension_comparator
+  audit_only:
+    - pa_aerobic_reproduced
+    - pa_aerobic_match
+    - total_activity_complete
+    - leisure_activity_complete
+  split_and_integrity_only:
+    - participant_id
+    - source_year
+  evaluation_weight_only:
+    - examination_weight
+    - strata
+    - psu
+
+prohibited_model_inputs:
+  - participant_id
+  - source_year
+  - examination_weight
+  - strata
+  - psu
+  - waist_cm
+  - fasting_hours
+  - fasting_glucose_mg_dl
+  - hba1c_raw_pct
+  - hba1c_sensitivity_pct
+  - sbp_raw_mmhg
+  - dbp_raw_mmhg
+  - sbp_sensitivity_mmhg
+  - dbp_sensitivity_mmhg
+  - diabetes_measurement_label_raw
+  - diabetes_measurement_label_sensitivity
+  - hypertension_measurement_label_raw
+  - hypertension_measurement_label_sensitivity
+  - official_diabetes_comparator
+  - official_hypertension_comparator
+
+missing_data:
+  output_missing_representation: pandas_NA
+  convert_unknown_to_zero: false
+  structural_skip_to_zero_only_when_branch_participation_is_explicit_no: true
+  target_imputation: prohibited
+  feature_imputation: deferred_to_train_only_pipeline
+  missing_indicator_selection: deferred_to_train_only_pipeline
+  optional_activity_fallback: use_F0_not_zero_fill
+
+quality_and_privacy:
+  canonical_row_export_in_this_stage: prohibited
+  aggregate_confirmation_only: true
+  minimum_cell_count: 5
+  complementary_suppression: true
+  no_sample_rows: true
+  no_participant_identifiers_in_reports: true
+
+confirmation_gate:
+  required_years: [2019, 2020, 2021, 2022]
+  checks:
+    - input_hashes_match_prior_audits
+    - input_id_missing_and_duplicate_counts_zero
+    - output_row_count_equals_input_row_count
+    - range_violation_counts_documented
+    - eligibility_and_task_cohort_counts_match_prior_audits
+    - feature_completeness_documented
+    - labels_are_missing_outside_eligibility
+    - no_target_or_label_source_in_model_input_allowlist
+    - no_rows_or_identifiers_in_report
+    - no_model_training_or_performance_evaluation
+  status: pending_aggregate_execution
+
+prohibited_actions:
+  - create_train_csv
+  - create_test_csv
+  - fit_imputer
+  - fit_scaler
+  - feature_selection
+  - model_training
+  - model_performance_evaluation
+  - read_2023_values
+  - read_2024_values

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "status": "development_oof_complete",
+  "executed_at": "2026-08-26",
+  "task": "waist",
+  "source_years": [2019, 2020, 2021],
+  "rows": 16403,
+  "training_scope": "development_nested_oof_only",
+  "reserved_year_accessed": false,
+  "official_2022_gate_evaluated": false,
+  "input_receipts": {
+    "task_frame_manifest_sha256": "57995724b49c30eff94564de55f6e51588f9fd59e4abedb8e579aeec790c6a0b",
+    "waist_fold_manifest_sha256": "a5050ae6d544462c733f7af99667e8f5cf10e0e77ceeeda2daa88043a40c9f2b"
+  },
+  "frozen_contracts": {
+    "configs/model_development_v0_2.yaml": "ec65d546dad92b7ed169f0dc885e3dcf771a625567e4e62bd4806b821c209da9",
+    "contracts/model_experiment_protocol_v0_2.yaml": "567a56802a3a110417424a3b6fb27b5a893255ea3504bab9bbfb995b33d9f83c",
+    "requirements.txt": "060b57d70ea2a187077f54d6d9ca0c0c04c1e46395a9c7f361de4a2871ec962f"
+  },
+  "execution_code": {
+    "src/validate_development_inputs.py": "7480b2fb87b3cd26eebea00724716ac30c04c0359631b4ef5a78b3f6a3f39596",
+    "src/waist_submodel_pipeline.py": "50e7fa2b5737519f21a913d5dd61f066eb366e3f5cb84ee53535dcabe92b55e4",
+    "src/run_waist_oof.py": "e80278874e6a461d3c73d27fbde3b36f1663073bd85f77f369baac3ba0a38e9f",
+    "tests/test_waist_submodel_pipeline.py": "682b1043a40deafa8410fc1ec0b8303725c6707f4341cd192633e6440c81cf36"
+  },
+  "restricted_artifact_receipts": {
+    "waist_oof_results.json": "23ba1cef45ceda2c538433b4783af0f3a5572caec0c26dfcc22f836279465d41",
+    "manifest_sha256.json": "4c6bc2069f527d7ed9f4b713d42cd61dc065edfb2b5ef7fd726d56cf4f7414c3",
+    "oof/W0_seed42.csv": "777958d2f0f0c99f6b39b7bfb4c31dbf92c5285d8bd7ce27bf73ad344a048de1",
+    "oof/W0_seed1042.csv": "0424ef6a18b739ff4a9ad586e27451b19a47b94ccc6e2176faf6e6b487b68f1d",
+    "oof/W0_seed2042.csv": "415c02bb86f5c461623f2d8af1ad98af1b522b9eec13152c84d837875d3c9949",
+    "oof/W2_seed42.csv": "7f633fb30789c1044bf5c0a8dc3f1cfcd7c72f204910537e2cf4787befcfa57a",
+    "oof/W2_seed1042.csv": "ab2567b9cfee385dffbade1921f0a6cdaa00e4163cac9867c437b57b5583ea99",
+    "oof/W2_seed2042.csv": "557fcb93911e34f52d391fbe39117f0307c207a740d8b7e25a267aa2c3b76c08"
+  },
+  "tests": {
+    "full_suite_passed": 136,
+    "failed": 0,
+    "warning": "pytest cache path warning caused by the Korean Windows path; test execution passed"
+  }
+}

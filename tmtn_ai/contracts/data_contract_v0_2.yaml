@@ -1,0 +1,425 @@
+schema_version: 1
+contract_version: v0.2-draft
+status: superseded_by_v0_3_draft
+superseded_by: contracts/data_contract_v0_3.yaml
+do_not_train: true
+
+evidence:
+  schema_audit:
+    status: passed
+    audit_spec: contracts/variable_audit_spec_v0_2.yaml
+    audit_spec_sha256: 04d6b0ff726f98fd129aefcd50d78cdd86410cfda7627edf2effd68d84992584
+    integrated_report: docs/VARIABLE_AUDIT_2019_2024_v0_2.md
+    years_passed: [2019, 2020, 2021, 2022, 2023, 2024]
+    participant_values_read: false
+    required_schema_discontinuities: []
+    optional_schema_discontinuities:
+      - concept: diabetes_exam_day_medication
+        raw_column: HE_DMdr
+        present_years: [2019, 2020, 2021]
+        missing_years: [2022, 2023, 2024]
+      - concept: hypertension_exam_day_medication
+        raw_column: HE_HPdr
+        present_years: [2019, 2020, 2021]
+        missing_years: [2022, 2023, 2024]
+
+  official_codebook:
+    status: confirmed_for_current_contract_variables
+    sources:
+      - title: 국민건강영양조사 제8기 2019~2021 원시자료 이용지침서
+        covers_years: [2019, 2020, 2021]
+        local_path: C:/Users/FORYOUCOM/PycharmProjects/AH_05_01/data/02_codebooks/year=2019/국민건강영양조사+제8기(2019-2021)+원시자료+이용지침서.pdf
+        local_sha256: 1E345F548ED45C87C817B9A1DC2FB72D4B0A36A7509B85301FF02062AE404A1F
+        page_index:
+          blood_pressure_change: [18, 19]
+          aerobic_sas: [50]
+          examination_indicator_sas: [51]
+          hypertension_questionnaire: [100]
+          diabetes_questionnaire: [112, 113]
+          activity_variables: [188, 189]
+          fasting_and_pregnancy: [192]
+          blood_pressure_variables: [196, 197]
+          diabetes_generated_variable: [199]
+      - title: 국민건강영양조사 제9기 2022~2024 원시자료 이용지침서
+        covers_years: [2022, 2023, 2024]
+        local_path: C:/Users/FORYOUCOM/PycharmProjects/AH_05_01/data/02_codebooks/year=2022/국민건강영양조사+제9기(2022-2024)+원시자료+이용지침서.pdf
+        local_sha256: 921818C62267BD2949DD08E7D0143EF8CD30EB3086722E696481AA162BA42CE3
+        page_index:
+          blood_pressure_change: [20, 21]
+          aerobic_sas: [51]
+          hypertension_questionnaire: [110]
+          diabetes_questionnaire: [112]
+          activity_variables: [177, 178]
+          fasting_and_pregnancy: [182]
+          blood_pressure_variables: [185, 186]
+          diabetes_generated_variable: [188]
+          hba1c_conversion: [189]
+    official_guide_url: https://knhanes.kdca.go.kr/knhanes/dataAnlsGd/utztnGd.do
+
+  collaborator_review_ver3:
+    status: reviewed_decisions_approved_all_A
+    source_url: https://app.notion.com/p/3c68066df13580a8b05defcc562f7246?pvs=204
+    review_document: docs/BYEONGHAK_DATA_VER3_REVIEW.md
+    accepted:
+      - official_comparator_label_mappings
+      - opened_2024_temporal_evaluation_status
+      - prohibit_MET_minute_name_for_moderate_equivalent_minutes
+      - prohibit_training_before_contract_approval
+      - require_future_year_or_external_final_evaluation
+    corrected:
+      - primary_candidate_in_ver3_is_disease_state_not_measurement_only
+      - HE_DM_hb_maps_to_HE_DM_HbA1c
+      - HE_hp_maps_to_HE_HP
+      - M0_M1_M2_names_conflict_with_current_feature_set_contract
+      - 2016_2018_schema_B_conflicts_with_fixed_2019_2024_scope
+    approved_decisions:
+      primary_target: current_measurement_abnormality
+      pregnancy_scope: exclude_from_all_p0_model_cohorts
+      app_aerobic_input: leisure_days_week_and_minutes_session_derived_to_minutes_week
+      naming: separate_F_feature_sets_and_D_disease_pipelines
+      validation: development_2019_2021_validation_2022_locked_test_2023_opened_diagnostic_2024
+
+scope:
+  survey: KNHANES
+  schema_years: [2019, 2020, 2021, 2022, 2023, 2024]
+  development_value_audit_years: [2019, 2020, 2021, 2022, 2023]
+  temporal_evaluation_years: [2024]
+  opened_years: [2024]
+  independent_holdout_years: []
+  independent_final_holdout_status: not_available
+  excluded_historical_years:
+    years: [2016, 2017, 2018]
+    reason: project_scope_fixed_to_2019_2024_for_hba1c_and_common_contract
+  population: adults
+  minimum_age_years: 19
+  pregnancy_scope: excluded_from_all_p0_model_cohorts
+  age_top_code:
+    raw_value: 80
+    meaning: 80_plus
+    deployment_rule: pending
+
+app_model_inputs:
+  age_years:
+    dtype: integer
+    unit: years
+    raw_column: age
+    schema_status: confirmed_all_years
+    value_rules_status: pending
+
+  sex_code:
+    dtype: categorical
+    raw_column: sex
+    schema_status: confirmed_all_years
+    knhanes_code_mapping_status: pending_value_audit
+    app_mapping_status: blocked_app_has_more_categories_than_knhanes
+    unmapped_app_categories: return_insufficient_input_or_use_approved_fallback
+
+  height_cm:
+    dtype: float
+    unit: cm
+    raw_column: HE_ht
+    schema_status: confirmed_all_years
+    valid_range_status: pending
+
+  weight_kg:
+    dtype: float
+    unit: kg
+    raw_column: HE_wt
+    schema_status: confirmed_all_years
+    valid_range_status: pending
+
+  aerobic_threshold:
+    dtype: binary
+    raw_column: pa_aerobic
+    schema_status: confirmed_all_years
+    role: F1_binary_activity_fallback_candidate
+    prohibit_reverse_inference_to_frequency_or_minutes: true
+    status: pending_value_audit
+
+  aerobic_moderate_equivalent_min_week:
+    dtype: float
+    unit: minutes_per_week
+    raw_components:
+      - BE3_71
+      - BE3_72
+      - BE3_73
+      - BE3_74
+      - BE3_75
+      - BE3_76
+      - BE3_77
+      - BE3_78
+      - BE3_81
+      - BE3_82
+      - BE3_83
+      - BE3_84
+      - BE3_85
+      - BE3_86
+      - BE3_87
+      - BE3_88
+      - BE3_91
+      - BE3_92
+      - BE3_93
+      - BE3_94
+    schema_status: confirmed_all_years
+    formula_candidate: moderate_work_leisure_transport_min_week_plus_2x_vigorous_work_leisure_min_week
+    metric_name: moderate_equivalent_minutes_per_week
+    prohibit_MET_minute_label: true
+    branch_aware_skip_logic_status: official_sas_confirmed_implementation_test_pending
+    app_wording_scope: not_collected_as_primary_app_input
+    role: research_comparator_only
+    status: pending_value_audit
+
+  aerobic_leisure_moderate_equivalent_min_week:
+    dtype: float
+    unit: minutes_per_week
+    raw_components: [BE3_75, BE3_76, BE3_77, BE3_78, BE3_85, BE3_86, BE3_87, BE3_88]
+    schema_status: confirmed_all_years
+    formula_candidate: leisure_moderate_min_week_plus_2x_leisure_vigorous_min_week
+    metric_name: leisure_moderate_equivalent_minutes_per_week
+    prohibit_MET_minute_label: true
+    branch_aware_skip_logic_status: official_sas_confirmed_implementation_test_pending
+    app_wording_scope: leisure_aerobic_exercise_only
+    app_collection:
+      fields: [aerobic_days_week, aerobic_minutes_per_session]
+      derived_formula: aerobic_days_week * aerobic_minutes_per_session
+      model_input_count: 1
+      prohibit_labeling_as_total_activity: true
+    role: primary_app_aerobic_input
+    status: selected_pending_value_audit_and_skip_logic_test
+
+  strength_days_week:
+    dtype: ordinal
+    unit: days_per_week
+    raw_column: BE5_1
+    schema_status: confirmed_all_years
+    raw_to_contract_mapping:
+      1: 0_days
+      2: 1_day
+      3: 2_days
+      4: 3_days
+      5: 4_days
+      6: 5_plus_days
+      8: structural_not_applicable_candidate
+      9: unknown_or_no_response
+    top_coded_value: 5_plus_days
+    status: codebook_confirmed_value_audit_pending
+
+feature_sets:
+  F0:
+    features: [age_years, sex_code, height_cm, weight_kg]
+    role: baseline_and_missing_exercise_fallback
+    status: design_confirmed
+  F1:
+    features: [age_years, sex_code, height_cm, weight_kg, aerobic_threshold, strength_days_week]
+    role: binary_activity_fallback
+    status: pending_value_audit
+  F2_total:
+    features: [age_years, sex_code, height_cm, weight_kg, aerobic_moderate_equivalent_min_week, strength_days_week]
+    activity_scope: work_transport_leisure
+    role: research_comparator_only
+    status: pending_value_audit_and_skip_logic_test
+  F2_leisure:
+    features: [age_years, sex_code, height_cm, weight_kg, aerobic_leisure_moderate_equivalent_min_week, strength_days_week]
+    activity_scope: leisure_only
+    role: selected_primary_six_input_feature_set
+    status: selected_pending_value_audit_and_skip_logic_test
+
+disease_pipelines:
+  D0:
+    inputs: selected_F_feature_set_only
+    role: direct_input_baseline
+    status: design_confirmed
+  D1:
+    inputs: [selected_F_feature_set, out_of_fold_estimated_waist_cm]
+    role: p0_candidate_with_waist_submodel
+    status: design_confirmed_implementation_pending
+  D2:
+    inputs: [selected_F_feature_set, out_of_fold_estimated_waist_cm, future_approved_submodel_outputs]
+    role: future_extension
+    status: deferred_until_submodels_are_independently_validated
+
+derived_features:
+  bmi:
+    formula: weight_kg / ((height_cm / 100) ** 2)
+    server_recomputed: true
+    raw_comparator_column: HE_BMI
+    independent_app_input: false
+    status: formula_confirmed_value_range_pending
+
+targets:
+  waist_cm:
+    task_type: regression
+    raw_column: HE_wc
+    schema_status: confirmed_all_years
+    unit: cm
+    pregnancy_column_candidate: HE_prg
+    pregnancy_month_column_candidate: HE_dprg
+    measurement_failure_rule: pending
+    pregnancy_exclusion_policy: exclude_all_pregnant_participants
+    pregnancy_exclusion_rule: pending_value_consistency_test_for_HE_prg_and_HE_dprg
+    valid_range_status: pending
+    status: blocked_pending_value_audit
+
+  diabetes_measurement_label:
+    task_type: binary_classification_with_calibrated_probability_output
+    role: primary
+    target_meaning: current_measurement_abnormality
+    raw_columns: [HE_fst, HE_glu, HE_HbA1c]
+    schema_status: confirmed_all_years
+    candidate_eligibility_rule: age >= 19 and nonpregnant and HE_fst >= 8 and HE_glu is not missing and HE_HbA1c is not missing
+    candidate_positive_rule: HE_glu >= 126 or HE_HbA1c >= 6.5
+    self_report_primary_label: false
+    single_measurement_availability_rule: pending
+    pregnancy_columns: [HE_prg, HE_dprg]
+    pregnancy_rule: exclude_all_pregnant_participants_pending_value_consistency_test
+    hba1c_harmonization:
+      change_year: 2022
+      official_statistics_use_conversion: false
+      researcher_conversion_for_2022_onward: y = 1.034 * x - 0.0448
+      project_policy: compare_raw_and_researcher_converted_temporal_stability_then_freeze
+      status: blocked_pending_sensitivity_analysis
+    treatment_controlled_normal_rule: negative_when_current_measurements_are_below_threshold
+    prediabetes_rule: pending
+    status: blocked
+
+  diabetes_official_composite_label:
+    role: comparator_and_sensitivity_only
+    raw_column: HE_DM_HbA1c
+    schema_status: confirmed_all_years
+    official_codes:
+      1: normal
+      2: prediabetes
+      3: diabetes
+    includes_diagnosis_or_treatment: true
+    official_sas_working_name: HE_DM_hb
+    delivered_column_name: HE_DM_HbA1c
+    status: codebook_semantics_confirmed_value_audit_pending
+
+  hypertension_measurement_label:
+    task_type: binary_classification_with_calibrated_probability_output
+    role: primary
+    target_meaning: current_measurement_abnormality
+    raw_columns: [HE_sbp, HE_dbp]
+    raw_round_columns: [HE_sbp1, HE_sbp2, HE_sbp3, HE_dbp1, HE_dbp2, HE_dbp3]
+    schema_status: confirmed_all_years
+    candidate_positive_rule: HE_sbp >= 140 or HE_dbp >= 90
+    self_report_primary_label: false
+    official_value_generation_rule: mean_of_rounds_2_and_3
+    device_by_year:
+      "2019": mercury_sphygmomanometer
+      "2020": Greenlight300_nonmercury_auscultatory
+      "2021_2024_adults": Microlife_WatchBP_Office_oscillometric
+    official_statistics_use_researcher_conversion: false
+    conversion_policy: compare_raw_and_researcher_converted_temporal_stability_then_freeze
+    pregnancy_columns: [HE_prg, HE_dprg]
+    pregnancy_rule: exclude_all_pregnant_participants_pending_value_consistency_test
+    treatment_controlled_normal_rule: negative_when_current_measurements_are_below_threshold
+    prehypertension_rule: pending
+    status: blocked
+
+  hypertension_official_composite_label:
+    role: comparator_and_sensitivity_only
+    raw_column: HE_HP
+    schema_status: confirmed_all_years
+    positive_code_by_period:
+      "2019_2021": 3
+      "2022_2024": 4
+    includes_medication: true
+    official_sas_working_name: HE_hp
+    delivered_column_name: HE_HP
+    medication_any_use_codes_DI1_2: [1, 2, 3, 4]
+    treatment_rate_codes_DI1_2: [1, 2]
+    nonpositive_multiclass_mapping: prohibited_until_harmonized
+    status: codebook_semantics_confirmed_value_audit_pending
+
+waist_serving_policy:
+  field: waist_cm
+  accepted_sources: [measured, estimated]
+  source_field: waist_source
+  estimator_version_field: waist_estimator_version
+  input_snapshot_field: input_snapshot_id
+  measured_value_overrides_estimate: true
+  disease_model_training_estimate_method: out_of_fold_cross_fitted
+  prohibit_training_on_measured_waist_when_serving_estimated_waist: true
+
+missing_data:
+  convert_unknown_to_zero: false
+  generic_special_code_conversion_prohibited: true
+  per_variable_special_codes_status: pending_value_audit
+  structural_skip_must_be_distinguished_from_unknown: true
+  pure_blank_status: pending_missingness_audit
+  imputation_fit_scope: train_only
+  target_imputation_allowed: false
+  optional_onboarding_fallback: F0
+
+survey_design:
+  weight_column: wt_itvex
+  strata_column: kstrata
+  psu_column: psu
+  schema_status: confirmed_all_years
+  value_status: pending
+  evaluation_plan: report_weighted_and_unweighted
+
+split_and_validation:
+  status: approved_pending_value_audit
+  primary_temporal_design:
+    development_years: [2019, 2020, 2021]
+    internal_resampling: repeated_stratified_cross_validation
+    temporal_validation_years: [2022]
+    locked_internal_test_years: [2023]
+    opened_diagnostic_years: [2024]
+  random_development_comparison:
+    years: [2019, 2020, 2021]
+    split: "80_20"
+    role: auxiliary_development_comparison_only
+    prohibit_using_2022_or_2023: true
+  temporal_validation:
+    train_years: [2019, 2020, 2021]
+    validation_years: [2022]
+  locked_internal_test:
+    years: [2023]
+    tuning_on_result_prohibited: true
+  opened_temporal_evaluation:
+    years: [2024]
+    independent_holdout: false
+    tuning_on_result_prohibited: true
+  future_release_evaluation:
+    dataset: future_knhanes_year_or_external_cohort
+    custodian_required: true
+    status: not_available
+
+prohibited_features:
+  - HE_DM_HbA1c_as_input_to_diabetes_model
+  - HE_HP_as_input_to_hypertension_model
+  - HE_glu_as_input_to_diabetes_model
+  - HE_HbA1c_as_input_to_diabetes_model
+  - HE_sbp_as_input_to_hypertension_model
+  - HE_dbp_as_input_to_hypertension_model
+  - DE1_or_DI1_diagnosis_treatment_as_primary_model_inputs
+  - target_derived_columns
+  - post_outcome_information
+  - challenge_behavior_as_disease_feature_without_new_contract
+
+release_blockers:
+  - reproduce_official_activity_skip_logic
+  - complete_2019_2023_value_level_audit
+  - freeze_per_variable_special_code_rules
+  - freeze_anthropometry_valid_ranges_and_pregnancy_exclusions
+  - freeze_diabetes_measurement_label_and_cohort
+  - freeze_hypertension_measurement_label_and_device_harmonization
+  - freeze_hba1c_2022_onward_harmonization_policy
+  - freeze_app_sex_mapping_policy
+  - establish_future_independent_holdout_custodian
+  - obtain_joint_data_ai_approval
+  - remove_do_not_train_flag_by_versioned_contract_change
+
+approvals:
+  data_ai_owner_kangho:
+    status: approved_decisions_all_A_contract_still_draft
+    approved_at: 2026-08-24
+  data_ai_collaborator_byeonghak:
+    status: pending
+    approved_at: null
+  product:
+    status: pending_formal_signoff_on_frozen_target_and_activity_wording
+    approved_at: null

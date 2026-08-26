@@ -1,0 +1,312 @@
+schema_version: 1
+audit_version: v0.1-discovery
+status: pending_user_review_before_raw_execution
+survey: KNHANES
+data_contract: contracts/data_contract_v0_3.yaml
+years: [2019, 2020, 2021, 2022, 2023]
+forbidden_years: [2024]
+
+privacy:
+  aggregate_only: true
+  allow_sample_rows: false
+  allow_row_identifiers: false
+  allow_raw_value_export: false
+  minimum_cell_count: 5
+  complementary_suppression: true
+  round_digits: 4
+
+source:
+  participant_id_column: ID
+  id_required: true
+
+variables:
+  age:
+    column: age
+    kind: numeric
+    required: true
+    candidate_valid_range: [19, 80]
+    thresholds:
+      - {name: adult_19_plus, operator: ge, value: 19}
+
+  sex:
+    column: sex
+    kind: categorical
+    required: true
+    expected_codes: [1, 2]
+
+  height_cm:
+    column: HE_ht
+    kind: numeric
+    required: true
+    candidate_valid_range: [100, 220]
+
+  weight_kg:
+    column: HE_wt
+    kind: numeric
+    required: true
+    candidate_valid_range: [25, 250]
+
+  official_bmi:
+    column: HE_BMI
+    kind: numeric
+    required: false
+    candidate_valid_range: [10, 80]
+
+  waist_cm:
+    column: HE_wc
+    kind: numeric
+    required: true
+    candidate_valid_range: [40, 200]
+    thresholds:
+      - {name: korean_male_reference_90, operator: ge, value: 90}
+      - {name: korean_female_reference_85, operator: ge, value: 85}
+
+  leisure_vigorous_participation:
+    column: BE3_75
+    kind: categorical
+    required: true
+    candidate_special_codes: [8, 9]
+
+  leisure_vigorous_days:
+    column: BE3_76
+    kind: numeric
+    required: true
+    candidate_valid_range: [0, 7]
+    candidate_special_codes: [8, 9, 88, 99]
+
+  leisure_vigorous_hours:
+    column: BE3_77
+    kind: numeric
+    required: true
+    candidate_valid_range: [0, 23]
+    candidate_special_codes: [88, 99]
+
+  leisure_vigorous_minutes:
+    column: BE3_78
+    kind: numeric
+    required: true
+    candidate_valid_range: [0, 59]
+    candidate_special_codes: [88, 99]
+
+  leisure_moderate_participation:
+    column: BE3_85
+    kind: categorical
+    required: true
+    candidate_special_codes: [8, 9]
+
+  leisure_moderate_days:
+    column: BE3_86
+    kind: numeric
+    required: true
+    candidate_valid_range: [0, 7]
+    candidate_special_codes: [8, 9, 88, 99]
+
+  leisure_moderate_hours:
+    column: BE3_87
+    kind: numeric
+    required: true
+    candidate_valid_range: [0, 23]
+    candidate_special_codes: [88, 99]
+
+  leisure_moderate_minutes:
+    column: BE3_88
+    kind: numeric
+    required: true
+    candidate_valid_range: [0, 59]
+    candidate_special_codes: [88, 99]
+
+  strength_days:
+    column: BE5_1
+    kind: categorical
+    required: true
+    expected_codes: [1, 2, 3, 4, 5, 6, 8, 9]
+    candidate_special_codes: [8, 9]
+
+  aerobic_threshold:
+    column: pa_aerobic
+    kind: categorical
+    required: true
+
+  fasting_hours:
+    column: HE_fst
+    kind: numeric
+    required: true
+    candidate_valid_range: [0, 48]
+    candidate_special_codes: [88, 99, 888, 999]
+    thresholds:
+      - {name: fasting_8_plus, operator: ge, value: 8}
+
+  fasting_glucose:
+    column: HE_glu
+    kind: numeric
+    required: true
+    candidate_valid_range: [30, 600]
+    candidate_special_codes: [888, 999, 9999]
+    thresholds:
+      - {name: impaired_fasting_glucose_100_plus, operator: ge, value: 100}
+      - {name: diabetes_measurement_126_plus, operator: ge, value: 126}
+
+  hba1c:
+    column: HE_HbA1c
+    kind: numeric
+    required: true
+    candidate_valid_range: [3, 20]
+    candidate_special_codes: [88, 99, 888, 999]
+    thresholds:
+      - {name: prediabetes_measurement_5_7_plus, operator: ge, value: 5.7}
+      - {name: diabetes_measurement_6_5_plus, operator: ge, value: 6.5}
+
+  official_diabetes_status:
+    column: HE_DM_HbA1c
+    kind: categorical
+    required: true
+    expected_codes: [1, 2, 3]
+
+  official_sbp:
+    column: HE_sbp
+    kind: numeric
+    required: true
+    candidate_valid_range: [60, 260]
+    thresholds:
+      - {name: hypertension_measurement_140_plus, operator: ge, value: 140}
+
+  sbp_round_1:
+    column: HE_sbp1
+    kind: numeric
+    required: true
+    candidate_valid_range: [60, 260]
+
+  sbp_round_2:
+    column: HE_sbp2
+    kind: numeric
+    required: true
+    candidate_valid_range: [60, 260]
+
+  sbp_round_3:
+    column: HE_sbp3
+    kind: numeric
+    required: true
+    candidate_valid_range: [60, 260]
+
+  official_dbp:
+    column: HE_dbp
+    kind: numeric
+    required: true
+    candidate_valid_range: [30, 160]
+    thresholds:
+      - {name: hypertension_measurement_90_plus, operator: ge, value: 90}
+
+  dbp_round_1:
+    column: HE_dbp1
+    kind: numeric
+    required: true
+    candidate_valid_range: [30, 160]
+
+  dbp_round_2:
+    column: HE_dbp2
+    kind: numeric
+    required: true
+    candidate_valid_range: [30, 160]
+
+  dbp_round_3:
+    column: HE_dbp3
+    kind: numeric
+    required: true
+    candidate_valid_range: [30, 160]
+
+  official_hypertension_status:
+    column: HE_HP
+    kind: categorical
+    required: true
+
+  pregnancy_status:
+    column: HE_prg
+    kind: categorical
+    required: true
+
+  pregnancy_month:
+    column: HE_dprg
+    kind: categorical
+    required: true
+
+  examination_weight:
+    column: wt_itvex
+    kind: numeric
+    required: true
+    positive_only: true
+
+  strata:
+    column: kstrata
+    kind: categorical
+    required: true
+
+  psu:
+    column: psu
+    kind: categorical
+    required: true
+
+missingness_patterns:
+  - name: leisure_vigorous_branch
+    columns: [BE3_75, BE3_76, BE3_77, BE3_78]
+  - name: leisure_moderate_branch
+    columns: [BE3_85, BE3_86, BE3_87, BE3_88]
+  - name: diabetes_measurements
+    columns: [HE_fst, HE_glu, HE_HbA1c]
+  - name: systolic_rounds
+    columns: [HE_sbp1, HE_sbp2, HE_sbp3, HE_sbp]
+  - name: diastolic_rounds
+    columns: [HE_dbp1, HE_dbp2, HE_dbp3, HE_dbp]
+
+cross_tabs:
+  - name: pregnancy_status_by_month
+    columns: [HE_prg, HE_dprg]
+  - name: strength_by_aerobic_threshold
+    columns: [BE5_1, pa_aerobic]
+
+formula_checks:
+  - name: bmi_recalculation
+    operation: bmi
+    output_column: HE_BMI
+    input_columns: [HE_ht, HE_wt]
+    tolerance: 0.1
+  - name: systolic_round_mean
+    operation: mean
+    output_column: HE_sbp
+    input_columns: [HE_sbp2, HE_sbp3]
+    tolerance: 0.1
+  - name: diastolic_round_mean
+    operation: mean
+    output_column: HE_dbp
+    input_columns: [HE_dbp2, HE_dbp3]
+    tolerance: 0.1
+
+rule_counts:
+  - name: diabetes_base_before_pregnancy_mapping
+    pregnancy_exclusion_applied: false
+    eligibility:
+      all:
+        - {column: age, operator: ge, value: 19}
+        - {column: HE_fst, operator: ge, value: 8}
+        - {column: HE_glu, operator: not_missing}
+        - {column: HE_HbA1c, operator: not_missing}
+    positive:
+      any:
+        - {column: HE_glu, operator: ge, value: 126}
+        - {column: HE_HbA1c, operator: ge, value: 6.5}
+  - name: hypertension_base_before_pregnancy_mapping
+    pregnancy_exclusion_applied: false
+    eligibility:
+      all:
+        - {column: age, operator: ge, value: 19}
+        - {column: HE_sbp, operator: not_missing}
+        - {column: HE_dbp, operator: not_missing}
+    positive:
+      any:
+        - {column: HE_sbp, operator: ge, value: 140}
+        - {column: HE_dbp, operator: ge, value: 90}
+  - name: waist_base_before_pregnancy_mapping
+    pregnancy_exclusion_applied: false
+    eligibility:
+      all:
+        - {column: age, operator: ge, value: 19}
+        - {column: HE_wc, operator: not_missing}

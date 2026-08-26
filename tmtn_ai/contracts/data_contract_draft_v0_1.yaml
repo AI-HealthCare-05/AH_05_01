@@ -1,0 +1,124 @@
+schema_version: 1
+contract_version: v0.1-draft
+status: blocked_pending_variable_audit
+do_not_train: true
+
+scope:
+  survey: KNHANES
+  development_years: [2019, 2020, 2021, 2022, 2023]
+  sealed_holdout_years: [2024]
+  population: adults
+  minimum_age_years: null
+
+app_model_inputs:
+  age_years:
+    dtype: integer
+    unit: years
+    raw_candidates: [age]
+    status: provisional
+
+  sex_code:
+    dtype: categorical
+    unit: null
+    raw_candidates: [sex]
+    status: provisional
+
+  height_cm:
+    dtype: float
+    unit: cm
+    raw_candidates: [HE_ht]
+    status: provisional
+
+  weight_kg:
+    dtype: float
+    unit: kg
+    raw_candidates: [HE_wt]
+    status: provisional
+
+  aerobic_moderate_equivalent_min_week:
+    dtype: float
+    unit: minutes_per_week
+    raw_components:
+      - BE3_71
+      - BE3_72
+      - BE3_73
+      - BE3_74
+      - BE3_75
+      - BE3_76
+      - BE3_77
+      - BE3_78
+      - BE3_81
+      - BE3_82
+      - BE3_83
+      - BE3_84
+      - BE3_85
+      - BE3_86
+      - BE3_87
+      - BE3_88
+      - BE3_91
+      - BE3_92
+      - BE3_93
+      - BE3_94
+    derived_formula_status: pending_year_by_year_verification
+    app_wording_scope: pending_total_activity_vs_leisure_only
+    fallback_candidate: pa_aerobic
+    status: blocked
+
+  strength_days_week:
+    dtype: ordinal
+    unit: days_per_week
+    raw_candidates: [BE5_1]
+    expected_values: [0, 1, 2, 3, 4, 5_plus]
+    status: pending_year_by_year_verification
+
+targets:
+  waist_cm:
+    task_type: regression
+    raw_candidates: [HE_wc]
+    status: pending_measurement_rule_verification
+
+  diabetes_label:
+    task_type: binary_classification
+    measurement_candidates: [HE_glu, HE_HbA1c]
+    self_report_primary_label: false
+    fasting_rule: pending
+    treatment_handling: pending
+    threshold_rule: pending
+    status: blocked
+
+  hypertension_label:
+    task_type: binary_classification
+    measurement_candidates:
+      - HE_sbp
+      - HE_dbp
+      - HE_sbp1
+      - HE_dbp1
+      - HE_sbp2
+      - HE_dbp2
+      - HE_sbp3
+      - HE_dbp3
+    self_report_primary_label: false
+    measurement_round_rule: pending
+    treatment_handling: pending
+    threshold_rule: pending
+    status: blocked
+
+missing_data:
+  special_codes: pending_per_variable_codebook
+  convert_unknown_to_zero: false
+  imputation_fit_scope: train_only
+
+survey_design:
+  weight_candidates: [wt_itvex]
+  strata_candidates: [kstrata]
+  psu_candidates: [psu]
+  evaluation_plan: report_weighted_and_unweighted
+
+release_blockers:
+  - verify_2019_2024_variable_availability
+  - freeze_exercise_construct_and_app_wording
+  - freeze_adult_cohort
+  - freeze_diabetes_measurement_label
+  - freeze_hypertension_measurement_label
+  - establish_2024_custodian_and_access_control
+  - remove_do_not_train_flag_after_joint_approval

@@ -1,0 +1,201 @@
+schema_version: 1
+contract_version: v0.1
+status: raw_confirmation_passed_2019_2021_do_not_train
+do_not_train: true
+survey: KNHANES
+years: [2019, 2020, 2021, 2022, 2023]
+forbidden_years: [2024]
+
+purpose:
+  - reproduce_official_knhanes_pa_aerobic_for_audit
+  - derive_app_aligned_leisure_aerobic_feature
+  - reproduce_official_knhanes_pa_muscle_for_audit
+  - normalize_strength_days_for_the_six_input_model_contract
+
+evidence:
+  knhanes_ninth_cycle_codebook:
+    file: C:/Users/FORYOUCOM/PycharmProjects/AH_05_01/data/02_codebooks/year=2022/국민건강영양조사+제9기(2022-2024)+원시자료+이용지침서.pdf
+    pages: [50, 51]
+    role: exact_pa_aerobic_and_pa_muscle_sas_logic
+  korean_physical_activity_guideline_2023:
+    file: C:/Users/FORYOUCOM/Desktop/AI헬스케어 초격차 캠프_ 웹 개발/만성질환 생활습관 챌린지 웹 서비스/한국인을 위한 신체활동 지침서 개정판.pdf
+    pages: [8, 10, 34, 64, 70]
+    role: korean_adult_threshold_intensity_and_safety_context
+  who_physical_activity_guideline_2020:
+    file: C:/Users/FORYOUCOM/Desktop/AI헬스케어 초격차 캠프_ 웹 개발/만성질환 생활습관 챌린지 웹 서비스/WHO guidelines on physical activity and sedentary behaviour.pdf
+    pages: [10, 11, 16, 17]
+    role: adult_and_chronic_condition_recommendation_context
+  diabetes_guideline_2025:
+    file: C:/Users/FORYOUCOM/Desktop/AI헬스케어 초격차 캠프_ 웹 개발/만성질환 생활습관 챌린지 웹 서비스/2025 당뇨병 진료지침_전문_최종본.pdf
+    pages: [59, 60, 61]
+    role: diabetes_exercise_frequency_intensity_and_safety_context
+  hypertension_guideline_2022:
+    file: C:/Users/FORYOUCOM/Desktop/AI헬스케어 초격차 캠프_ 웹 개발/만성질환 생활습관 챌린지 웹 서비스/2022년 고혈압 진료지침.pdf
+    pages: [11, 56, 57]
+    role: hypertension_classification_exercise_and_safety_context
+  hypertension_guideline_2026:
+    file: C:/Users/FORYOUCOM/Desktop/AI헬스케어 초격차 캠프_ 웹 개발/만성질환 생활습관 챌린지 웹 서비스/2026년 고혈압 진료지침.pdf
+    pages: [1, 15, 21, 73, 77]
+    role: latest_local_hypertension_exercise_context
+
+interpretation:
+  korean_adult_age: 19_to_64
+  who_adult_age: 18_to_64
+  knhanes_model_cohort_age: 19_plus
+  age_definitions_are_not_interchangeable: true
+  recommendation_threshold_is_not_a_disease_label: true
+  moderate_equivalent_minutes_are_not_MET_minutes: true
+  activity_features_are_self_report_proxies: true
+
+raw_code_rules:
+  participation:
+    yes: 1
+    no: 2
+    structural_not_applicable: 8
+    unknown_or_nonresponse: 9
+  days:
+    valid: [1, 2, 3, 4, 5, 6, 7]
+    structural_not_applicable: 8
+    unknown_or_nonresponse: 9
+  hours:
+    valid_range: [0, 23]
+    structural_not_applicable: 88
+    unknown_or_nonresponse: 99
+  minutes:
+    valid_range: [0, 59]
+    structural_not_applicable: 88
+    unknown_or_nonresponse: 99
+  branch_rule:
+    participation_no: weekly_minutes_zero_ignore_subordinate_skip_codes
+    participation_yes: require_valid_days_hours_and_minutes
+    structural_not_applicable_or_unknown: missing_not_zero
+
+official_pa_aerobic_reproduction:
+  role: audit_and_research_comparator_only
+  prohibited_as_app_aligned_feature: true
+  required_raw_columns:
+    work_vigorous: [BE3_71, BE3_72, BE3_73, BE3_74]
+    leisure_vigorous: [BE3_75, BE3_76, BE3_77, BE3_78]
+    work_moderate: [BE3_81, BE3_82, BE3_83, BE3_84]
+    leisure_moderate: [BE3_85, BE3_86, BE3_87, BE3_88]
+    transport_moderate: [BE3_91, BE3_92, BE3_93, BE3_94]
+  comparator_column: pa_aerobic
+  formulas:
+    total_vigorous_min_week: work_vigorous_min_week + leisure_vigorous_min_week
+    total_moderate_min_week: work_moderate_min_week + leisure_moderate_min_week + transport_moderate_min_week
+    total_moderate_equivalent_min_week: total_moderate_min_week + 2 * total_vigorous_min_week
+    pa_aerobic_reproduced: total_moderate_min_week >= 150 OR total_vigorous_min_week >= 75 OR total_moderate_equivalent_min_week >= 150
+  eligibility: all_five_branches_must_be_no_or_yes_with_valid_duration
+  output_dtype: nullable_binary
+
+official_pa_muscle_reproduction:
+  role: audit_comparator
+  raw_column: BE5_1
+  raw_code_to_days:
+    1: 0
+    2: 1
+    3: 2
+    4: 3
+    5: 4
+    6: 5_plus
+    8: structural_not_applicable
+    9: unknown_or_nonresponse
+  reproduced_positive_raw_codes: [3, 4, 5, 6]
+  note: raw_code_greater_than_or_equal_to_2_is_incorrect
+
+app_aligned_leisure_feature:
+  output: leisure_aerobic_moderate_equivalent_min_week
+  unit: moderate_equivalent_minutes_per_week
+  role: primary_activity_feature_in_F2_leisure
+  knhanes_formula: leisure_moderate_min_week + 2 * leisure_vigorous_min_week
+  knhanes_required_branches: [leisure_moderate, leisure_vigorous]
+  app_inputs:
+    aerobic_days_week:
+      dtype: integer
+      valid_range: [0, 7]
+    aerobic_minutes_per_session:
+      dtype: float
+      valid_range: [0, 1440]
+    aerobic_typical_intensity:
+      dtype: categorical
+      allowed_values: [moderate, vigorous]
+  app_formula_by_intensity:
+    moderate: aerobic_days_week * aerobic_minutes_per_session
+    vigorous: 2 * aerobic_days_week * aerobic_minutes_per_session
+  consistency:
+    zero_days: minutes_must_be_zero_or_missing_and_intensity_may_be_missing
+    positive_days: minutes_must_be_positive_and_intensity_required
+  limitations:
+    - app_typical_intensity_simplifies_mixed_intensity_sessions
+    - knhanes_leisure_feature_can_combine_moderate_and_vigorous_exactly
+    - identical_numeric_unit_does_not_remove_self_report_measurement_error
+    - official_pa_aerobic_must_not_fill_missing_leisure_feature
+
+strength_model_feature:
+  output: strength_days_week
+  unit: days_per_week
+  mapping:
+    1: 0
+    2: 1
+    3: 2
+    4: 3
+    5: 4
+    6: 5
+  top_code_raw: 6
+  top_code_meaning: 5_or_more_days
+  emit_top_coded_flag: true
+  codes_8_9_and_missing: missing_not_zero
+
+outputs:
+  model_candidate:
+    - leisure_aerobic_moderate_equivalent_min_week
+    - strength_days_week
+  audit_only:
+    - pa_aerobic_reproduced
+    - pa_aerobic_official
+    - pa_aerobic_match
+    - pa_muscle_reproduced
+    - total_moderate_min_week
+    - total_vigorous_min_week
+    - total_moderate_equivalent_min_week
+    - leisure_meets_150_equivalent
+  quality_flags:
+    - strength_top_coded
+    - leisure_activity_complete
+    - total_activity_complete
+
+prohibited:
+  - infer_frequency_or_minutes_from_pa_aerobic
+  - label_moderate_equivalent_minutes_as_MET_minutes
+  - convert_unknown_or_structural_not_applicable_to_zero
+  - combine_work_or_transport_activity_into_app_leisure_feature
+  - use_recommendation_threshold_as_diabetes_or_hypertension_target
+  - use_2022_or_2023_for_model_tuning
+  - read_2024_values
+  - train_models_before_do_not_train_is_removed
+
+raw_confirmation_gate:
+  years: [2019, 2020, 2021]
+  reserved_years_not_used_for_rule_revision: [2022, 2023]
+  required_checks:
+    - pa_aerobic_match_rate_and_mismatch_count
+    - pa_muscle_match_rate_if_official_column_available
+    - branch_specific_missingness
+    - app_aligned_feature_missingness_and_quantiles
+    - no_unexpected_raw_codes
+  status: passed_aggregate_only_2019_2021
+  result:
+    report_json: reports/activity_audit/activity_confirmation_2019_2021_v0_2.json
+    report_json_sha256: bf91f4d39899e418c2f5a0099b8d54efabd6d97568620813c432dffb00aa4b16
+    audited_contract_sha256: 7b303274262c735083d0d34a2d9cf6bd8b130768034d84ad93309da378a828f3
+    implementation_version: v0.1.1-aggregate-only-domain-checks
+    years_passed: [2019, 2020, 2021]
+    pa_aerobic_mismatch_count_by_year:
+      2019: 0
+      2020: 0
+      2021: 0
+    unexpected_raw_code_count: 0
+    pa_muscle_comparison: unavailable_official_column_absent
+    participant_rows_included: false
+    participant_identifiers_included: false
+    model_training_performed: false

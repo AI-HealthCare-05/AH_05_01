@@ -1,0 +1,1563 @@
+{
+  "contract": {
+    "filename": "canonical_etl_contract_v0_1.yaml",
+    "sha256": "9eb5a54d86fcdc25f91bf534c350f694688c4d639dfa2d02ccbbeeb19cabf454"
+  },
+  "implementation": {
+    "canonical_etl_sha256": "4ac23d3b7cf2b41692b95cb238726073646c77a203c936dd0d643d0851248735",
+    "filename": "audit_canonical_etl.py",
+    "sha256": "812f249f222d13a8ca7507e62084abf02d40a2ef924699b6ba3a21f63f64d9d5",
+    "version": "v0.1-r2-aggregate-only"
+  },
+  "leakage_guard": {
+    "model_input_allowlist": [
+      "age_years",
+      "height_cm",
+      "leisure_aerobic_moderate_equivalent_min_week",
+      "pa_aerobic_official",
+      "sex_code",
+      "strength_days_week",
+      "weight_kg"
+    ],
+    "overlap": [],
+    "passed": true,
+    "prohibited_model_inputs": [
+      "dbp_raw_mmhg",
+      "dbp_sensitivity_mmhg",
+      "diabetes_measurement_label_raw",
+      "diabetes_measurement_label_sensitivity",
+      "examination_weight",
+      "fasting_glucose_mg_dl",
+      "fasting_hours",
+      "hba1c_raw_pct",
+      "hba1c_sensitivity_pct",
+      "hypertension_measurement_label_raw",
+      "hypertension_measurement_label_sensitivity",
+      "official_diabetes_comparator",
+      "official_hypertension_comparator",
+      "participant_id",
+      "psu",
+      "sbp_raw_mmhg",
+      "sbp_sensitivity_mmhg",
+      "source_year",
+      "strata",
+      "waist_cm"
+    ]
+  },
+  "policy": {
+    "aggregate_only": true,
+    "blocked_years": [
+      2023,
+      2024
+    ],
+    "canonical_rows_included": false,
+    "minimum_cell_count": 5,
+    "model_performance_evaluation_performed": false,
+    "model_training_performed": false,
+    "participant_identifiers_included": false,
+    "train_or_test_files_created": false
+  },
+  "schema_version": 1,
+  "sources": {
+    "2019": {
+      "audit": {
+        "eligibility": {
+          "adult": {
+            "count": 6606,
+            "rate": 0.8145
+          },
+          "p0_general_adult": {
+            "count": 6267,
+            "rate": 0.7727
+          },
+          "pregnancy_eligible": {
+            "count": 7687,
+            "rate": 0.9478
+          }
+        },
+        "feature_completeness": {
+          "F0": {
+            "count": 6232,
+            "rate": 0.7684
+          },
+          "F1": {
+            "count": 5867,
+            "rate": 0.7234
+          },
+          "F2_leisure": {
+            "count": 5876,
+            "rate": 0.7245
+          }
+        },
+        "id_quality": {
+          "duplicate_after_first_count": 0,
+          "missing_count": 0
+        },
+        "input_row_count": 8110,
+        "output_row_count": 8110,
+        "quality_issue_flags": {
+          "activity_quality_issue": {
+            "count": 369,
+            "rate": 0.0455
+          },
+          "anthropometry_quality_issue": {
+            "count": 963,
+            "rate": 0.1187
+          },
+          "blood_pressure_quality_issue": {
+            "count": 34,
+            "rate": 0.0042
+          },
+          "diabetes_measurement_quality_issue": {
+            "count": 154,
+            "rate": 0.019
+          },
+          "eligibility_quality_issue": {
+            "count": 395,
+            "rate": 0.0487
+          },
+          "sex_pregnancy_consistency_issue": {
+            "count": 0,
+            "rate": 0.0
+          }
+        },
+        "quality_reasons": {
+          "age_quality_reason": [
+            {
+              "count": 8110,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "dbp_quality_reason": [
+            {
+              "count": 6922,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1188,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_glucose_quality_reason": [
+            {
+              "count": 6765,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1345,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_hours_quality_reason": [
+            {
+              "count": 6763,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1347,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "hba1c_quality_reason": [
+            {
+              "count": 6763,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1347,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "height_quality_reason": [
+            {
+              "count": 172,
+              "suppressed": false,
+              "value": "below_guard"
+            },
+            {
+              "count": 7500,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 438,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "pregnancy_quality_reason": [
+            {
+              "count": 7715,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 395,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sbp_quality_reason": [
+            {
+              "count": 6922,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1188,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sex_quality_reason": [
+            {
+              "count": 8110,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "survey_weight_quality_reason": [
+            {
+              "count": 7716,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 394,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "waist_quality_reason": [
+            {
+              "count": 7317,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 793,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "weight_quality_reason": [
+            {
+              "count": 495,
+              "suppressed": false,
+              "value": "below_guard"
+            },
+            {
+              "count": 7198,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 417,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ]
+        },
+        "quality_reasons_p0_general_adult": {
+          "age_quality_reason": [
+            {
+              "count": 6267,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "dbp_quality_reason": [
+            {
+              "count": 6233,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 34,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_glucose_quality_reason": [
+            {
+              "count": 6115,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 152,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_hours_quality_reason": [
+            {
+              "count": 6114,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 153,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "hba1c_quality_reason": [
+            {
+              "count": 6114,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 153,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "height_quality_reason": [
+            {
+              "count": 6233,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 34,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "pregnancy_quality_reason": [
+            {
+              "count": 6267,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "sbp_quality_reason": [
+            {
+              "count": 6233,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 34,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sex_quality_reason": [
+            {
+              "count": 6267,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "survey_weight_quality_reason": [
+            {
+              "count": 6267,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "waist_quality_reason": [
+            {
+              "count": 6240,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 27,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "weight_quality_reason": [
+            {
+              "count": 6248,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 19,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ]
+        },
+        "row_count_preserved": true,
+        "targets": {
+          "diabetes_raw": {
+            "eligible_count": 5914,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 729,
+            "positive_rate_among_eligible": 0.1233
+          },
+          "diabetes_sensitivity": {
+            "eligible_count": 5914,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 729,
+            "positive_rate_among_eligible": 0.1233
+          },
+          "hypertension_raw": {
+            "eligible_count": 6233,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 1037,
+            "positive_rate_among_eligible": 0.1664
+          },
+          "hypertension_sensitivity": {
+            "eligible_count": 6233,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 1037,
+            "positive_rate_among_eligible": 0.1664
+          },
+          "waist": {
+            "eligible": {
+              "count": 6240,
+              "rate": 0.7694
+            }
+          }
+        }
+      },
+      "encoding": "utf-8-sig",
+      "file_format": "csv",
+      "filename": "hn19_all.csv",
+      "missing_optional_columns": [],
+      "selected_column_count": 43,
+      "sha256": "34b87583dd5eeac553fbc6fa19adecdd698b9639fa52c3a8de62e65cc5f0a0d7"
+    },
+    "2020": {
+      "audit": {
+        "eligibility": {
+          "adult": {
+            "count": 6133,
+            "rate": 0.8334
+          },
+          "p0_general_adult": {
+            "count": 5911,
+            "rate": 0.8032
+          },
+          "pregnancy_eligible": {
+            "count": 7085,
+            "rate": 0.9628
+          }
+        },
+        "feature_completeness": {
+          "F0": {
+            "count": 5815,
+            "rate": 0.7902
+          },
+          "F1": {
+            "count": 5324,
+            "rate": 0.7235
+          },
+          "F2_leisure": {
+            "count": 5331,
+            "rate": 0.7244
+          }
+        },
+        "id_quality": {
+          "duplicate_after_first_count": 0,
+          "missing_count": 0
+        },
+        "input_row_count": 7359,
+        "output_row_count": 7359,
+        "quality_issue_flags": {
+          "activity_quality_issue": {
+            "count": 516,
+            "rate": 0.0701
+          },
+          "anthropometry_quality_issue": {
+            "count": 764,
+            "rate": 0.1038
+          },
+          "blood_pressure_quality_issue": {
+            "count": 109,
+            "rate": 0.0148
+          },
+          "diabetes_measurement_quality_issue": {
+            "count": 134,
+            "rate": 0.0182
+          },
+          "eligibility_quality_issue": {
+            "count": 263,
+            "rate": 0.0357
+          },
+          "sex_pregnancy_consistency_issue": {
+            "count": 0,
+            "rate": 0.0
+          }
+        },
+        "quality_reasons": {
+          "age_quality_reason": [
+            {
+              "count": 7359,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "dbp_quality_reason": [
+            {
+              "count": 6557,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 802,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_glucose_quality_reason": [
+            {
+              "count": 6336,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1023,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_hours_quality_reason": [
+            {
+              "count": null,
+              "suppressed": true,
+              "value": "above_guard"
+            },
+            {
+              "count": 6335,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": null,
+              "suppressed": true,
+              "value": "source_missing"
+            }
+          ],
+          "hba1c_quality_reason": [
+            {
+              "count": 6334,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1025,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "height_quality_reason": [
+            {
+              "count": 140,
+              "suppressed": false,
+              "value": "below_guard"
+            },
+            {
+              "count": 6852,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 367,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "pregnancy_quality_reason": [
+            {
+              "count": 7096,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 263,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sbp_quality_reason": [
+            {
+              "count": 6557,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 802,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sex_quality_reason": [
+            {
+              "count": 7359,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "survey_weight_quality_reason": [
+            {
+              "count": 7096,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 263,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "waist_quality_reason": [
+            {
+              "count": 6756,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 603,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "weight_quality_reason": [
+            {
+              "count": 378,
+              "suppressed": false,
+              "value": "below_guard"
+            },
+            {
+              "count": 6689,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 292,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ]
+        },
+        "quality_reasons_p0_general_adult": {
+          "age_quality_reason": [
+            {
+              "count": 5911,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "dbp_quality_reason": [
+            {
+              "count": 5802,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 109,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_glucose_quality_reason": [
+            {
+              "count": 5779,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 132,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_hours_quality_reason": [
+            {
+              "count": null,
+              "suppressed": true,
+              "value": "above_guard"
+            },
+            {
+              "count": 5778,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": null,
+              "suppressed": true,
+              "value": "source_missing"
+            }
+          ],
+          "hba1c_quality_reason": [
+            {
+              "count": 5778,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 133,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "height_quality_reason": [
+            {
+              "count": 5815,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 96,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "pregnancy_quality_reason": [
+            {
+              "count": 5911,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "sbp_quality_reason": [
+            {
+              "count": 5802,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 109,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sex_quality_reason": [
+            {
+              "count": 5911,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "survey_weight_quality_reason": [
+            {
+              "count": 5911,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "waist_quality_reason": [
+            {
+              "count": 5874,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 37,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "weight_quality_reason": [
+            {
+              "count": 5887,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 24,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ]
+        },
+        "row_count_preserved": true,
+        "targets": {
+          "diabetes_raw": {
+            "eligible_count": 5615,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 792,
+            "positive_rate_among_eligible": 0.1411
+          },
+          "diabetes_sensitivity": {
+            "eligible_count": 5615,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 792,
+            "positive_rate_among_eligible": 0.1411
+          },
+          "hypertension_raw": {
+            "eligible_count": 5802,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 948,
+            "positive_rate_among_eligible": 0.1634
+          },
+          "hypertension_sensitivity": {
+            "eligible_count": 5802,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 948,
+            "positive_rate_among_eligible": 0.1634
+          },
+          "waist": {
+            "eligible": {
+              "count": 5874,
+              "rate": 0.7982
+            }
+          }
+        }
+      },
+      "encoding": "utf-8-sig",
+      "file_format": "csv",
+      "filename": "hn20_all.csv",
+      "missing_optional_columns": [],
+      "selected_column_count": 43,
+      "sha256": "3970e1e376d8ad700e6d6659f80dd94674d66cf9dc2bba91c4f47ade0f82ba2f"
+    },
+    "2021": {
+      "audit": {
+        "eligibility": {
+          "adult": {
+            "count": 5952,
+            "rate": 0.8395
+          },
+          "p0_general_adult": {
+            "count": 5674,
+            "rate": 0.8003
+          },
+          "pregnancy_eligible": {
+            "count": 6720,
+            "rate": 0.9478
+          }
+        },
+        "feature_completeness": {
+          "F0": {
+            "count": 5574,
+            "rate": 0.7862
+          },
+          "F1": {
+            "count": 5224,
+            "rate": 0.7368
+          },
+          "F2_leisure": {
+            "count": 5234,
+            "rate": 0.7382
+          }
+        },
+        "id_quality": {
+          "duplicate_after_first_count": 0,
+          "missing_count": 0
+        },
+        "input_row_count": 7090,
+        "output_row_count": 7090,
+        "quality_issue_flags": {
+          "activity_quality_issue": {
+            "count": 361,
+            "rate": 0.0509
+          },
+          "anthropometry_quality_issue": {
+            "count": 819,
+            "rate": 0.1155
+          },
+          "blood_pressure_quality_issue": {
+            "count": 90,
+            "rate": 0.0127
+          },
+          "diabetes_measurement_quality_issue": {
+            "count": 171,
+            "rate": 0.0241
+          },
+          "eligibility_quality_issue": {
+            "count": 359,
+            "rate": 0.0506
+          },
+          "sex_pregnancy_consistency_issue": {
+            "count": 0,
+            "rate": 0.0
+          }
+        },
+        "quality_reasons": {
+          "age_quality_reason": [
+            {
+              "count": 7090,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "dbp_quality_reason": [
+            {
+              "count": 6308,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 782,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_glucose_quality_reason": [
+            {
+              "count": 6017,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1073,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_hours_quality_reason": [
+            {
+              "count": 6017,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1073,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "hba1c_quality_reason": [
+            {
+              "count": 6009,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 1081,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "height_quality_reason": [
+            {
+              "count": 93,
+              "suppressed": false,
+              "value": "below_guard"
+            },
+            {
+              "count": 6522,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 475,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "pregnancy_quality_reason": [
+            {
+              "count": 6731,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 359,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sbp_quality_reason": [
+            {
+              "count": 6308,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 782,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sex_quality_reason": [
+            {
+              "count": 7090,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "survey_weight_quality_reason": [
+            {
+              "count": 6731,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 359,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "waist_quality_reason": [
+            {
+              "count": 6429,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 661,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "weight_quality_reason": [
+            {
+              "count": 313,
+              "suppressed": false,
+              "value": "below_guard"
+            },
+            {
+              "count": 6373,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 404,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ]
+        },
+        "quality_reasons_p0_general_adult": {
+          "age_quality_reason": [
+            {
+              "count": 5674,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "dbp_quality_reason": [
+            {
+              "count": 5584,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 90,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_glucose_quality_reason": [
+            {
+              "count": 5508,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 166,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_hours_quality_reason": [
+            {
+              "count": 5508,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 166,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "hba1c_quality_reason": [
+            {
+              "count": 5503,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 171,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "height_quality_reason": [
+            {
+              "count": 5574,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 100,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "pregnancy_quality_reason": [
+            {
+              "count": 5674,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "sbp_quality_reason": [
+            {
+              "count": 5584,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 90,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sex_quality_reason": [
+            {
+              "count": 5674,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "survey_weight_quality_reason": [
+            {
+              "count": 5674,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "waist_quality_reason": [
+            {
+              "count": 5618,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 56,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "weight_quality_reason": [
+            {
+              "count": 5642,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 32,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ]
+        },
+        "row_count_preserved": true,
+        "targets": {
+          "diabetes_raw": {
+            "eligible_count": 5351,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 758,
+            "positive_rate_among_eligible": 0.1417
+          },
+          "diabetes_sensitivity": {
+            "eligible_count": 5351,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 758,
+            "positive_rate_among_eligible": 0.1417
+          },
+          "hypertension_raw": {
+            "eligible_count": 5584,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 777,
+            "positive_rate_among_eligible": 0.1391
+          },
+          "hypertension_sensitivity": {
+            "eligible_count": 5584,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 1049,
+            "positive_rate_among_eligible": 0.1879
+          },
+          "waist": {
+            "eligible": {
+              "count": 5618,
+              "rate": 0.7924
+            }
+          }
+        }
+      },
+      "encoding": "utf-8-sig",
+      "file_format": "csv",
+      "filename": "hn21_all.csv",
+      "missing_optional_columns": [],
+      "selected_column_count": 43,
+      "sha256": "578ab64da503b6b0d51f640aa4e39aa7e973a8dbd05f4c7adecaac66c95788d8"
+    },
+    "2022": {
+      "audit": {
+        "eligibility": {
+          "adult": {
+            "count": 5322,
+            "rate": 0.8495
+          },
+          "p0_general_adult": {
+            "count": 5304,
+            "rate": 0.8466
+          },
+          "pregnancy_eligible": {
+            "count": 6247,
+            "rate": 0.9971
+          }
+        },
+        "feature_completeness": {
+          "F0": {
+            "count": 5197,
+            "rate": 0.8295
+          },
+          "F1": {
+            "count": 4763,
+            "rate": 0.7603
+          },
+          "F2_leisure": {
+            "count": 4772,
+            "rate": 0.7617
+          }
+        },
+        "id_quality": {
+          "duplicate_after_first_count": 0,
+          "missing_count": 0
+        },
+        "input_row_count": 6265,
+        "output_row_count": 6265,
+        "quality_issue_flags": {
+          "activity_quality_issue": {
+            "count": 452,
+            "rate": 0.0721
+          },
+          "anthropometry_quality_issue": {
+            "count": 629,
+            "rate": 0.1004
+          },
+          "blood_pressure_quality_issue": {
+            "count": 118,
+            "rate": 0.0188
+          },
+          "diabetes_measurement_quality_issue": {
+            "count": 181,
+            "rate": 0.0289
+          },
+          "eligibility_quality_issue": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "sex_pregnancy_consistency_issue": {
+            "count": 0,
+            "rate": 0.0
+          }
+        },
+        "quality_reasons": {
+          "age_quality_reason": [
+            {
+              "count": 6265,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "dbp_quality_reason": [
+            {
+              "count": 5896,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 369,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_glucose_quality_reason": [
+            {
+              "count": 5560,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 705,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_hours_quality_reason": [
+            {
+              "count": 5561,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 704,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "hba1c_quality_reason": [
+            {
+              "count": 5545,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 720,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "height_quality_reason": [
+            {
+              "count": 97,
+              "suppressed": false,
+              "value": "below_guard"
+            },
+            {
+              "count": 6052,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 116,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "pregnancy_quality_reason": [
+            {
+              "count": 6265,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "sbp_quality_reason": [
+            {
+              "count": 5896,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 369,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sex_quality_reason": [
+            {
+              "count": 6265,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "survey_weight_quality_reason": [
+            {
+              "count": 6265,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "waist_quality_reason": [
+            {
+              "count": 5775,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 490,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "weight_quality_reason": [
+            {
+              "count": 283,
+              "suppressed": false,
+              "value": "below_guard"
+            },
+            {
+              "count": 5944,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 38,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ]
+        },
+        "quality_reasons_p0_general_adult": {
+          "age_quality_reason": [
+            {
+              "count": 5304,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "dbp_quality_reason": [
+            {
+              "count": 5186,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 118,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_glucose_quality_reason": [
+            {
+              "count": 5135,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 169,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "fasting_hours_quality_reason": [
+            {
+              "count": 5135,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 169,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "hba1c_quality_reason": [
+            {
+              "count": 5123,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 181,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "height_quality_reason": [
+            {
+              "count": 5199,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 105,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "pregnancy_quality_reason": [
+            {
+              "count": 5304,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "sbp_quality_reason": [
+            {
+              "count": 5186,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 118,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "sex_quality_reason": [
+            {
+              "count": 5304,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "survey_weight_quality_reason": [
+            {
+              "count": 5304,
+              "suppressed": false,
+              "value": "ok"
+            }
+          ],
+          "waist_quality_reason": [
+            {
+              "count": 5070,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 234,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ],
+          "weight_quality_reason": [
+            {
+              "count": 5270,
+              "suppressed": false,
+              "value": "ok"
+            },
+            {
+              "count": 34,
+              "suppressed": false,
+              "value": "source_missing"
+            }
+          ]
+        },
+        "row_count_preserved": true,
+        "targets": {
+          "diabetes_raw": {
+            "eligible_count": 5008,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 550,
+            "positive_rate_among_eligible": 0.1098
+          },
+          "diabetes_sensitivity": {
+            "eligible_count": 5008,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 595,
+            "positive_rate_among_eligible": 0.1188
+          },
+          "hypertension_raw": {
+            "eligible_count": 5186,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 720,
+            "positive_rate_among_eligible": 0.1388
+          },
+          "hypertension_sensitivity": {
+            "eligible_count": 5186,
+            "nonmissing_label_outside_eligibility_count": 0,
+            "positive_count": 1000,
+            "positive_rate_among_eligible": 0.1928
+          },
+          "waist": {
+            "eligible": {
+              "count": 5070,
+              "rate": 0.8093
+            }
+          }
+        }
+      },
+      "encoding": "utf-8-sig",
+      "file_format": "csv",
+      "filename": "hn22_all.csv",
+      "missing_optional_columns": [],
+      "selected_column_count": 43,
+      "sha256": "0d933a91133f705ef8d6ca2836c16ce7d436ef049422cac2f6c81f09d272460b"
+    }
+  }
+}

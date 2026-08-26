@@ -1,0 +1,245 @@
+schema_version: 1
+contract_version: v0.2
+status: joint_review_pending
+supersedes_for_2023_operations: contracts/locked_2023_materialization_contract_v0_1.yaml
+do_not_materialize: true
+do_not_score: true
+do_not_release_results: true
+
+purpose:
+  dataset_role: opened_internal_benchmark
+  independent_final_holdout: false
+  reason: prior_2023_aggregate_model_results_were_already_generated_and_shared
+  allowed_claim: internal_temporal_benchmark_only
+  prohibited_claims:
+    - unopened_locked_test
+    - independent_final_evaluation
+    - public_release_performance
+
+roles:
+  custodian:
+    name: 홍주
+    responsibilities:
+      - hold_raw_2023
+      - materialize_2023_canonical_tasks_locally
+      - retain_row_level_features_labels_and_predictions
+      - execute_frozen_inference_bundle
+      - join_predictions_to_labels_only_in_evaluation_step
+      - release_only_predeclared_aggregate_results
+  developers:
+    names: [박강호, 권병학]
+    responsibilities:
+      - develop_and_validate_on_2019_2022_only
+      - freeze_model_preprocessor_calibrator_and_evaluation_plan
+      - deliver_frozen_inference_bundle_with_hashes
+    prohibited_access:
+      - raw_2023
+      - row_level_2023_features
+      - row_level_2023_labels
+      - row_level_2023_predictions
+      - prefreeze_2023_feature_distributions
+      - prefreeze_2023_missingness_or_outlier_statistics
+
+scope:
+  source_survey: KNHANES
+  source_year: 2023
+  developer_years_not_processed_here: [2019, 2020, 2021, 2022]
+  forbidden_years: [2024]
+
+upstream:
+  canonical_contract: contracts/canonical_etl_contract_v0_1.yaml
+  frozen_canonical_implementation: src/canonical_etl.py
+  locked_year_extension: src/locked_2023_canonical.py
+  current_materializer: src/materialize_locked_2023.py
+  current_materializer_status: refactor_required_before_authorization
+  required_change: remove_all_developer_feature_export_and_keep_2023_rows_inside_custodian_environment
+
+record_identity:
+  columns: [source_year, participant_id]
+  missing_policy: fail_closed
+  duplicate_policy: fail_closed
+
+six_feature_schema:
+  - age_years
+  - sex_code
+  - height_cm
+  - weight_kg
+  - leisure_aerobic_moderate_equivalent_min_week
+  - strength_days_week
+
+tasks:
+  waist:
+    eligibility_column: waist_target_eligible
+    label_column: waist_cm
+    prediction_column: estimated_waist_cm
+    task_type: regression
+  diabetes:
+    eligibility_column: diabetes_target_eligible
+    label_column: diabetes_measurement_label_raw
+    prediction_column: diabetes_measurement_abnormality_probability
+    task_type: calibrated_probability
+  hypertension:
+    eligibility_column: hypertension_target_eligible
+    label_column: hypertension_measurement_label_raw
+    prediction_column: hypertension_measurement_abnormality_probability
+    task_type: calibrated_probability
+
+custodian_storage:
+  raw_root:
+    access: custodian_only
+  feature_root:
+    access: custodian_only
+    labels_allowed: false
+    developer_export: prohibited
+  label_root:
+    access: custodian_only
+    features_allowed: false
+    must_not_overlap: [raw_root, feature_root, prediction_root, aggregate_result_root]
+  prediction_root:
+    access: custodian_only
+    labels_allowed: false
+    developer_export: prohibited
+  aggregate_result_root:
+    access: custodian_write_team_read_after_release_gate
+    row_level_content: prohibited
+
+materialization:
+  full_canonical_row_export: prohibited
+  task_feature_columns: [source_year, participant_id, six_features]
+  task_label_columns: [source_year, participant_id, task_label]
+  feature_and_label_files_must_be_separate: true
+  raw_sha256_before_and_after: required
+  contract_and_code_sha256: required
+  overwrite_existing_version: prohibited
+  console_row_label_or_distribution_output: prohibited
+  developer_receipt_before_model_freeze:
+    allowed_fields:
+      - contract_version
+      - contract_sha256
+      - code_sha256
+      - schema_gate_status
+      - key_integrity_gate_status
+      - feature_allowlist_gate_status
+      - label_separation_gate_status
+      - forbidden_year_gate_status
+      - custodian_environment_ready
+    exact_row_counts: prohibited
+    feature_statistics: prohibited
+    label_statistics: prohibited
+    sample_rows: prohibited
+
+frozen_inference_bundle:
+  intake_only_after:
+    - experiment_protocol_approved
+    - model_selection_complete_without_2023
+    - preprocessing_frozen
+    - missing_data_policy_frozen
+    - calibration_frozen
+    - evaluation_plan_frozen
+    - model_card_draft_frozen
+  required_files:
+    - model_manifest.json
+    - input_schema.yaml
+    - output_schema.yaml
+    - evaluation_plan.yaml
+    - dependency_lock
+    - SHA256SUMS.txt
+    - inference_entrypoint
+    - synthetic_smoke_test
+    - task_model_artifacts
+    - task_preprocessor_artifacts
+    - task_calibrator_artifacts
+  manifest_required_fields:
+    - bundle_version
+    - data_snapshot_ids
+    - canonical_contract_version
+    - feature_contract_version
+    - experiment_protocol_version
+    - model_versions
+    - preprocessor_versions
+    - calibration_versions
+    - code_commit_or_sha256
+    - python_version
+    - dependency_lock_sha256
+    - random_seed
+    - training_years
+    - temporal_validation_years
+  bundle_mutation_after_hash: prohibited
+  network_access_during_inference: prohibited
+  label_path_visible_to_inference_entrypoint: prohibited
+
+execution_stages:
+  - stage: materialize
+    inputs: [raw_2023, authorized_materialization_contract]
+    outputs: [custodian_task_features, custodian_task_labels, internal_manifests]
+    model_access: prohibited
+  - stage: inference
+    inputs: [custodian_task_features, frozen_inference_bundle]
+    outputs: [custodian_row_level_predictions, inference_receipt]
+    label_access: prohibited
+  - stage: evaluation
+    inputs: [custodian_row_level_predictions, custodian_task_labels, frozen_evaluation_plan]
+    outputs: [internal_evaluation_report, releasable_aggregate_report]
+    model_refit_or_parameter_change: prohibited
+  - stage: release
+    inputs: [releasable_aggregate_report, release_checklist]
+    outputs: [team_aggregate_summary]
+    row_level_release: prohibited
+
+schema_or_quality_failure:
+  evaluation_action: do_not_score
+  developer_notification:
+    allowed:
+      - failure_code
+      - task_name
+      - affected_contract_field
+      - evaluation_not_executed
+    prohibited:
+      - row_examples
+      - exact_feature_distribution
+      - exact_missingness_rate
+      - label_information
+  remediation:
+    requires_new_bundle_or_contract_version: true
+    future_2023_result_after_data_informed_change: not_unopened
+
+evaluation_release:
+  metrics_source: contracts/model_experiment_protocol_v0_1.yaml
+  predeclared_metrics_only: true
+  subgroup_release_requires_minimum_cell_policy: true
+  exact_participant_counts_before_freeze: prohibited
+  row_predictions: prohibited
+  label_distribution: prohibited_before_freeze
+  benchmark_result_may_be_shared_after_one_shot: true
+  result_interpretation: opened_internal_benchmark
+  tuning_on_result: prohibited_for_same_frozen_version
+
+future_independent_evaluation:
+  dataset: future_knhanes_year_or_external_cohort
+  custodian_separation_required: true
+  developers_must_not_view_features_or_labels_before_freeze: true
+  status: pending_dataset
+
+activation_gate:
+  current: blocked
+  required:
+    - kangho_approval
+    - byeonghak_approval
+    - hongju_approval
+    - materializer_refactored_for_custodian_only_features
+    - synthetic_tests_pass
+    - actual_custodian_paths_and_permissions_verified
+    - new_authorized_contract_snapshot_created
+  activation_rule: only_a_new_authorized_snapshot_may_set_do_not_materialize_false
+  scoring_activation_rule: only_after_frozen_bundle_receipt_may_a_new_execution_authorization_set_do_not_score_false
+
+prohibited_actions:
+  - edit_this_review_contract_in_place_to_unlock
+  - send_2023_features_to_developers
+  - send_2023_labels_to_developers
+  - disclose_2023_feature_distributions_before_model_freeze
+  - fit_or_select_any_component_on_2023
+  - let_inference_code_read_label_paths
+  - expose_2024_to_any_current_pipeline_stage
+  - call_2023_an_independent_final_holdout
+

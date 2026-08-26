@@ -1,0 +1,353 @@
+schema_version: 2
+protocol_version: v0.2
+status: jointly_approved
+effective_date: 2026-08-25
+project_deadline: 2026-09-22
+supersedes: contracts/model_experiment_protocol_v0_1.yaml
+
+authorization:
+  review_contract_do_not_train: true
+  training_requires_separate_authorized_config: true
+  kangho:
+    status: approved
+    approved_at: 2026-08-25
+  byeonghak:
+    status: approved
+    approved_at: 2026-08-26
+    evidence: team_message_confirming_no_changes_and_acceptance_of_all_criteria_and_prohibitions
+  authorized_config_required_fields:
+    - approvers
+    - approval_timestamps
+    - protocol_sha256
+    - canonical_snapshot_sha256
+    - development_years
+    - code_commit_or_sha256
+    - environment_lock_sha256
+
+objective:
+  product: TMTN
+  population: knhanes_adults_age_19_plus_nonpregnant
+  outputs:
+    - estimated_waist_cm
+    - diabetes_measurement_abnormality_probability
+    - hypertension_measurement_abnormality_probability
+  disease_output_semantics: current_single_visit_measurement_abnormality_reference
+  prohibited_interpretations:
+    - future_incidence_probability
+    - clinical_diagnosis
+    - treatment_recommendation
+  tmtn_index:
+    included: false
+    reason: separately_validated_composite_formula_required
+
+contracts:
+  data: contracts/data_contract_v0_3.yaml
+  canonical: contracts/canonical_etl_contract_v0_1.yaml
+  activity: contracts/activity_feature_contract_v0_1.yaml
+  measurement_harmonization: contracts/measurement_harmonization_contract_v0_1.yaml
+  split: contracts/split_contract_v0_1.yaml
+  custodian_2023: contracts/custodian_2023_operation_contract_v0_2.yaml
+
+year_roles:
+  development:
+    years: [2019, 2020, 2021]
+    allowed: [eda, nested_cross_fitting, candidate_selection, hyperparameter_selection, calibration_fit_from_oof]
+  evaluation_only_temporal_validation:
+    years: [2022]
+    open_after_full_freeze_only: true
+    fitting: prohibited
+    model_or_threshold_selection: prohibited
+    reuse_after_result_informed_change: opened_temporal_benchmark
+  opened_internal_benchmark:
+    years: [2023]
+    access: custodian_only
+    row_level_developer_access: prohibited
+    tuning_on_same_version: prohibited
+    prohibited_claims: [locked_test, untouched_holdout, independent_external_validation, final_public_performance]
+  forbidden:
+    years: [2024]
+    access: prohibited
+    action_if_present: fail_closed
+
+record_identity:
+  columns: [source_year, participant_id]
+  missing_or_duplicate: fail_closed
+  source_row_number_as_key: prohibited
+
+features:
+  F2_leisure:
+    - age_years
+    - sex_code
+    - height_cm
+    - weight_kg
+    - leisure_aerobic_moderate_equivalent_min_week
+    - strength_days_week
+  F0_fallback:
+    - age_years
+    - sex_code
+    - height_cm
+    - weight_kg
+  estimated_waist_cm:
+    raw_app_input: false
+    source: nested_cross_fitted_waist_submodel
+    measured_waist_as_disease_input: prohibited
+
+resampling:
+  official:
+    type: nested_cross_fitting
+    outer_folds: 5
+    inner_folds: 4
+    primary_seed: 42
+    stability_seeds: [42, 1042, 2042]
+    assignment_key: [source_year, participant_id]
+    train_holdout_overlap_allowed: false
+  auxiliary_random_split:
+    ratio: [0.8, 0.2]
+    seed: 42
+    role: reproducibility_comparison_only
+    model_selection_use: prohibited
+
+waist_submodel:
+  target: waist_cm
+  input_tiers: [W0, W2]
+  candidates:
+    linear_regression:
+      fit_intercept: [true]
+    elastic_net:
+      preprocessing: standard_scaler
+      alpha: [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0]
+      l1_ratio: [0.1, 0.5, 0.9, 1.0]
+      max_iter: 20000
+      tol: 0.0001
+    random_forest_regressor:
+      n_estimators: [500]
+      max_depth: [6, 12, null]
+      min_samples_leaf: [1, 5, 20]
+      max_features: [0.7, 1.0]
+      criterion: squared_error
+      bootstrap: true
+      random_state: 42
+  selection:
+    scope: development_nested_oof_only
+    primary: mae_cm
+    tie_breakers: [rmse_cm, worst_supported_subgroup_mae_cm, model_simplicity]
+  release_gate_2022:
+    all_required: true
+    overall_mae_cm_max: 4.0
+    overall_mae_95ci_upper_max: 4.5
+    overall_rmse_cm_max: 5.5
+    absolute_mean_residual_cm_max: 1.0
+    within_5cm_rate_min: 0.70
+    within_10cm_rate_min: 0.95
+    supported_subgroup_mae_cm_max: 5.0
+    supported_subgroup_mae_ratio_to_overall_max: 1.25
+    relative_error_2_to_3_percent:
+      status: research_goal_not_release_gate
+
+disease_models:
+  tasks: [diabetes, hypertension]
+  pipelines: [D0, D1, matched_D0, F0_fallback]
+  candidates:
+    logistic_regression:
+      preprocessing: standard_scaler
+      penalty: l2
+      C: [0.01, 0.1, 1.0, 10.0, 100.0]
+      solver: lbfgs
+      max_iter: 5000
+      class_weight: [null, balanced]
+    random_forest_classifier:
+      n_estimators: [500]
+      criterion: log_loss
+      max_depth: [4, 8, null]
+      min_samples_leaf: [5, 20, 50]
+      max_features: [sqrt, 1.0]
+      class_weight: [null, balanced]
+      bootstrap: true
+      random_state: 42
+  selection:
+    scope: development_nested_oof_only
+    primary: calibrated_brier_score
+    tie_breakers:
+      - log_loss
+      - calibration_slope_distance_from_1
+      - calibration_intercept_distance_from_0
+      - pr_auc
+      - roc_auc
+      - model_simplicity
+  calibration:
+    fit_source: 2019_2021_cross_fitted_oof_only
+    candidates: [identity, platt_unpenalized_logistic]
+    isotonic_enabled: false
+    class_weight_balanced_requires_calibration_review: true
+  release_gate_2022:
+    all_required: true
+    roc_auc_min: 0.65
+    roc_auc_95ci_lower_min: 0.60
+    pr_auc_to_prevalence_ratio_min: 1.25
+    brier_skill_score_min_exclusive: 0.0
+    prevalence_baseline_brier_improvement_paired_ci_excludes_zero: true
+    calibration_intercept_abs_max: 0.10
+    calibration_slope_min: 0.80
+    calibration_slope_max: 1.20
+    ece_10bin_max: 0.05
+    smoothed_calibration_curve_review: required
+    task_decisions_independent: true
+
+d1_adoption:
+  comparator: matched_D0
+  development_seed_improvement:
+    minimum_improved_seeds: 2
+    total_seeds: 3
+  evaluation_2022:
+    paired_brier_delta_d1_minus_d0_max_exclusive: 0.0
+    paired_brier_delta_95ci_upper_max_exclusive: 0.0
+    calibration_intercept_abs_degradation_max: 0.02
+    calibration_slope_distance_degradation_max: 0.05
+    ece_degradation_max: 0.01
+  failure_action: retain_D0_and_keep_waist_as_separate_reference_output
+
+subgroups:
+  required:
+    - sex_code
+    - age_19_39
+    - age_40_64
+    - age_65_plus
+    - development_source_year
+  optional: [sex_by_age_band]
+  disease_support:
+    full_metrics_and_gate: {minimum_events: 100, minimum_non_events: 100}
+    exploratory_only: {minimum_events: 50, minimum_non_events: 50}
+    below_exploratory: insufficient_support
+  waist_support:
+    full_metrics_and_gate_n_min: 200
+    exploratory_n_min: 100
+    below_exploratory: insufficient_support
+
+survey_design_evaluation:
+  primary_training: unweighted
+  required_reports: [unweighted, weighted_sensitivity]
+  weight_column: examination_weight
+  raw_weight_column: wt_itvex
+  strata_column: strata
+  raw_strata_column: kstrata
+  psu_column: psu
+  pooled_weight:
+    development_2019_2021: wt_itvex_divided_by_3
+    evaluation_2022: wt_itvex_unchanged
+  missing_or_nonpositive_weight:
+    imputation: prohibited
+    weighted_analysis: exclude
+    unweighted_analysis: retain_if_task_eligible
+    arbitrary_renormalization_after_exclusion: prohibited
+  valid_weight_coverage:
+    report_by: [overall, source_year, task, label]
+    minimum: 0.95
+    failure_status: insufficient_weight_coverage
+
+uncertainty:
+  confidence_level: 0.95
+  method: rao_wu_rescaled_bootstrap
+  resampling_unit: psu
+  stratified_by: strata
+  replicates: 2000
+  seed: 20260825
+  interval: percentile
+  minimum_valid_replicates: 1900
+  paired_candidate_comparison_uses_same_replicates: true
+  prohibited: [ordinary_row_bootstrap, fold_standard_deviation_labeled_as_confidence_interval]
+
+serving_input_contract:
+  age_years:
+    app_dtype: integer
+    app_valid_min: 19
+    app_valid_max: 120
+    model_top_code_at: 80
+    top_code_flag: age_top_coded_80_plus
+    below_minimum: unsupported_population
+    above_maximum_or_noninteger: invalid_input
+  sex_code:
+    app_allowed: [male, female]
+    knhanes_mapping: {male: 1, female: 2}
+    other_or_declined: unsupported_for_health_score
+    challenge_access_when_unsupported: allowed
+  height_cm:
+    valid_min: 100
+    valid_max: 220
+    outside_policy: unsupported_without_clipping
+  weight_kg:
+    valid_min: 25
+    valid_max: 250
+    outside_policy: unsupported_without_clipping
+  aerobic:
+    days_week_integer_min: 0
+    days_week_integer_max: 7
+    zero_days_minutes: 0
+    positive_days_minutes_min: 10
+    positive_days_minutes_max: 960
+    confirmation_minutes_threshold_exclusive: 240
+    intensity_allowed: [moderate, vigorous]
+    formula: days_times_minutes_times_1_for_moderate_or_2_for_vigorous
+    inconsistent_zero_days_positive_minutes: request_correction
+  strength_days_week:
+    allowed: [0, 1, 2, 3, 4, 5_plus]
+    app_four_plus_mapping_to_five_plus: prohibited
+    five_plus_mapping_to_numeric_six: prohibited
+  pregnancy_status:
+    pregnant: unsupported_population
+    unknown: health_score_not_calculated
+    nonpregnant: supported
+  missing_data:
+    zero_or_mean_imputation: prohibited
+    missing_exercise: use_separately_labeled_F0_fallback_only
+  response_metadata_required:
+    - input_snapshot_id
+    - model_version
+    - preprocessor_version
+    - calibration_version
+    - supported_input
+    - unsupported_reason_code
+
+custodian_2023:
+  status: opened_internal_benchmark
+  row_level_storage: custodian_only
+  developer_receives: frozen_inference_bundle_only
+  team_receives: predeclared_aggregate_results_only
+  same_version_retuning: prohibited
+
+release_gates:
+  mandatory:
+    - schema_and_contract_match
+    - no_target_or_measurement_leakage
+    - outer_inner_key_disjointness
+    - no_2022_fit_or_selection
+    - no_developer_row_access_to_2023
+    - no_2024_access
+    - deterministic_reproduction
+    - numeric_performance_gates
+    - calibration
+    - temporal_stability
+    - subgroup_support_and_performance
+    - weighted_sensitivity
+    - safety_wording_approval
+
+schedule:
+  protocol_approval: 2026-08-26
+  development_pipeline_end: 2026-09-08
+  full_freeze: 2026-09-09
+  one_shot_2022_evaluation: 2026-09-10
+  frozen_bundle_end: 2026-09-14
+  opened_2023_benchmark_target_end: 2026-09-17
+  qa_end: 2026-09-20
+  final_handoff: 2026-09-22
+
+prohibited_actions:
+  - train_using_this_review_contract_directly
+  - remove_training_block_without_both_approvals
+  - fit_any_transformer_before_partitioning
+  - use_measured_waist_as_disease_input
+  - select_or_calibrate_on_2022
+  - repeat_2022_until_pass
+  - access_row_level_2023_as_developer
+  - tune_on_2023_result
+  - access_2024
+  - create_tmtn_index_by_unvalidated_average
