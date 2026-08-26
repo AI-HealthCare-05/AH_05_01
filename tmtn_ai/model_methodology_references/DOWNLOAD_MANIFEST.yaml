@@ -1,0 +1,201 @@
+manifest_version: "1.0"
+retrieved_at: "2026-08-25"
+verification:
+  expected_pdf_count: 19
+  parsed_pdf_count: 19
+  result: PASS
+  checks:
+    - PDF header
+    - pypdf open
+    - page count
+    - title or first-page identity
+    - SHA-256
+
+files:
+  - path: 01_reporting_bias/TRIPOD_AI_2024.pdf
+    title: "TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods"
+    publisher: BMJ
+    year: 2024
+    identifier: "DOI 10.1136/bmj-2023-078378; PMCID PMC11019967"
+    source_url: "https://www.bmj.com/content/385/bmj-2023-078378"
+    pages: 14
+    bytes: 293366
+    sha256: 9d57cb5d7feb8759713661a1c6bf53004a74f41080392f7a9be9123a949e69d9
+
+  - path: 01_reporting_bias/PROBAST_AI_2025.pdf
+    title: "PROBAST+AI: an updated quality, risk of bias, and applicability assessment tool for prediction models using regression or artificial intelligence methods"
+    publisher: BMJ
+    year: 2025
+    identifier: "DOI 10.1136/bmj-2024-082505; PMCID PMC11931409"
+    source_url: "https://www.bmj.com/content/388/bmj-2024-082505"
+    pages: 15
+    bytes: 267390
+    sha256: 873fe777bb8b20586adc58f8385d36a59d9ce93b4c9b8f494c134e8574cea418
+
+  - path: 01_reporting_bias/TRIPOD_AI_checklist_2024.pdf
+    title: "TRIPOD+AI Checklist"
+    publisher: TRIPOD+AI Group / BMJ companion material
+    year: 2024
+    identifier: "Companion checklist for DOI 10.1136/bmj-2023-078378"
+    source_url: "user-downloaded-official-companion:TRIPOD+AI checklist.pdf"
+    pages: 2
+    bytes: 590767
+    sha256: 6d4bbe95dba216ed155c64938c8cd344a494d425d2fccf8412b4d39757cca179
+
+  - path: 01_reporting_bias/TRIPOD_AI_expanded_checklist_EE_Light_2024.pdf
+    title: "TRIPOD+AI Expanded Checklist (Explanation and Elaboration Light)"
+    publisher: TRIPOD+AI Group / BMJ companion material
+    year: 2024
+    identifier: "Companion checklist for DOI 10.1136/bmj-2023-078378"
+    source_url: "user-downloaded-official-companion:TRIPOD+AI Expanded checklist (E&E Light).pdf"
+    pages: 14
+    bytes: 979008
+    sha256: 5281ffe5a7efd4ba1f1640888b6e62e3a89fc2aa84956816ab13bed53e8ba59b
+
+  - path: 01_reporting_bias/TRIPOD_AI_Delphi_round1_summary.pdf
+    title: "TRIPOD-AI: aggregated responses from Delphi round 1"
+    publisher: TRIPOD-AI Group
+    identifier: "Development-history companion material"
+    source_url: "user-downloaded-official-companion:TRIPOD-AI_round_1_summary.pdf"
+    pages: 8
+    bytes: 168655
+    sha256: 072bd6b9635cc9b25eacb8f7de677a8e58b7cdef33627ed2bd29e57f206f948d
+
+  - path: 01_reporting_bias/PROBAST_AI_supplementary_figures_tables_2025.pdf
+    title: "PROBAST+AI Supplementary Figure 1 and Tables 1, 2, and 5"
+    publisher: PROBAST+AI Group / BMJ companion material
+    year: 2025
+    identifier: "Supplementary material for DOI 10.1136/bmj-2024-082505"
+    source_url: "user-downloaded-official-companion:mook082505.ww1.pdf"
+    pages: 6
+    bytes: 92274
+    sha256: 153b51e35c174012ae2313150b0c6b911b18db279b9fad1ac8fc314a0b7e5ab7
+
+  - path: 01_reporting_bias/PROBAST_AI_assessment_steps_table3_2025.pdf
+    title: "PROBAST+AI Supplementary Table 3: Assessment Steps and Forms"
+    publisher: PROBAST+AI Group / BMJ companion material
+    year: 2025
+    identifier: "Supplementary material for DOI 10.1136/bmj-2024-082505"
+    source_url: "user-downloaded-official-companion:mook082505.ww2.pdf"
+    pages: 13
+    bytes: 267514
+    sha256: 73580fad2d9886805e483a86a57fcf362fe3e890bba0fbff557a8925cefa960f
+
+  - path: 01_reporting_bias/PROBAST_AI_EE_Light_table4_2025.pdf
+    title: "PROBAST+AI Supplementary Table 4: Explanation and Elaboration Light"
+    publisher: PROBAST+AI Group / BMJ companion material
+    year: 2025
+    identifier: "Supplementary material for DOI 10.1136/bmj-2024-082505"
+    source_url: "user-downloaded-official-companion:mook082505.ww3.pdf"
+    pages: 17
+    bytes: 302916
+    sha256: 35862b44ebf4ed5917224723011bc9e7f322cbfb822f096a5bd241a6ba398a33
+
+  - path: 02_prediction_evaluation/BMJ_prediction_model_development_2024.pdf
+    title: "Developing clinical prediction models: a step-by-step guide"
+    publisher: BMJ
+    year: 2024
+    identifier: "DOI 10.1136/bmj-2023-078276; PMCID PMC11369751"
+    source_url: "https://www.bmj.com/content/386/bmj-2023-078276"
+    pages: 15
+    bytes: 603472
+    sha256: 8e228f06bc1337092cc5205321583727cc173e0b10fe9db997509bfe758473da
+
+  - path: 02_prediction_evaluation/BMJ_external_validation_part1.pdf
+    title: "Evaluation of clinical prediction models (part 1): from development to external validation"
+    publisher: BMJ
+    year: 2024
+    identifier: "DOI 10.1136/bmj-2023-074819; PMCID PMC10772854"
+    source_url: "https://www.bmj.com/content/384/bmj-2023-074819"
+    pages: 11
+    bytes: 1149232
+    sha256: f311541f50651278daa8f6eda2a514885ecbf5c1103d57ee8f1aaf9350444a13
+
+  - path: 02_prediction_evaluation/BMJ_external_validation_part2.pdf
+    title: "Evaluation of clinical prediction models (part 2): how to undertake an external validation study"
+    publisher: BMJ
+    year: 2024
+    identifier: "DOI 10.1136/bmj-2023-074820; PMCID PMC10788734"
+    source_url: "https://www.bmj.com/content/384/bmj-2023-074820"
+    pages: 12
+    bytes: 1052755
+    sha256: 25bb179cafa3a73381f87fbac1d17abaf17b38efe4851569671263348efef942
+
+  - path: 02_prediction_evaluation/Riley_sample_size_validation.pdf
+    title: "Minimum sample size for external validation of a clinical prediction model with a binary outcome"
+    publisher: Wiley / Oxford University Research Archive
+    year: 2021
+    identifier: "DOI 10.1002/sim.9025"
+    source_url: "https://ora.ox.ac.uk/objects/uuid:eb9a1138-a73e-4f30-85ba-9633521bf093/files/sn009w352r"
+    pages: 22
+    bytes: 2230094
+    sha256: d3b2cc5271e334807524f1b5db33639f87013dd7d484b1d5997040729f4ef107
+
+  - path: 03_knhanes_survey_design/KNHANES_complex_sample_analysis_guide.pdf
+    title: "국민건강영양조사 원시자료 이용지침서 제9기(2022-2024)"
+    publisher: 질병관리청
+    year: 2026
+    identifier: "국가승인통계 승인번호 제117002호"
+    source_url: "local-official-copy:C:/Users/FORYOUCOM/PycharmProjects/AH_05_01/data/02_codebooks/year=2024/국민건강영양조사+제9기(2022-2024)+원시자료+이용지침서.pdf"
+    notes: "별도 복합표본 장만 추출하지 않고 공식 이용지침서 전체 원본을 복사했다. 복합표본설계·가중치·통합연도 분석 지침을 포함한다."
+    pages: 255
+    bytes: 11602406
+    sha256: 921818c62267bd2949dd08e7d0143ef8cd30eb3086722e696481aa162ba42ce3
+
+  - path: 04_activity_measurement/WHO_GPAQ_questionnaire.pdf
+    title: "WHO STEPS Instrument, Part 5"
+    publisher: World Health Organization
+    year: 2003
+    identifier: "WHO/NMH/CCS/03"
+    source_url: "https://cdn.who.int/media/docs/default-source/ncds/ncd-surveillance/steps/part5.pdf?sfvrsn=c7be3ad6_7"
+    notes: "WHO의 최신 영문 GPAQ 단독 설문지는 공식 페이지에서 DOC로 배포된다. 내용 변환을 피하기 위해 GPAQ 문항을 포함한 WHO 공식 STEPS Instrument PDF 원본을 저장했다."
+    pages: 74
+    bytes: 1904487
+    sha256: 9e33489d005464ea47c595f9e589469e98a6a5aa566c772a95504c30c61b2043
+
+  - path: 04_activity_measurement/WHO_GPAQ_analysis_guide.pdf
+    title: "Global Physical Activity Questionnaire (GPAQ): Analysis Guide"
+    publisher: World Health Organization
+    source_url: "https://www.who.int/docs/default-source/ncds/ncd-surveillance/gpaq-analysis-guide.pdf?sfvrsn=1e83d571_2"
+    pages: 23
+    bytes: 236966
+    sha256: c957c7a54239834e86904a41525086649893f88d0f05172bb0c50202fdbd2ba4
+
+  - path: 05_waist_measurement/WHO_STEPS_waist_protocol.pdf
+    title: "WHO STEPS Surveillance, Part 3 Section 5: Collecting Step 2 data - Physical Measurements"
+    publisher: World Health Organization
+    year: 2017
+    source_url: "https://cdn.who.int/media/docs/default-source/ncds/ncd-surveillance/steps/part3-section5.pdf?sfvrsn=a46653c7_2"
+    pages: 16
+    bytes: 100603
+    sha256: 30b5f1acc3b936145f8fedc5bbec152ea6ca797806f1ed70ef09064b8c5f099d
+
+  - path: 05_waist_measurement/WHO_waist_expert_consultation.pdf
+    title: "Waist circumference and waist-hip ratio: report of a WHO expert consultation"
+    publisher: World Health Organization
+    year: 2011
+    identifier: "ISBN 9789241501491"
+    source_url: "https://iris.who.int/server/api/core/bitstreams/ca408ade-05c9-4b7c-8967-6ee5b5e0ccd8/content"
+    pages: 47
+    bytes: 1118808
+    sha256: e56fc280c3cd4547c89dff6d9b95d6be62be49bc994fbf0758f2c88faf3833f4
+
+  - path: 05_waist_measurement/KSSO_obesity_guideline_2022.pdf
+    title: "Evaluation and Treatment of Obesity and Its Comorbidities: 2022 Update of Clinical Practice Guidelines for Obesity by the Korean Society for the Study of Obesity"
+    publisher: Korean Society for the Study of Obesity
+    year: 2023
+    identifier: "DOI 10.7570/jomes23016; PMCID PMC10088549"
+    source_url: "https://www.jomes.org/journal/download_pdf.php?doi=10.7570/jomes23016"
+    pages: 24
+    bytes: 3079361
+    sha256: 5a02cdfc533a2e7cf776ed56090340174666a941c1e4a97389fed6f48b2be7a4
+
+  - path: 06_regulatory/IMDRF_GMLP_2025.pdf
+    title: "Good machine learning practice for medical device development: Guiding principles"
+    publisher: International Medical Device Regulators Forum
+    year: 2025
+    identifier: "IMDRF/AIML WG/N88 FINAL:2025"
+    source_url: "https://www.imdrf.org/sites/default/files/2025-02/IMDRF_AIML%20WG_GMLP_N88%20Final.pdf"
+    pages: 9
+    bytes: 145459
+    sha256: b1a129d81a3bc1ad3e65c5bde5d2ed4a76d5e9932ac7ccb20c3c71aa22830dff

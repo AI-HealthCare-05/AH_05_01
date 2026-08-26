@@ -1,4 +1,17 @@
 artifacts/
+incoming/
+data/
+tmp/
+reports/pytest_tmp_*/
+model_methodology_references/**/*.pdf
+*.zip
+*.sas7bdat
+*.parquet
+*.feather
+*.arrow
+*.pkl
+*.joblib
+*.log
 __pycache__/
 *.pyc
 .pytest_cache/

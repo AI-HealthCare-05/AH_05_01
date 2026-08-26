@@ -1,0 +1,520 @@
+{
+  "contract": {
+    "filename": "activity_feature_contract_v0_1.yaml",
+    "sha256": "7b303274262c735083d0d34a2d9cf6bd8b130768034d84ad93309da378a828f3"
+  },
+  "implementation": {
+    "activity_feature_sha256": "05341ed3bdf2a3a97f6f0659c5a0b3fc6386f98e76e87e13fdaf9629f1aaaf07",
+    "filename": "audit_activity_features.py",
+    "sha256": "a046c2c745d466aa7a1b5aa10017e02495e0e99f672a9507b1d5fe84fa564d65",
+    "version": "v0.1.1-aggregate-only-domain-checks"
+  },
+  "missing_years": [],
+  "policy": {
+    "aggregate_only": true,
+    "binary_partition_complementary_suppression": true,
+    "forbidden_years": [
+      2024
+    ],
+    "minimum_cell_count": 5,
+    "model_training_performed": false,
+    "participant_identifiers_included": false,
+    "participant_rows_included": false,
+    "reserved_years": [
+      2022,
+      2023
+    ]
+  },
+  "schema_version": 1,
+  "sources": {
+    "2019": {
+      "completeness": {
+        "branches": {
+          "leisure_moderate": {
+            "complete_count": 5927,
+            "complete_rate": 0.7308
+          },
+          "leisure_vigorous": {
+            "complete_count": 5927,
+            "complete_rate": 0.7308
+          },
+          "transport_moderate": {
+            "complete_count": 5920,
+            "complete_rate": 0.73
+          },
+          "work_moderate": {
+            "complete_count": 5926,
+            "complete_rate": 0.7307
+          },
+          "work_vigorous": {
+            "complete_count": 5927,
+            "complete_rate": 0.7308
+          }
+        },
+        "leisure_activity": {
+          "complete_count": 5927,
+          "complete_rate": 0.7308
+        },
+        "total_activity": {
+          "complete_count": 5918,
+          "complete_rate": 0.7297
+        }
+      },
+      "encoding": "utf-8-sig",
+      "features": {
+        "leisure_aerobic_moderate_equivalent_min_week": {
+          "missing_count": 2183,
+          "missing_rate": 0.2692,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 60.0,
+            "p99": 840.0
+          }
+        },
+        "strength_days_week": {
+          "missing_count": 1697,
+          "missing_rate": 0.2092,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 1.0,
+            "p99": 5.0
+          }
+        },
+        "total_moderate_equivalent_min_week": {
+          "missing_count": 2192,
+          "missing_rate": 0.2703,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 110.0,
+            "p75": 280.0,
+            "p99": 1613.2
+          }
+        }
+      },
+      "file_format": "csv",
+      "filename": "hn19_all.csv",
+      "missing_optional_columns": [
+        "pa_muscle"
+      ],
+      "pa_aerobic_reproduction": {
+        "cells": [
+          {
+            "count": 5918,
+            "suppressed": false,
+            "value": "match"
+          },
+          {
+            "count": 2192,
+            "suppressed": false,
+            "value": "not_comparable"
+          }
+        ],
+        "comparable_count": 5918,
+        "match_rate": 1.0,
+        "mismatch_count": 0
+      },
+      "raw_code_domains": {
+        "BE3_71": {
+          "unexpected_count": 0
+        },
+        "BE3_72": {
+          "unexpected_count": 0
+        },
+        "BE3_73": {
+          "unexpected_count": 0
+        },
+        "BE3_74": {
+          "unexpected_count": 0
+        },
+        "BE3_75": {
+          "unexpected_count": 0
+        },
+        "BE3_76": {
+          "unexpected_count": 0
+        },
+        "BE3_77": {
+          "unexpected_count": 0
+        },
+        "BE3_78": {
+          "unexpected_count": 0
+        },
+        "BE3_81": {
+          "unexpected_count": 0
+        },
+        "BE3_82": {
+          "unexpected_count": 0
+        },
+        "BE3_83": {
+          "unexpected_count": 0
+        },
+        "BE3_84": {
+          "unexpected_count": 0
+        },
+        "BE3_85": {
+          "unexpected_count": 0
+        },
+        "BE3_86": {
+          "unexpected_count": 0
+        },
+        "BE3_87": {
+          "unexpected_count": 0
+        },
+        "BE3_88": {
+          "unexpected_count": 0
+        },
+        "BE3_91": {
+          "unexpected_count": 0
+        },
+        "BE3_92": {
+          "unexpected_count": 0
+        },
+        "BE3_93": {
+          "unexpected_count": 0
+        },
+        "BE3_94": {
+          "unexpected_count": 0
+        },
+        "BE5_1": {
+          "unexpected_count": 0
+        },
+        "pa_aerobic": {
+          "unexpected_count": 0
+        }
+      },
+      "row_count": 8110,
+      "selected_column_count": 22,
+      "sha256": "34b87583dd5eeac553fbc6fa19adecdd698b9639fa52c3a8de62e65cc5f0a0d7"
+    },
+    "2020": {
+      "completeness": {
+        "branches": {
+          "leisure_moderate": {
+            "complete_count": 5409,
+            "complete_rate": 0.735
+          },
+          "leisure_vigorous": {
+            "complete_count": 5409,
+            "complete_rate": 0.735
+          },
+          "transport_moderate": {
+            "complete_count": 5401,
+            "complete_rate": 0.7339
+          },
+          "work_moderate": {
+            "complete_count": 5410,
+            "complete_rate": 0.7352
+          },
+          "work_vigorous": {
+            "complete_count": 5411,
+            "complete_rate": 0.7353
+          }
+        },
+        "leisure_activity": {
+          "complete_count": 5409,
+          "complete_rate": 0.735
+        },
+        "total_activity": {
+          "complete_count": 5398,
+          "complete_rate": 0.7335
+        }
+      },
+      "encoding": "utf-8-sig",
+      "features": {
+        "leisure_aerobic_moderate_equivalent_min_week": {
+          "missing_count": 1950,
+          "missing_rate": 0.265,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 60.0,
+            "p99": 840.0
+          }
+        },
+        "strength_days_week": {
+          "missing_count": 1523,
+          "missing_rate": 0.207,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 1.0,
+            "p99": 5.0
+          }
+        },
+        "total_moderate_equivalent_min_week": {
+          "missing_count": 1961,
+          "missing_rate": 0.2665,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 100.0,
+            "p75": 273.75,
+            "p99": 1680.0
+          }
+        }
+      },
+      "file_format": "csv",
+      "filename": "hn20_all.csv",
+      "missing_optional_columns": [
+        "pa_muscle"
+      ],
+      "pa_aerobic_reproduction": {
+        "cells": [
+          {
+            "count": 5398,
+            "suppressed": false,
+            "value": "match"
+          },
+          {
+            "count": 1961,
+            "suppressed": false,
+            "value": "not_comparable"
+          }
+        ],
+        "comparable_count": 5398,
+        "match_rate": 1.0,
+        "mismatch_count": 0
+      },
+      "raw_code_domains": {
+        "BE3_71": {
+          "unexpected_count": 0
+        },
+        "BE3_72": {
+          "unexpected_count": 0
+        },
+        "BE3_73": {
+          "unexpected_count": 0
+        },
+        "BE3_74": {
+          "unexpected_count": 0
+        },
+        "BE3_75": {
+          "unexpected_count": 0
+        },
+        "BE3_76": {
+          "unexpected_count": 0
+        },
+        "BE3_77": {
+          "unexpected_count": 0
+        },
+        "BE3_78": {
+          "unexpected_count": 0
+        },
+        "BE3_81": {
+          "unexpected_count": 0
+        },
+        "BE3_82": {
+          "unexpected_count": 0
+        },
+        "BE3_83": {
+          "unexpected_count": 0
+        },
+        "BE3_84": {
+          "unexpected_count": 0
+        },
+        "BE3_85": {
+          "unexpected_count": 0
+        },
+        "BE3_86": {
+          "unexpected_count": 0
+        },
+        "BE3_87": {
+          "unexpected_count": 0
+        },
+        "BE3_88": {
+          "unexpected_count": 0
+        },
+        "BE3_91": {
+          "unexpected_count": 0
+        },
+        "BE3_92": {
+          "unexpected_count": 0
+        },
+        "BE3_93": {
+          "unexpected_count": 0
+        },
+        "BE3_94": {
+          "unexpected_count": 0
+        },
+        "BE5_1": {
+          "unexpected_count": 0
+        },
+        "pa_aerobic": {
+          "unexpected_count": 0
+        }
+      },
+      "row_count": 7359,
+      "selected_column_count": 22,
+      "sha256": "3970e1e376d8ad700e6d6659f80dd94674d66cf9dc2bba91c4f47ade0f82ba2f"
+    },
+    "2021": {
+      "completeness": {
+        "branches": {
+          "leisure_moderate": {
+            "complete_count": 5328,
+            "complete_rate": 0.7515
+          },
+          "leisure_vigorous": {
+            "complete_count": 5328,
+            "complete_rate": 0.7515
+          },
+          "transport_moderate": {
+            "complete_count": 5321,
+            "complete_rate": 0.7505
+          },
+          "work_moderate": {
+            "complete_count": 5325,
+            "complete_rate": 0.7511
+          },
+          "work_vigorous": {
+            "complete_count": 5331,
+            "complete_rate": 0.7519
+          }
+        },
+        "leisure_activity": {
+          "complete_count": 5327,
+          "complete_rate": 0.7513
+        },
+        "total_activity": {
+          "complete_count": 5316,
+          "complete_rate": 0.7498
+        }
+      },
+      "encoding": "utf-8-sig",
+      "features": {
+        "leisure_aerobic_moderate_equivalent_min_week": {
+          "missing_count": 1763,
+          "missing_rate": 0.2487,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 60.0,
+            "p99": 840.0
+          }
+        },
+        "strength_days_week": {
+          "missing_count": 1365,
+          "missing_rate": 0.1925,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 1.0,
+            "p99": 5.0
+          }
+        },
+        "total_moderate_equivalent_min_week": {
+          "missing_count": 1774,
+          "missing_rate": 0.2502,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 90.0,
+            "p75": 270.0,
+            "p99": 1555.5
+          }
+        }
+      },
+      "file_format": "csv",
+      "filename": "hn21_all.csv",
+      "missing_optional_columns": [
+        "pa_muscle"
+      ],
+      "pa_aerobic_reproduction": {
+        "cells": [
+          {
+            "count": 5316,
+            "suppressed": false,
+            "value": "match"
+          },
+          {
+            "count": 1774,
+            "suppressed": false,
+            "value": "not_comparable"
+          }
+        ],
+        "comparable_count": 5316,
+        "match_rate": 1.0,
+        "mismatch_count": 0
+      },
+      "raw_code_domains": {
+        "BE3_71": {
+          "unexpected_count": 0
+        },
+        "BE3_72": {
+          "unexpected_count": 0
+        },
+        "BE3_73": {
+          "unexpected_count": 0
+        },
+        "BE3_74": {
+          "unexpected_count": 0
+        },
+        "BE3_75": {
+          "unexpected_count": 0
+        },
+        "BE3_76": {
+          "unexpected_count": 0
+        },
+        "BE3_77": {
+          "unexpected_count": 0
+        },
+        "BE3_78": {
+          "unexpected_count": 0
+        },
+        "BE3_81": {
+          "unexpected_count": 0
+        },
+        "BE3_82": {
+          "unexpected_count": 0
+        },
+        "BE3_83": {
+          "unexpected_count": 0
+        },
+        "BE3_84": {
+          "unexpected_count": 0
+        },
+        "BE3_85": {
+          "unexpected_count": 0
+        },
+        "BE3_86": {
+          "unexpected_count": 0
+        },
+        "BE3_87": {
+          "unexpected_count": 0
+        },
+        "BE3_88": {
+          "unexpected_count": 0
+        },
+        "BE3_91": {
+          "unexpected_count": 0
+        },
+        "BE3_92": {
+          "unexpected_count": 0
+        },
+        "BE3_93": {
+          "unexpected_count": 0
+        },
+        "BE3_94": {
+          "unexpected_count": 0
+        },
+        "BE5_1": {
+          "unexpected_count": 0
+        },
+        "pa_aerobic": {
+          "unexpected_count": 0
+        }
+      },
+      "row_count": 7090,
+      "selected_column_count": 22,
+      "sha256": "578ab64da503b6b0d51f640aa4e39aa7e973a8dbd05f4c7adecaac66c95788d8"
+    }
+  }
+}

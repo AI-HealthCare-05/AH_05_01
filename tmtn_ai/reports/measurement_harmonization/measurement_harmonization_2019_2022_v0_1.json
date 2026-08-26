@@ -1,0 +1,970 @@
+{
+  "contract": {
+    "filename": "measurement_harmonization_contract_v0_1.yaml",
+    "sha256": "a5410fa2a9dc354f473b27edd5e2bd7d115bf58283941c395f4680b10cad9deb"
+  },
+  "implementation": {
+    "filename": "audit_measurement_harmonization.py",
+    "harmonization_module_sha256": "cf86890fa6ba7291556231d2db8b182414a1570d95193c82655aeec887acd22d",
+    "sha256": "cafb2609b2a2abd80056ebc94203639d200320a20913726e7767d07770f96944",
+    "version": "v0.1-aggregate-only"
+  },
+  "policy": {
+    "aggregate_only": true,
+    "blocked_years": [
+      2023,
+      2024
+    ],
+    "converted_values_role": "sensitivity_only",
+    "minimum_cell_count": 5,
+    "model_performance_evaluation_performed": false,
+    "model_training_performed": false,
+    "participant_identifiers_included": false,
+    "participant_rows_included": false,
+    "primary_measurement_values": "official_raw_values"
+  },
+  "schema_version": 1,
+  "sources": {
+    "2019": {
+      "blood_pressure": {
+        "conversion_applied": false,
+        "converted_dbp_sensitivity": {
+          "analysis_count": 6922,
+          "mean": 74.7163,
+          "missing_count": 1188,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 51.0,
+            "p25": 68.0,
+            "p50": 74.0,
+            "p75": 81.0,
+            "p99": 101.0
+          },
+          "standard_deviation": 10.1534
+        },
+        "converted_sbp_sensitivity": {
+          "analysis_count": 6922,
+          "mean": 118.8185,
+          "missing_count": 1188,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 90.0,
+            "p25": 107.0,
+            "p50": 116.0,
+            "p75": 129.0,
+            "p99": 166.0
+          },
+          "standard_deviation": 16.4903
+        },
+        "dbp_delta_converted_minus_raw": {
+          "analysis_count": 6922,
+          "mean": 0.0,
+          "missing_count": 1188,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 0.0,
+            "p99": 0.0
+          },
+          "standard_deviation": 0.0
+        },
+        "hypertension_measurement_label_transition": {
+          "agreement_rate": 1.0,
+          "cells": [
+            {
+              "count": 5196,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 1037,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1877,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 0,
+          "comparable_count": 6233
+        },
+        "official_reproduction": {
+          "diastolic": {
+            "comparable_count": 6922,
+            "match_rate": 1.0,
+            "maximum_absolute_error": 0.0,
+            "mismatch_count": 0,
+            "tolerance_mmHg": 0.1
+          },
+          "systolic": {
+            "comparable_count": 6922,
+            "match_rate": 1.0,
+            "maximum_absolute_error": 0.0,
+            "mismatch_count": 0,
+            "tolerance_mmHg": 0.1
+          }
+        },
+        "raw_dbp": {
+          "analysis_count": 6922,
+          "mean": 74.7163,
+          "missing_count": 1188,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 51.0,
+            "p25": 68.0,
+            "p50": 74.0,
+            "p75": 81.0,
+            "p99": 101.0
+          },
+          "standard_deviation": 10.1534
+        },
+        "raw_sbp": {
+          "analysis_count": 6922,
+          "mean": 118.8185,
+          "missing_count": 1188,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 90.0,
+            "p25": 107.0,
+            "p50": 116.0,
+            "p75": 129.0,
+            "p99": 166.0
+          },
+          "standard_deviation": 16.4903
+        },
+        "sbp_delta_converted_minus_raw": {
+          "analysis_count": 6922,
+          "mean": 0.0,
+          "missing_count": 1188,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 0.0,
+            "p99": 0.0
+          },
+          "standard_deviation": 0.0
+        }
+      },
+      "cohorts": {
+        "age_80_top_coded_count": 344,
+        "blood_pressure_measurement_eligible_count": 6233,
+        "diabetes_measurement_eligible_count": 5914,
+        "nonpregnant_adult_count": 6267
+      },
+      "encoding": "utf-8-sig",
+      "file_format": "csv",
+      "filename": "hn19_all.csv",
+      "hba1c": {
+        "conversion_applied": false,
+        "converted_sensitivity": {
+          "analysis_count": 6763,
+          "mean": 5.7669,
+          "missing_count": 1347,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 4.8,
+            "p25": 5.4,
+            "p50": 5.6,
+            "p75": 5.9,
+            "p99": 9.5
+          },
+          "standard_deviation": 0.8017
+        },
+        "delta_converted_minus_raw": {
+          "analysis_count": 6763,
+          "mean": 0.0,
+          "missing_count": 1347,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 0.0,
+            "p99": 0.0
+          },
+          "standard_deviation": 0.0
+        },
+        "diabetes_measurement_label_transition": {
+          "agreement_rate": 1.0,
+          "cells": [
+            {
+              "count": 5185,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 729,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 2196,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 0,
+          "comparable_count": 5914
+        },
+        "hba1c_threshold_transition": {
+          "agreement_rate": 1.0,
+          "cells": [
+            {
+              "count": 5285,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 629,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 2196,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 0,
+          "comparable_count": 5914
+        },
+        "raw": {
+          "analysis_count": 6763,
+          "mean": 5.7669,
+          "missing_count": 1347,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 4.8,
+            "p25": 5.4,
+            "p50": 5.6,
+            "p75": 5.9,
+            "p99": 9.5
+          },
+          "standard_deviation": 0.8017
+        }
+      },
+      "missing_optional_columns": [],
+      "row_count": 8110,
+      "selected_column_count": 11,
+      "sha256": "34b87583dd5eeac553fbc6fa19adecdd698b9639fa52c3a8de62e65cc5f0a0d7"
+    },
+    "2020": {
+      "blood_pressure": {
+        "conversion_applied": false,
+        "converted_dbp_sensitivity": {
+          "analysis_count": 6557,
+          "mean": 74.5359,
+          "missing_count": 802,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 51.56,
+            "p25": 67.0,
+            "p50": 74.0,
+            "p75": 81.0,
+            "p99": 101.0
+          },
+          "standard_deviation": 10.2794
+        },
+        "converted_sbp_sensitivity": {
+          "analysis_count": 6557,
+          "mean": 118.2361,
+          "missing_count": 802,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 89.0,
+            "p25": 106.0,
+            "p50": 116.0,
+            "p75": 128.0,
+            "p99": 164.0
+          },
+          "standard_deviation": 16.4397
+        },
+        "dbp_delta_converted_minus_raw": {
+          "analysis_count": 6557,
+          "mean": 0.0,
+          "missing_count": 802,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 0.0,
+            "p99": 0.0
+          },
+          "standard_deviation": 0.0
+        },
+        "hypertension_measurement_label_transition": {
+          "agreement_rate": 1.0,
+          "cells": [
+            {
+              "count": 4854,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 948,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1557,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 0,
+          "comparable_count": 5802
+        },
+        "official_reproduction": {
+          "diastolic": {
+            "comparable_count": 6557,
+            "match_rate": 1.0,
+            "maximum_absolute_error": 0.0,
+            "mismatch_count": 0,
+            "tolerance_mmHg": 0.1
+          },
+          "systolic": {
+            "comparable_count": 6557,
+            "match_rate": 1.0,
+            "maximum_absolute_error": 0.0,
+            "mismatch_count": 0,
+            "tolerance_mmHg": 0.1
+          }
+        },
+        "raw_dbp": {
+          "analysis_count": 6557,
+          "mean": 74.5359,
+          "missing_count": 802,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 51.56,
+            "p25": 67.0,
+            "p50": 74.0,
+            "p75": 81.0,
+            "p99": 101.0
+          },
+          "standard_deviation": 10.2794
+        },
+        "raw_sbp": {
+          "analysis_count": 6557,
+          "mean": 118.2361,
+          "missing_count": 802,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 89.0,
+            "p25": 106.0,
+            "p50": 116.0,
+            "p75": 128.0,
+            "p99": 164.0
+          },
+          "standard_deviation": 16.4397
+        },
+        "sbp_delta_converted_minus_raw": {
+          "analysis_count": 6557,
+          "mean": 0.0,
+          "missing_count": 802,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 0.0,
+            "p99": 0.0
+          },
+          "standard_deviation": 0.0
+        }
+      },
+      "cohorts": {
+        "age_80_top_coded_count": 344,
+        "blood_pressure_measurement_eligible_count": 5802,
+        "diabetes_measurement_eligible_count": 5615,
+        "nonpregnant_adult_count": 5911
+      },
+      "encoding": "utf-8-sig",
+      "file_format": "csv",
+      "filename": "hn20_all.csv",
+      "hba1c": {
+        "conversion_applied": false,
+        "converted_sensitivity": {
+          "analysis_count": 6334,
+          "mean": 5.7946,
+          "missing_count": 1025,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 4.8,
+            "p25": 5.4,
+            "p50": 5.6,
+            "p75": 5.9,
+            "p99": 9.3
+          },
+          "standard_deviation": 0.8208
+        },
+        "delta_converted_minus_raw": {
+          "analysis_count": 6334,
+          "mean": 0.0,
+          "missing_count": 1025,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 0.0,
+            "p99": 0.0
+          },
+          "standard_deviation": 0.0
+        },
+        "diabetes_measurement_label_transition": {
+          "agreement_rate": 1.0,
+          "cells": [
+            {
+              "count": 4823,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 792,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1744,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 0,
+          "comparable_count": 5615
+        },
+        "hba1c_threshold_transition": {
+          "agreement_rate": 1.0,
+          "cells": [
+            {
+              "count": 4903,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 712,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1744,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 0,
+          "comparable_count": 5615
+        },
+        "raw": {
+          "analysis_count": 6334,
+          "mean": 5.7946,
+          "missing_count": 1025,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 4.8,
+            "p25": 5.4,
+            "p50": 5.6,
+            "p75": 5.9,
+            "p99": 9.3
+          },
+          "standard_deviation": 0.8208
+        }
+      },
+      "missing_optional_columns": [],
+      "row_count": 7359,
+      "selected_column_count": 11,
+      "sha256": "3970e1e376d8ad700e6d6659f80dd94674d66cf9dc2bba91c4f47ade0f82ba2f"
+    },
+    "2021": {
+      "blood_pressure": {
+        "conversion_applied": true,
+        "converted_dbp_sensitivity": {
+          "analysis_count": 6308,
+          "mean": 75.7108,
+          "missing_count": 782,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 55.3435,
+            "p25": 69.0197,
+            "p50": 75.0065,
+            "p75": 81.5052,
+            "p99": 100.694
+          },
+          "standard_deviation": 9.51
+        },
+        "converted_sbp_sensitivity": {
+          "analysis_count": 6308,
+          "mean": 121.3053,
+          "missing_count": 782,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 92.4889,
+            "p25": 109.4804,
+            "p50": 119.0625,
+            "p75": 130.4676,
+            "p99": 174.459
+          },
+          "standard_deviation": 16.8648
+        },
+        "dbp_delta_converted_minus_raw": {
+          "analysis_count": 6308,
+          "mean": 2.9887,
+          "missing_count": 782,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": -2.3976,
+            "p25": 1.634,
+            "p50": 3.188,
+            "p75": 4.4703,
+            "p99": 6.8524
+          },
+          "standard_deviation": 2.0522
+        },
+        "hypertension_measurement_label_transition": {
+          "agreement_rate": 0.9509,
+          "cells": [
+            {
+              "count": 4534,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": null,
+              "suppressed": true,
+              "value": "0_to_1"
+            },
+            {
+              "count": null,
+              "suppressed": true,
+              "value": "1_to_0"
+            },
+            {
+              "count": 776,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1506,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 274,
+          "comparable_count": 5584
+        },
+        "official_reproduction": {
+          "diastolic": {
+            "comparable_count": 6308,
+            "match_rate": 1.0,
+            "maximum_absolute_error": 0.0,
+            "mismatch_count": 0,
+            "tolerance_mmHg": 0.1
+          },
+          "systolic": {
+            "comparable_count": 6308,
+            "match_rate": 1.0,
+            "maximum_absolute_error": 0.0,
+            "mismatch_count": 0,
+            "tolerance_mmHg": 0.1
+          }
+        },
+        "raw_dbp": {
+          "analysis_count": 6308,
+          "mean": 72.7221,
+          "missing_count": 782,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 51.5,
+            "p25": 65.5,
+            "p50": 72.0,
+            "p75": 79.0,
+            "p99": 100.5
+          },
+          "standard_deviation": 10.1685
+        },
+        "raw_sbp": {
+          "analysis_count": 6308,
+          "mean": 118.6169,
+          "missing_count": 782,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 89.5,
+            "p25": 107.0,
+            "p50": 117.0,
+            "p75": 128.0,
+            "p99": 169.465
+          },
+          "standard_deviation": 16.4453
+        },
+        "sbp_delta_converted_minus_raw": {
+          "analysis_count": 6308,
+          "mean": 2.6884,
+          "missing_count": 782,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": -4.1366,
+            "p25": 0.8228,
+            "p50": 2.571,
+            "p75": 4.4042,
+            "p99": 10.4925
+          },
+          "standard_deviation": 2.958
+        }
+      },
+      "cohorts": {
+        "age_80_top_coded_count": 404,
+        "blood_pressure_measurement_eligible_count": 5584,
+        "diabetes_measurement_eligible_count": 5351,
+        "nonpregnant_adult_count": 5674
+      },
+      "encoding": "utf-8-sig",
+      "file_format": "csv",
+      "filename": "hn21_all.csv",
+      "hba1c": {
+        "conversion_applied": false,
+        "converted_sensitivity": {
+          "analysis_count": 6009,
+          "mean": 5.8065,
+          "missing_count": 1081,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 4.8,
+            "p25": 5.4,
+            "p50": 5.6,
+            "p75": 6.0,
+            "p99": 9.092
+          },
+          "standard_deviation": 0.7919
+        },
+        "delta_converted_minus_raw": {
+          "analysis_count": 6009,
+          "mean": 0.0,
+          "missing_count": 1081,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 0.0,
+            "p99": 0.0
+          },
+          "standard_deviation": 0.0
+        },
+        "diabetes_measurement_label_transition": {
+          "agreement_rate": 1.0,
+          "cells": [
+            {
+              "count": 4593,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 758,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1739,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 0,
+          "comparable_count": 5351
+        },
+        "hba1c_threshold_transition": {
+          "agreement_rate": 1.0,
+          "cells": [
+            {
+              "count": 4675,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 676,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1739,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 0,
+          "comparable_count": 5351
+        },
+        "raw": {
+          "analysis_count": 6009,
+          "mean": 5.8065,
+          "missing_count": 1081,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 4.8,
+            "p25": 5.4,
+            "p50": 5.6,
+            "p75": 6.0,
+            "p99": 9.092
+          },
+          "standard_deviation": 0.7919
+        }
+      },
+      "missing_optional_columns": [],
+      "row_count": 7090,
+      "selected_column_count": 11,
+      "sha256": "578ab64da503b6b0d51f640aa4e39aa7e973a8dbd05f4c7adecaac66c95788d8"
+    },
+    "2022": {
+      "blood_pressure": {
+        "conversion_applied": true,
+        "converted_dbp_sensitivity": {
+          "analysis_count": 5896,
+          "mean": 75.9093,
+          "missing_count": 369,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 56.053,
+            "p25": 69.3723,
+            "p50": 75.08,
+            "p75": 81.5735,
+            "p99": 102.0321
+          },
+          "standard_deviation": 9.4452
+        },
+        "converted_sbp_sensitivity": {
+          "analysis_count": 5896,
+          "mean": 120.8099,
+          "missing_count": 369,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 92.6926,
+            "p25": 108.8506,
+            "p50": 118.3425,
+            "p75": 129.7506,
+            "p99": 174.9086
+          },
+          "standard_deviation": 16.8527
+        },
+        "dbp_delta_converted_minus_raw": {
+          "analysis_count": 5896,
+          "mean": 3.0561,
+          "missing_count": 369,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": -2.4474,
+            "p25": 1.6912,
+            "p50": 3.258,
+            "p75": 4.553,
+            "p99": 6.8981
+          },
+          "standard_deviation": 2.0533
+        },
+        "hypertension_measurement_label_transition": {
+          "agreement_rate": 0.946,
+          "cells": [
+            {
+              "count": 4186,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 280,
+              "suppressed": false,
+              "value": "0_to_1"
+            },
+            {
+              "count": 720,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1079,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 280,
+          "comparable_count": 5186
+        },
+        "official_reproduction": {
+          "diastolic": {
+            "comparable_count": 5896,
+            "match_rate": 1.0,
+            "maximum_absolute_error": 0.0,
+            "mismatch_count": 0,
+            "tolerance_mmHg": 0.1
+          },
+          "systolic": {
+            "comparable_count": 5896,
+            "match_rate": 1.0,
+            "maximum_absolute_error": 0.0,
+            "mismatch_count": 0,
+            "tolerance_mmHg": 0.1
+          }
+        },
+        "raw_dbp": {
+          "analysis_count": 5896,
+          "mean": 72.8532,
+          "missing_count": 369,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 51.975,
+            "p25": 65.5,
+            "p50": 72.0,
+            "p75": 79.0,
+            "p99": 101.0
+          },
+          "standard_deviation": 10.1863
+        },
+        "raw_sbp": {
+          "analysis_count": 5896,
+          "mean": 118.2433,
+          "missing_count": 369,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 89.5,
+            "p25": 106.5,
+            "p50": 116.0,
+            "p75": 127.5,
+            "p99": 169.5
+          },
+          "standard_deviation": 16.4704
+        },
+        "sbp_delta_converted_minus_raw": {
+          "analysis_count": 5896,
+          "mean": 2.5666,
+          "missing_count": 369,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": -4.1133,
+            "p25": 0.7806,
+            "p50": 2.517,
+            "p75": 4.212,
+            "p99": 10.1012
+          },
+          "standard_deviation": 2.8849
+        }
+      },
+      "cohorts": {
+        "age_80_top_coded_count": 300,
+        "blood_pressure_measurement_eligible_count": 5186,
+        "diabetes_measurement_eligible_count": 5008,
+        "nonpregnant_adult_count": 5304
+      },
+      "encoding": "utf-8-sig",
+      "file_format": "csv",
+      "filename": "hn22_all.csv",
+      "hba1c": {
+        "conversion_applied": true,
+        "converted_sensitivity": {
+          "analysis_count": 5545,
+          "mean": 5.7334,
+          "missing_count": 720,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 4.815,
+            "p25": 5.332,
+            "p50": 5.5388,
+            "p75": 5.9524,
+            "p99": 8.951
+          },
+          "standard_deviation": 0.7742
+        },
+        "delta_converted_minus_raw": {
+          "analysis_count": 5545,
+          "mean": 0.1452,
+          "missing_count": 720,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 0.115,
+            "p25": 0.132,
+            "p50": 0.1388,
+            "p75": 0.1524,
+            "p99": 0.251
+          },
+          "standard_deviation": 0.0255
+        },
+        "diabetes_measurement_label_transition": {
+          "agreement_rate": 0.991,
+          "cells": [
+            {
+              "count": 4413,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 45,
+              "suppressed": false,
+              "value": "0_to_1"
+            },
+            {
+              "count": 550,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1257,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 45,
+          "comparable_count": 5008
+        },
+        "hba1c_threshold_transition": {
+          "agreement_rate": 0.9868,
+          "cells": [
+            {
+              "count": 4505,
+              "suppressed": false,
+              "value": "0_to_0"
+            },
+            {
+              "count": 66,
+              "suppressed": false,
+              "value": "0_to_1"
+            },
+            {
+              "count": 437,
+              "suppressed": false,
+              "value": "1_to_1"
+            },
+            {
+              "count": 1257,
+              "suppressed": false,
+              "value": "not_comparable"
+            }
+          ],
+          "changed_count": 66,
+          "comparable_count": 5008
+        },
+        "raw": {
+          "analysis_count": 5545,
+          "mean": 5.5882,
+          "missing_count": 720,
+          "nonfinite_count": 0,
+          "quantiles": {
+            "p01": 4.7,
+            "p25": 5.2,
+            "p50": 5.4,
+            "p75": 5.8,
+            "p99": 8.7
+          },
+          "standard_deviation": 0.7487
+        }
+      },
+      "missing_optional_columns": [],
+      "row_count": 6265,
+      "selected_column_count": 11,
+      "sha256": "0d933a91133f705ef8d6ca2836c16ce7d436ef049422cac2f6c81f09d272460b"
+    }
+  }
+}
