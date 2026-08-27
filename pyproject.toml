@@ -16,6 +16,9 @@ dependencies = [
 
 [dependency-groups]
 ai = [
+    "numpy>=2.4.1,<3",
+    "pandas==2.3.3",
+    "pyyaml>=6.0.3,<7",
     "scikit-learn>=1.8.0",
     "torch",
     "torchvision",
@@ -37,6 +40,7 @@ app = [
 dev = [
     "coverage>=7.13.2",
     "mypy>=1.19.1",
+    "pytest>=9.0.2,<10",
     "pytest-asyncio>=1.3.0",
     "ruff>=0.14.14",
     "types-passlib>=1.7.7.20250602",

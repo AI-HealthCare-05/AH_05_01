@@ -150,6 +150,18 @@ AI 개발자:
 uv sync --frozen --group app --group ai
 ```
 
+AI 모델 환경은 pandas 2.3.3, numpy, PyYAML을 직접 의존성으로 선언합니다.
+pytest도 dev group에 직접 선언하며 정확한 설치 버전은 `uv.lock`을 따릅니다.
+기존 별도 실험의 `requirements.txt`를 공식 uv 환경에 추가 설치하지 않습니다.
+환경 변경 후에는 실제 데이터 없이 다음 smoke test를 먼저 실행합니다.
+
+```bash
+uv run --frozen --group app --group ai python -m pytest tests/ai_environment -q
+```
+
+이는 패키지/API 호환성 검사이며 D0 모델의 수치 재현이나 공개 승인이 아닙니다.
+자세한 범위와 로컬 합성 검증 증거는 [AI 의존성 검증 기록](AI_MODEL_DEPENDENCY_VALIDATION_2026_08_27.md)을 참조합니다.
+
 `uv.lock`을 바꾸지 않는 일반 설치에는 반드시 `--frozen`을 사용합니다. 패키지를 추가할 때만 `uv add <package> --group <group>`을 사용하고 변경된 `pyproject.toml`과 `uv.lock`을 함께 PR에 올립니다.
 
 ### 4. 환경 변수

@@ -16,6 +16,35 @@ on:
       - 'hotfix/*'
 
 jobs:
+  ai-environment:
+    # Dependency compatibility only; no participant data, model artifacts or secrets.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.12.5'
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.15'
+
+      - name: Check lock and install AI dependencies
+        run: |
+          uv lock --check
+          uv sync --frozen --group app --group ai
+
+      - name: Run synthetic environment smoke tests
+        run: uv run --frozen --group app --group ai python -m pytest tests/ai_environment -q
+
   lint:
     runs-on: ubuntu-latest
     steps:
