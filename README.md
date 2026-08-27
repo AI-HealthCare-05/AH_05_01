@@ -281,7 +281,7 @@ git config commit.template .github/commit_template.txt
 
 1. 준비도 점검의 P0 이슈를 GitHub Issue로 등록합니다.
 2. `develop` 브랜치와 보호 ruleset을 설정합니다.
-3. 이슈에서 `feature/<issue>-<slug>` 브랜치를 만듭니다.
+3. 이슈에서 `feat/<issue>-<slug>` 브랜치를 만듭니다.
 4. 작은 PR로 OpenAPI·DB·백엔드·Android를 수직 슬라이스 단위로 구현합니다.
 5. 리뷰와 필수 CI를 통과한 뒤 merge합니다.
 

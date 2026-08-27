@@ -1,0 +1,119 @@
+package kr.tmtn.app.ui.nav
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import kr.tmtn.app.designsystem.TmtnColor
+import kr.tmtn.app.designsystem.TmtnText
+import kr.tmtn.app.ui.TodayViewModel
+import kr.tmtn.app.ui.auth.LoginScreen
+import kr.tmtn.app.ui.card.CardFrontScreen
+import kr.tmtn.app.ui.card.CardPickScreen
+import kr.tmtn.app.ui.home.HomeScreen
+import kr.tmtn.app.ui.mission.MissionIntroScreen
+import kr.tmtn.app.ui.mission.MissionCompleteScreen
+import kr.tmtn.app.ui.mission.ModelMissionScreen
+import kr.tmtn.app.ui.mission.SelfMissionScreen
+import kr.tmtn.app.ui.onboarding.OnboardingScreen
+import kr.tmtn.app.ui.tabs.DamScreen
+import kr.tmtn.app.ui.tabs.MyPageScreen
+import kr.tmtn.app.ui.tabs.RecordScreen
+import kr.tmtn.app.ui.tabs.ReferenceScreen
+
+@Composable
+fun TmtnApp(today: TodayViewModel) {
+    val nav = rememberNavController()
+
+    val start = when {
+        !today.isLoggedIn -> Route.LOGIN
+        today.needsOnboarding -> Route.ONBOARDING
+        else -> Route.HOME
+    }
+
+    val backStack by nav.currentBackStackEntryAsState()
+    val current = backStack?.destination?.route
+    val showTabs = Tab.entries.any { it.route == current }
+
+    Scaffold(
+        containerColor = TmtnColor.Background,
+        bottomBar = { if (showTabs) TmtnBottomBar(nav, current) },
+    ) { inner ->
+        NavHost(
+            navController = nav,
+            startDestination = start,
+            modifier = Modifier.padding(inner),
+        ) {
+            composable(Route.LOGIN) {
+                LoginScreen(onDone = {
+                    today.login()
+                    val next = if (today.needsOnboarding) Route.ONBOARDING else Route.HOME
+                    nav.navigate(next) { popUpTo(Route.LOGIN) { inclusive = true } }
+                })
+            }
+
+            composable(Route.ONBOARDING) {
+                OnboardingScreen(
+                    initial = today.profile,
+                    onDone = { p ->
+                        today.saveProfile(p)
+                        nav.navigate(Route.HOME) { popUpTo(Route.ONBOARDING) { inclusive = true } }
+                    },
+                )
+            }
+
+            composable(Route.HOME) { HomeScreen(today, nav) }
+            composable(Route.RECORD) { RecordScreen(today) }
+            composable(Route.DAM) { DamScreen(today) }
+            composable(Route.REFERENCE) { ReferenceScreen(today) }
+            composable(Route.MY) {
+                MyPageScreen(today, onLoggedOut = {
+                    nav.navigate(Route.LOGIN) { popUpTo(0) }
+                })
+            }
+
+            composable(Route.CARD_PICK) { CardPickScreen(today, nav) }
+            composable(Route.CARD_FRONT) { CardFrontScreen(today, nav) }
+            composable(Route.MISSION_INTRO) { MissionIntroScreen(today, nav) }
+            composable(Route.MISSION_SELF) { SelfMissionScreen(today, nav) }
+            composable(Route.MISSION_MODEL) { ModelMissionScreen(today, nav) }
+            composable(Route.COMPLETE) { MissionCompleteScreen(today, nav) }
+        }
+    }
+}
+
+@Composable
+private fun TmtnBottomBar(nav: NavHostController, current: String?) {
+    NavigationBar(containerColor = TmtnColor.Surface, tonalElevation = 0.dp) {
+        Tab.entries.forEach { tab ->
+            NavigationBarItem(
+                selected = current == tab.route,
+                onClick = {
+                    if (current != tab.route) {
+                        nav.navigate(tab.route) {
+                            popUpTo(Route.HOME) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                icon = { Icon(tab.icon, contentDescription = tab.label) },
+                label = { Text(tab.label, style = TmtnText.Caption) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = TmtnColor.Primary,
+                    selectedTextColor = TmtnColor.Primary,
+                    indicatorColor = TmtnColor.SecondaryContainer,
+                    unselectedIconColor = TmtnColor.OnSurfaceVariant,
+                    unselectedTextColor = TmtnColor.OnSurfaceVariant,
+                ),
+            )
+        }
+    }
+}

@@ -1,0 +1,5 @@
+<resources>
+    <color name="tmtn_background">#F4F5F3</color>
+    <color name="tmtn_surface">#FFFFFF</color>
+    <color name="tmtn_primary">#0C3B2E</color>
+</resources>

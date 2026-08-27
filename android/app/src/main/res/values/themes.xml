@@ -1,0 +1,10 @@
+<resources>
+    <!-- 실제 색은 Compose 의 TmtnTheme 이 담당한다. 여기는 앱이 뜨기 전 잠깐의 배경만. -->
+    <style name="Theme.TMTN" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/tmtn_background</item>
+        <item name="android:statusBarColor">@color/tmtn_background</item>
+        <item name="android:navigationBarColor">@color/tmtn_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

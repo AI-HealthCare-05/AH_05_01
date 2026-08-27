@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- 토큰·건강 기록은 백업에서 제외한다. -->
+    <exclude domain="sharedpref" path="tmtn_secure.xml" />
+</full-backup-content>

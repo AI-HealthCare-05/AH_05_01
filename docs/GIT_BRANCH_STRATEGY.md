@@ -5,7 +5,7 @@
 ## 브랜치 흐름
 
 ```text
-feature/* ─┐
+feat/* ─────┐
 fix/* ─────┼─> develop ─> release/x.y.z ─> main ─> vX.Y.Z
 docs/* ────┘                     │             │
                                 └─────────────┘ back-merge
@@ -20,7 +20,7 @@ main ─> hotfix/x.y.z ─> main ─> vX.Y.Z
 |---|---|---|---|
 | `main` | 영구 | 해당 없음 | 배포 가능한 릴리스만 보관. 직접 push 금지 |
 | `develop` | `main`에서 최초 1회 | 해당 없음 | 다음 릴리스 통합. 직접 push 금지 |
-| `feature/<issue>-<slug>` | `develop` | `develop` | 사용자 기능·도메인 추가 |
+| `feat/<issue>-<slug>` | `develop` | `develop` | 사용자 기능·도메인 추가 |
 | `fix/<issue>-<slug>` | `develop` | `develop` | 아직 배포되지 않은 결함 수정 |
 | `docs/<issue>-<slug>` | `develop` | `develop` | 문서만 변경 |
 | `refactor/<issue>-<slug>` | `develop` | `develop` | 동작 변경 없는 구조 개선 |
@@ -29,10 +29,13 @@ main ─> hotfix/x.y.z ─> main ─> vX.Y.Z
 | `release/<version>` | `develop` | `main` | 릴리스 후보 안정화. 새 기능 금지 |
 | `hotfix/<version>` | `main` | `main` | 운영의 긴급 결함·보안 수정 |
 
+> **접두사는 커밋 타입 이름과 같게 맞췄습니다** (`feat` `fix` `docs` `refactor` `test` `chore`).
+> 팀 협업 규칙 문서와 이 문서가 `feat/` 로 통일돼 있습니다. `feature/` 는 쓰지 않습니다. (2026-08-27 확정)
+
 브랜치 slug는 영문 소문자와 하이픈을 사용합니다.
 
 ```text
-feature/123-daily-card-selection
+feat/123-daily-card-selection
 fix/241-refresh-token-rotation
 docs/88-api-version-policy
 release/0.3.0
@@ -46,13 +49,13 @@ hotfix/0.3.1
 ```bash
 git switch develop
 git pull --ff-only origin develop
-git switch -c feature/123-daily-card-selection
+git switch -c feat/123-daily-card-selection
 
 # 작업 후 작은 단위로 커밋
 git add -p
 git commit -m "feat(card): add daily card selection"
 
-git push -u origin feature/123-daily-card-selection
+git push -u origin feat/123-daily-card-selection
 ```
 
 1. 하나의 이슈와 하나의 목적만 브랜치에 담습니다.
