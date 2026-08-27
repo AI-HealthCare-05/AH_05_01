@@ -17,6 +17,8 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).resolve().parents[2]
+# Only environment tests reject warnings; legacy D0 checks remain separate.
+pytestmark = pytest.mark.filterwarnings("error")
 
 
 def test_python_matches_team_pin() -> None:
@@ -41,7 +43,8 @@ def test_yaml_and_dataframe_nullable_types() -> None:
 
 def test_scaler_clone_keeps_training_state_separate() -> None:
     train = np.array([[-2.0, 1.0], [-1.0, 0.0], [1.0, 0.0], [2.0, 1.0]])
-    model = make_pipeline(StandardScaler(), LogisticRegression(penalty=None, max_iter=1000))
+    # Finite-C L2 is an API smoke check, not the unpenalized D0/Platt model.
+    model = make_pipeline(StandardScaler(), LogisticRegression(C=1.0, l1_ratio=0.0, max_iter=1000))
     model.fit(train, np.array([0, 1, 0, 1]))
     scaler = model.named_steps["standardscaler"]
     expected = scaler.mean_.copy()
@@ -56,7 +59,7 @@ def test_synthetic_probability_metrics_and_reproducibility(kind: str) -> None:
     features = rng.normal(size=(60, 3))
     target = (features[:, 0] + rng.normal(size=60) > 0).astype(int)
     estimator = (
-        make_pipeline(StandardScaler(), LogisticRegression(penalty=None, max_iter=1000))
+        make_pipeline(StandardScaler(), LogisticRegression(C=1.0, l1_ratio=0.0, max_iter=1000))
         if kind == "logistic"
         else RandomForestClassifier(n_estimators=8, max_depth=3, random_state=42, n_jobs=1)
     )

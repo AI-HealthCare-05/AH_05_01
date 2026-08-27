@@ -152,6 +152,9 @@ uv sync --frozen --group app --group ai
 
 AI 모델 환경은 pandas 2.3.3, numpy, PyYAML을 직접 의존성으로 선언합니다.
 pytest도 dev group에 직접 선언하며 정확한 설치 버전은 `uv.lock`을 따릅니다.
+scikit-learn은 레거시 D0 호환성을 위해 `>=1.8.0,<1.10`으로 제한하고 현재 lock의 1.8.0을 유지합니다.
+환경 smoke test는 현재 API를 사용하고 실제 D0 레거시 코드 검증과 분리합니다.
+1.10 이상 이전은 별도 코드 버전과 합성 테스트 및 필요한 수치 검증을 거친 PR에서 상한을 조정합니다.
 기존 별도 실험의 `requirements.txt`를 공식 uv 환경에 추가 설치하지 않습니다.
 환경 변경 후에는 실제 데이터 없이 다음 smoke test를 먼저 실행합니다.
 

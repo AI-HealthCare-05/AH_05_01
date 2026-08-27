@@ -29,8 +29,12 @@
 | PyYAML | 6.0.3 |
 | pytest | 9.0.2 |
 
-검증 시 uv.lock 파일 바이트 SHA-256:
+최초 PR(4035fd8) 검증 시 uv.lock 파일 바이트 SHA-256 (리뷰 수정 전 이력):
 `3e123ad5d95a54466ecf9f3aa5cdac7e5152914387bdb3f0c9dca3c8f9fe34e1`
+
+홍주님 리뷰 반영 후 uv.lock 파일 바이트 SHA-256:
+`c3aa7e1552dc4fe6329f5e6c1992f690c9804b792ede860a1ff1c67bab9dbdfa`
+선언 상한만 변경됐으며 기존 패키지의 버전·배포 해시는 모두 유지됐다.
 Git checkout의 줄바꿈 설정에 따라 파일 바이트 해시가 달라질 수 있으므로 실제 재현 실행에서는 해당 환경 파일을 다시 해시하고 기록한다.
 
 ## PR에 포함한 CI 검증
@@ -48,7 +52,8 @@ YAML·pandas 자료형, scaler clone 분리, 작은 합성 입력의 LogisticReg
 확률 및 metric API를 확인한다. 실제 D0 모델 선택이나 성능 검증은 수행하지 않는다.
 테스트는 원자료·모델·OOF 파일을 읽지 않으며 외부 서비스/비밀을 필요로 하지 않는다.
 
-로컬 결과: 11/11 PASS, Ruff check/format PASS, Mypy `app ai_worker` 52개 파일 PASS.
+리뷰 반영 후 로컬 결과: 환경 테스트 11/11 PASS, 경고 0개.
+Ruff check/format PASS, Mypy `app ai_worker` 52개 파일 PASS.
 원격 CI 결과는 PR checks에서 별도로 확인한다. 로컬 app DB 통합 테스트는 실행하지 않았으며 기존 MySQL CI가 담당한다.
 
 ## 외부 모델 작업공간의 로컬 합성 검증
@@ -76,10 +81,32 @@ develop에는 아직 tmtn_ai 모델 구현이 없다. 이번 의존성 PR에 미
 | tests/test_disease_model_pipeline.py | d9f4613e522e784d6a6f2a22d1bbd01fc0cde4aba30c1c0640f4bce41aeb7f0b |
 | tests/test_d0_calibration_crossfit.py | 4e3ddbdab854ac418cec3a4fc32e7ebc5db20142a9cdc1ed30b22318f9bff75b |
 
-경고는 sklearn의 penalty 인자 deprecation이다. 재현 전 기존 모델 코드를 변경하지 않기 위해
-이번 PR에서 인자를 교체하거나 경고를 숨기지 않았다. 미래 API 대응은 별도 코드 버전으로 수행한다.
+위 381개 경고는 외부 D0 코드의 penalty 인자 deprecation이다. 실제 D0 코드는 보존하며
+외부 D0 경고를 숨기지 않았다. 이는 환경 smoke test의 경고 제거와 별개다.
 
 ## 후속 실행 경계
+
+### 홍주님 리뷰 반영: 환경 smoke와 레거시 검증 분리
+
+- sklearn 선언은 `>=1.8.0,<1.10`으로 제한하며 lock의 1.8.0은 유지한다.
+- 환경 smoke의 두 호출은 `LogisticRegression(C=1.0, l1_ratio=0.0, max_iter=1000)`으로 변경한다.
+  유한 C의 L2 모델은 API 호환성 확인용이며 실제 무규제 Platt 모델을 대체하지 않는다.
+- 환경 테스트 모듈에서만 경고를 오류로 처리한다. 외부 D0 및 백엔드 경고 정책은 바꾸지 않는다.
+- 1.8.0에서 `C=np.inf`는 별도 UserWarning을 발생시키므로 무규제가 필요 없는 smoke에는 쓰지 않는다.
+- `<1.10`은 penalty 제거 버전으로의 무검토 상승을 막는 임시 상한이다. 허용 범위의 모든 버전을 검증했다는 뜻은 아니다.
+
+### 상한 제거 조건
+
+1. 기존 D0 코드·실행·환경 기록을 보존하고 별도 코드 버전/PR에서 API를 이전한다.
+2. 무규제와 L1/L2 의미를 보존한다. 위 유한 C smoke 구성을 실제 Platt에 복사하지 않는다.
+3. 합성 안전성 테스트 및 사전 정의한 기준에 따른 필요한 수치 검증을 수행한다.
+4. 코드 변경 실행을 기존 코드의 환경 재현으로 표기하지 않는다.
+5. 데이터/AI·공동 환경 리뷰 후 상한·lock·환경 문서를 함께 갱신한다.
+
+근거: [sklearn 1.8 변경 내역](https://scikit-learn.org/stable/whats_new/v1.8.html),
+[무규제 인자 경고 이슈](https://github.com/scikit-learn/scikit-learn/issues/32927).
+
+### 기존 실행 제한 유지
 
 - 공식 환경에서는 uv.lock의 pytest 9.0.2를 사용. 기존 실험 requirements의 pytest <9 제한은 그 환경의 이력으로 보존하고 함께 설치하지 않음.
 - 모델 코드가 develop에 정식 편입될 때 D0 전체 합성 테스트의 CI 연결을 별도 수행.
