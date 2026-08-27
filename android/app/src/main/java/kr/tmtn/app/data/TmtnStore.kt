@@ -2,7 +2,9 @@ package kr.tmtn.app.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import kr.tmtn.app.domain.ml.Sex
+import kr.tmtn.app.domain.ml.StrengthIntensity
+import kr.tmtn.app.domain.ml.PregnancyStatus
+import kr.tmtn.app.domain.ml.SexCode
 import kr.tmtn.app.domain.model.Axis
 import kr.tmtn.app.domain.model.DailyRecord
 import kr.tmtn.app.domain.model.MissionType
@@ -38,38 +40,53 @@ class TmtnStore(context: Context) {
     /* ---------------------------------------------------------- 프로필 */
 
     fun loadProfile(): UserProfile {
-        val raw = prefs.getString(KEY_PROFILE, null) ?: return UserProfile()
+        val rawJson = prefs.getString(KEY_PROFILE, null) ?: return UserProfile()
         return runCatching {
-            val o = JSONObject(raw)
+            val o = JSONObject(rawJson)
             UserProfile(
+                name = o.optString("name"),
                 nickname = o.optString("nickname"),
                 birthYear = o.optInt("birthYear"),
-                sex = o.optString("sex").takeIf { it.isNotEmpty() }?.let { runCatching { Sex.valueOf(it) }.getOrNull() },
+                birthMonth = o.optInt("birthMonth"),
+                sexCode = SexCode.fromCode(o.optIntOrNull("sexCode")),
                 heightCm = o.optDouble("heightCm", 0.0),
                 weightKg = o.optDouble("weightKg", 0.0),
-                waistCm = if (o.has("waistCm") && !o.isNull("waistCm")) o.optDouble("waistCm") else null,
-                aerobicMinutesPerWeek = o.optInt("aerobicMinutesPerWeek"),
-                strengthDaysPerWeek = o.optInt("strengthDaysPerWeek"),
-                goal = o.optString("goal"),
-                preferredSlot = o.optString("preferredSlot", "언제나"),
+                strengthDaysWeek = o.optIntOrNull("strengthDaysWeek"),
+                strengthIntensity = runCatching {
+                    StrengthIntensity.valueOf(o.optString("strengthIntensity"))
+                }.getOrNull(),
+                aerobicLightMinWeek = o.optIntOrNull("aerobicLightMinWeek"),
+                aerobicModerateMinWeek = o.optIntOrNull("aerobicModerateMinWeek"),
+                aerobicVigorousMinWeek = o.optIntOrNull("aerobicVigorousMinWeek"),
+                pregnancyStatus = runCatching {
+                    PregnancyStatus.valueOf(o.optString("pregnancyStatus"))
+                }.getOrDefault(PregnancyStatus.UNKNOWN),
             )
         }.getOrDefault(UserProfile())
     }
 
     fun saveProfile(p: UserProfile) {
+        // 모르는 값을 0 으로 바꾸지 않는다 (data_contract_v0_3 convert_unknown_to_zero: false)
         val o = JSONObject()
+            .put("name", p.name)
             .put("nickname", p.nickname)
             .put("birthYear", p.birthYear)
-            .put("sex", p.sex?.name ?: "")
+            .put("birthMonth", p.birthMonth)
+            .put("sexCode", p.sexCode?.knhanesCode ?: JSONObject.NULL)
             .put("heightCm", p.heightCm)
             .put("weightKg", p.weightKg)
-            .put("aerobicMinutesPerWeek", p.aerobicMinutesPerWeek)
-            .put("strengthDaysPerWeek", p.strengthDaysPerWeek)
-            .put("goal", p.goal)
-            .put("preferredSlot", p.preferredSlot)
-        if (p.waistCm != null) o.put("waistCm", p.waistCm) else o.put("waistCm", JSONObject.NULL)
+            .put("strengthDaysWeek", p.strengthDaysWeek ?: JSONObject.NULL)
+            .put("strengthIntensity", p.strengthIntensity?.name ?: JSONObject.NULL)
+            .put("aerobicLightMinWeek", p.aerobicLightMinWeek ?: JSONObject.NULL)
+            .put("aerobicModerateMinWeek", p.aerobicModerateMinWeek ?: JSONObject.NULL)
+            .put("aerobicVigorousMinWeek", p.aerobicVigorousMinWeek ?: JSONObject.NULL)
+            .put("pregnancyStatus", p.pregnancyStatus.name)
         prefs.edit().putString(KEY_PROFILE, o.toString()).apply()
     }
+
+    /** null 과 0 을 구분해서 읽는다. 없는 값을 0 으로 만들지 않기 위해 필요하다. */
+    private fun JSONObject.optIntOrNull(key: String): Int? =
+        if (has(key) && !isNull(key)) optInt(key) else null
 
     /* ------------------------------------------------- 오늘 고른 카드 */
 

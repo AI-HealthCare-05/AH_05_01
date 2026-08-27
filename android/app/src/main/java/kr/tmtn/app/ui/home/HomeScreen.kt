@@ -68,7 +68,7 @@ fun HomeScreen(today: TodayViewModel, nav: NavHostController) {
                     }
                     else -> {
                         Text(
-                            "안녕 ${today.profile.nickname.ifBlank { "친구" }}야. 오늘 카드 세 장 가져왔어.",
+                            "안녕 ${today.profile.displayName}야. 오늘 카드 세 장 가져왔어.",
                             style = TmtnText.Title, color = TmtnColor.OnSurface,
                         )
                         TmtnFilledButton("오늘의 카드 고르기", onClick = { nav.navigate(Route.CARD_PICK) })
@@ -159,6 +159,8 @@ fun IndexCard(state: ModelResult<TmtnIndexResult>, onDetail: () -> Unit) {
                 }
             }
             is ModelResult.NotReady -> NoteBox(body = state.reason)
+            is ModelResult.UnsupportedPopulation ->
+                NoteBox(title = "지금은 참고 정보를 보여드리지 않아요", body = state.reason)
             is ModelResult.Failed -> NoteBox(tone = NoteTone.Warning, title = "지금은 계산할 수 없어요", body = state.reason)
         }
     }

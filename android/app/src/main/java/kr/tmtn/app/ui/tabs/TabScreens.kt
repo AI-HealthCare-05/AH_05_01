@@ -115,23 +115,7 @@ fun ReferenceScreen(today: TodayViewModel) {
                 else -> Unit
             }
 
-            when (val w = today.waistState) {
-                is ModelResult.Ready -> TmtnCardBox {
-                    Text("허리둘레 (추정)", style = TmtnText.Label, color = TmtnColor.OnSurface)
-                    Text(
-                        "약 %.0f cm (%.0f~%.0f)".format(w.value.waistCm, w.value.lowCm, w.value.highCm),
-                        style = TmtnText.Title, color = TmtnColor.OnSurface,
-                    )
-                    Text(
-                        "직접 잰 값이 없어 키·몸무게로 추정했어요. 마이에서 실제로 잰 값을 넣으면 그 값을 씁니다.",
-                        style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
-                    )
-                    if (w.info.isPlaceholder) {
-                        Text("샘플 값이에요 — ${w.info.note}", style = TmtnText.Caption, color = TmtnColor.Wood)
-                    }
-                }
-                else -> Unit
-            }
+            WaistCard(today)
 
             TmtnCardBox {
                 Text("연결된 모델", style = TmtnText.Label, color = TmtnColor.OnSurface)
@@ -160,12 +144,14 @@ fun MyPageScreen(today: TodayViewModel, onLoggedOut: () -> Unit) {
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
             TmtnCardBox {
-                Text(p.nickname.ifBlank { "친구" }, style = TmtnText.Title, color = TmtnColor.OnSurface)
+                Text(p.displayName, style = TmtnText.Title, color = TmtnColor.OnSurface)
                 StatRow("출생연도", if (p.birthYear > 0) "${p.birthYear}년" else "-")
                 StatRow("키 · 몸무게", "%.0f cm · %.0f kg".format(p.heightCm, p.weightKg))
-                StatRow("허리둘레", p.waistCm?.let { "%.0f cm (직접 입력)".format(it) } ?: "추정값 사용 중")
-                StatRow("주간 유산소", "${p.aerobicMinutesPerWeek}분")
-                StatRow("주간 근력", "${p.strengthDaysPerWeek}일")
+                StatRow("근력운동", p.strengthDaysWeek?.let { if (it == 0) "안 함" else if (it >= 5) "주 5회+" else "주 ${it}회" } ?: "입력 안 함")
+                StatRow("근력 강도", p.strengthIntensity?.label ?: "입력 안 함")
+                StatRow("유산소 · 저강도", p.aerobicLightMinWeek?.let { "주 ${it}분" } ?: "입력 안 함")
+                StatRow("유산소 · 중강도", p.aerobicModerateMinWeek?.let { "주 ${it}분" } ?: "입력 안 함")
+                StatRow("유산소 · 고강도", p.aerobicVigorousMinWeek?.let { "주 ${it}분" } ?: "입력 안 함")
             }
 
             NoteBox(
@@ -178,6 +164,45 @@ fun MyPageScreen(today: TodayViewModel, onLoggedOut: () -> Unit) {
                 onLoggedOut()
             }
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/* ------------------------------------------------- 허리둘레 카드 */
+
+/**
+ * 허리둘레는 **모델이 추정한 값 하나뿐**이다.
+ * 앱은 줄자로 잰 값을 아예 받지 않는다 — 계약상 잰 값은 모델 입력으로 쓸 수 없어서
+ * (`measured_waist_as_disease_input: prohibited`) 화면에 같이 두면 오해만 생기기 때문이다.
+ */
+@Composable
+private fun WaistCard(today: TodayViewModel) {
+    TmtnCardBox {
+        Text("허리둘레 (추정)", style = TmtnText.Label, color = TmtnColor.OnSurface)
+
+        when (val state = today.waistState) {
+            is ModelResult.Ready -> {
+                val e = state.value
+                Text("약 %.0f cm".format(e.waistCm), style = TmtnText.Title, color = TmtnColor.OnSurface)
+                Text(
+                    "추정 범위 %.0f~%.0f cm · 입력 %s".format(e.lowCm, e.highCm, e.tier.name),
+                    style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                )
+                Text(
+                    "키·몸무게·활동량으로 추정한 값이에요. 줄자로 잰 값은 따로 받지 않습니다.",
+                    style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                )
+                StatRow("추정기 버전", e.estimatorVersion)
+                if (state.info.isPlaceholder) {
+                    Text("샘플 값이에요 — ${state.info.note}", style = TmtnText.Caption, color = TmtnColor.Wood)
+                }
+            }
+            is ModelResult.NotReady -> NoteBox(body = state.reason)
+            is ModelResult.UnsupportedPopulation ->
+                NoteBox(title = "지금은 추정하지 않아요", body = state.reason)
+            is ModelResult.Failed ->
+                NoteBox(tone = NoteTone.Warning, title = "추정에 실패했어요", body = state.reason)
+            null -> NoteBox(body = "키·몸무게·성별을 넣으면 허리둘레를 추정해 드려요.")
         }
     }
 }

@@ -19,7 +19,7 @@ import kotlin.random.Random
 object DailyCardDraw {
 
     fun draw(catalog: MissionCatalog, profile: UserProfile, date: String, count: Int = 3): List<MissionCard> {
-        val seed = (date + "|" + profile.birthYear + "|" + profile.nickname).hashCode().toLong()
+        val seed = (date + "|" + profile.birthYear + "|" + profile.displayName).hashCode().toLong()
         val rnd = Random(seed)
 
         val axes = Axis.displayOrder.shuffled(rnd).take(count)
@@ -27,9 +27,9 @@ object DailyCardDraw {
         var riskUsed = false
 
         for (axis in axes) {
+            // 시간대는 온보딩에서 묻지 않는다(피그마 A09·A10 의 기상·취침 시각이 들어오면 그때 맞춘다).
+            // 지금은 모든 카드를 후보로 둔다.
             val pool = catalog.byAxis(axis)
-                .filter { it.timeSlots.isEmpty() || it.timeSlots.contains("언제나") || it.timeSlots.contains(profile.preferredSlot) }
-                .ifEmpty { catalog.byAxis(axis) }
 
             val safePool = pool.filter { it.safetyTag.isEmpty() }
             val chosenPool = if (riskUsed && safePool.isNotEmpty()) safePool else pool
