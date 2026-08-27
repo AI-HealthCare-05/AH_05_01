@@ -1,12 +1,12 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    // kotlin.android 없음 — AGP 9 내장 Kotlin 이 처리한다
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "kr.tmtn.app"
-    compileSdk = 36
+    compileSdk = 37   // Compose BOM 2026.08.00(Compose 1.12.0)이 37 이상을 요구한다. targetSdk 와는 별개.
 
     defaultConfig {
         applicationId = "kr.tmtn.app"
@@ -62,11 +62,8 @@ android {
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-    }
-}
+// Kotlin 의 jvmTarget 은 위 compileOptions.targetCompatibility(17) 를 자동으로 따라간다.
+// AGP 9 내장 Kotlin 의 기본 동작이라 따로 적지 않는다.
 
 dependencies {
     implementation(libs.androidx.core.ktx)

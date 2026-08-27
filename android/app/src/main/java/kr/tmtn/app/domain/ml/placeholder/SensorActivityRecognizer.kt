@@ -115,9 +115,9 @@ class SensorActivityRecognizer(private val context: Context) : ActivityRecognize
         }
 
         try {
-            if (stepSensor != null) sm?.registerListener(listener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
+            if (stepSensor != null) sm.registerListener(listener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
             if (pressureSensor != null && request.missionType == MissionType.MODEL_STAIR_COUNT) {
-                sm?.registerListener(listener, pressureSensor, SensorManager.SENSOR_DELAY_NORMAL)
+                sm.registerListener(listener, pressureSensor, SensorManager.SENSOR_DELAY_NORMAL)
             }
 
             var active = resumeFrom.activeSeconds

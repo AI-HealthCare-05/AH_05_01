@@ -132,6 +132,10 @@ debug APK 는 서명 걱정 없이 바로 폰에 설치된다. QA·발표 시연
 
 | 증상 | 원인 | 할 일 |
 |---|---|---|
+| `requires ... compile against version 37 or later` (13건) | Compose BOM 2026.08.00 이 SDK 37 을 요구 | 2026-08-27 수정 완료. `compileSdk = 37`. **`targetSdk` 는 36 그대로 둔다** — 셋은 따로 올린다 |
+| `The 'org.jetbrains.kotlin.android' plugin is no longer required for Kotlin support since AGP 9.0` | **AGP 9 부터 Kotlin 이 내장됨** | 2026-08-27 수정 완료. `build.gradle.kts` 두 곳에서 `kotlin.android` 를 뺐다. **다시 넣지 말 것.** Compose 컴파일러 플러그인(`kotlin.plugin.compose`)은 내장이 아니라 계속 필요하다 |
+| `Cannot add extension with name 'kotlin'` | 위와 같은 원인 | `kotlin.android` 플러그인이 어딘가 남아 있다 |
+| `kotlin-kapt` 관련 오류 | AGP 9 비호환 | `com.android.legacy-kapt` 로 바꾸거나 KSP 로 이전. 지금 프로젝트는 kapt 를 안 쓴다 |
 | `Failed to resolve: androidx.core:core-ktx:1.18.0` | 잠정 버전을 넣어 둔 것 | `android/gradle/libs.versions.toml` 에서 Android Studio 가 제안하는 stable 로 바꾸고, `DEVELOPMENT_ENVIRONMENT.md` 에도 같이 적는다 |
 | `Failed to resolve: androidx.activity:activity-compose:1.12.0` | 위와 같음 | 위와 같음 |
 | `Unsupported class file major version` | JDK 가 17이 아님 | Settings → Build Tools → Gradle → Gradle JDK 를 17 로 |

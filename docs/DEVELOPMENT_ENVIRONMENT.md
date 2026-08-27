@@ -66,12 +66,16 @@ Android 프로젝트를 만들 때 아래 값을 최초 기준으로 사용합�
 | Android Gradle Plugin | `9.1.1` | stable, API 36 지원 |
 | Gradle Wrapper | `9.3.1` | AGP 9.1.1 기본 호환 버전 |
 | Kotlin | `2.4.10` | Kotlin 2.4 최신 bugfix stable |
-| SDK Build Tools | `36.0.0` | AGP·Android 16 기준 |
-| `compileSdk` | `36` | Android 16 API 사용 |
+| SDK Build Tools | `37.0.0` | compileSdk 와 맞춤 (2026-08-27) |
+| `compileSdk` | `37` | **Compose BOM `2026.08.00`(Compose 1.12.0)이 37 이상을 요구.** 2026-08-27 36에서 상향 |
 | `targetSdk` | `36` | 2026-08-31 Google Play 신규 앱 기준 충족 |
 | `minSdk` | `28` | Health Connect 실제 사용 가능 최소 Android 9 |
 | Java/Kotlin bytecode target | `17` | JDK·AGP 기준 통일 |
 | Compose BOM | `2026.08.00` | Compose stable 라이브러리 묶음 |
+
+> **`compileSdk` 와 `targetSdk` 가 다른 이유** (2026-08-27)
+> `compileSdk` 는 *어떤 API 로 컴파일할 수 있나*, `targetSdk` 는 *어떤 런타임 동작에 동의하나*, `minSdk` 는 *어떤 기기에 설치되나* 를 정합니다. 셋은 따로 올릴 수 있습니다.
+> Compose BOM `2026.08.00` 이 끌어오는 Compose `1.12.0` 이 컴파일 시 SDK 37 을 요구해서 `compileSdk` 만 37 로 올렸습니다. `targetSdk` 는 Google Play 기준을 맞추기 위해 `36` 으로 유지하고, `minSdk 28` 도 그대로입니다. 설치 가능 기기와 앱 동작은 달라지지 않습니다.
 
 ### Android 핵심 라이브러리 기준
 
@@ -220,7 +224,7 @@ docker compose exec mysql bash /docker-entrypoint-initdb.d/01-grant-test-databas
 - [ ] Android Studio stable 버전이 팀 기준과 일치한다
 - [ ] JDK 17을 사용한다
 - [ ] AGP·Gradle wrapper·Kotlin 버전을 위 표대로 설정했다
-- [ ] `compileSdk=36`, `targetSdk=36`, `minSdk=28`이다
+- [ ] `compileSdk=37`, `targetSdk=36`, `minSdk=28`이다 (compileSdk 만 37인 것은 의도된 것)
 - [ ] Compose BOM과 Firebase BOM을 사용한다
 - [ ] stable dependency만 사용한다
 - [ ] `libs.versions.toml`과 Gradle wrapper를 commit했다
