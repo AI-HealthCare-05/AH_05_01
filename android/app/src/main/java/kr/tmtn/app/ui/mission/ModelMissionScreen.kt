@@ -5,6 +5,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -34,6 +38,15 @@ import kr.tmtn.app.ui.nav.Route
 @Composable
 fun ModelMissionScreen(today: TodayViewModel, nav: NavHostController) {
     val card = today.picked ?: run { nav.popBackStack(); return }
+    var showAbort by remember { mutableStateOf(false) }
+
+    // C19 · 진행 중이던 것을 버리는 일이라 한 번 묻는다.
+    if (showAbort) {
+        AbortConfirmDialog(
+            onContinue = { showAbort = false },
+            onAbort = { showAbort = false; nav.popBackStack() },
+        )
+    }
 
     val vm: MissionRunViewModel = viewModel(
         key = "model_${card.id}",
@@ -56,7 +69,7 @@ fun ModelMissionScreen(today: TodayViewModel, nav: NavHostController) {
     val s = vm.snapshot
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        TmtnTopBar("오늘의 행동", onBack = { nav.popBackStack() }, actionLabel = "중단", onAction = { nav.popBackStack() })
+        TmtnTopBar("오늘의 행동", onBack = { nav.popBackStack() }, actionLabel = "중단", onAction = { showAbort = true })
 
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(card.title, style = TmtnText.Headline, color = TmtnColor.OnSurface)

@@ -113,6 +113,21 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
 
     fun isDoneToday(): Boolean = records.any { it.date == dateKey }
 
+    /* ------------------------------------------------- 회고 · 적합도 */
+
+    var reflection by mutableStateOf(container.store.reflectionOn(TmtnDate.todayKey()))
+        private set
+
+    var fit by mutableStateOf(container.store.fitOn(TmtnDate.todayKey()))
+        private set
+
+    /** 한 줄과 적합도는 선택이다. 비워 두어도 기록은 이미 남아 있다. */
+    fun saveReflection(note: String, fitAnswer: String) {
+        container.store.saveReflection(dateKey, note, fitAnswer)
+        reflection = note
+        fit = fitAnswer
+    }
+
     /* ------------------------------------------------------ 대체 미션 */
 
     /** 오늘 이미 한 번 바꿨나 */

@@ -151,6 +151,25 @@ class TmtnStore(context: Context) {
 
     fun isDoneToday(date: String): Boolean = records().any { it.date == date }
 
+    /* ------------------------------------------------- 회고 · 적합도 */
+
+    /**
+     * 완료 뒤 남기는 한 줄과 "오늘 이거 어땠나" 답. (C20 · C08)
+     *
+     * 둘 다 **선택**이다. 안 쓰고 넘어가도 기록은 이미 남아 있다.
+     * 적합도는 나중에 카드를 고를 때 난이도를 맞추는 신호로 쓴다.
+     */
+    fun reflectionOn(date: String): String = prefs.getString("note_$date", "") ?: ""
+
+    fun fitOn(date: String): String = prefs.getString("fit_$date", "") ?: ""
+
+    fun saveReflection(date: String, note: String, fit: String) {
+        prefs.edit()
+            .putString("note_$date", note)
+            .putString("fit_$date", fit)
+            .apply()
+    }
+
     /* ------------------------------------------------------ 대체 미션 */
 
     /**
