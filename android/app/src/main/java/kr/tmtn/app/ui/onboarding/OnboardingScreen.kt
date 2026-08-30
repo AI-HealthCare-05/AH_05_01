@@ -3,6 +3,9 @@ package kr.tmtn.app.ui.onboarding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -91,16 +94,28 @@ private fun BasicStep(p: UserProfile, set: (UserProfile) -> Unit) {
     Hint("닉네임을 비우면 이름을 그대로 씁니다. 화면에는 '${p.displayName}' 로 보여요.")
 
     SectionRow("생년월일", "연·월만")
+    // 숫자를 타이핑하게 두면 1980 을 198 로 흘리거나 월에 54 같은 값이 들어간다.
+    // 고를 수 있는 값만 목록으로 보여 주고 스크롤해서 고르게 한다.
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.weight(1f)) {
-            Field("연도", if (p.birthYear > 0) p.birthYear.toString() else "", KeyboardType.Number, "1990") {
-                set(p.copy(birthYear = it.filter(Char::isDigit).take(4).toIntOrNull() ?: 0))
-            }
+            PickerField(
+                label = "연도",
+                value = if (p.birthYear > 0) "${p.birthYear}년" else "",
+                placeholder = "고르기",
+                // 상한은 올해다. 해가 바뀌면 저절로 따라 올라간다.
+                options = (BIRTH_YEAR_MIN..java.time.LocalDate.now().year).reversed().map { it to "${it}년" },
+                selected = p.birthYear.takeIf { it > 0 },
+                defaultValue = DEFAULT_BIRTH_YEAR,
+            ) { set(p.copy(birthYear = it)) }
         }
         Box(Modifier.weight(1f)) {
-            Field("월", if (p.birthMonth > 0) p.birthMonth.toString() else "", KeyboardType.Number, "3") {
-                set(p.copy(birthMonth = it.filter(Char::isDigit).take(2).toIntOrNull() ?: 0))
-            }
+            PickerField(
+                label = "월",
+                value = if (p.birthMonth > 0) "${p.birthMonth}월" else "",
+                placeholder = "고르기",
+                options = (1..12).map { it to "${it}월" },
+                selected = p.birthMonth.takeIf { it > 0 },
+            ) { set(p.copy(birthMonth = it)) }
         }
     }
     Hint("정확한 날짜는 받지 않습니다. 연·월만 있으면 충분해요.")
@@ -110,7 +125,6 @@ private fun BasicStep(p: UserProfile, set: (UserProfile) -> Unit) {
         PickChip("남성", p.sexCode == SexCode.MALE) { set(p.copy(sexCode = SexCode.MALE)) }
         PickChip("여성", p.sexCode == SexCode.FEMALE) { set(p.copy(sexCode = SexCode.FEMALE)) }
     }
-    Hint("또래 참고 범위를 맞출 때만 씁니다. 화면에 표시되지 않아요.")
 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.weight(1f)) {
@@ -137,7 +151,6 @@ private fun BasicStep(p: UserProfile, set: (UserProfile) -> Unit) {
             set(p.copy(pregnancyStatus = PregnancyStatus.UNKNOWN))
         }
     }
-    Hint("건강 참고 정보를 보여드려도 되는지 판단하는 데만 씁니다. 점수 계산에는 넣지 않아요.")
 }
 
 /* ---------------------------------------------------- 2단계 · 운동 정보 */
@@ -186,6 +199,98 @@ private fun ExerciseStep(p: UserProfile, set: (UserProfile) -> Unit) {
 }
 
 /* ---------------------------------------------------------- 조각들 */
+
+/** 생년 연도의 아래 끝. 위 끝은 늘 "올해" 라서 해가 바뀌면 저절로 늘어난다. */
+private const val BIRTH_YEAR_MIN = 1900
+
+/** 아직 안 고른 상태에서 목록이 처음 멈춰 서는 자리. 쓰는 사람 다수가 이 근처다. */
+private const val DEFAULT_BIRTH_YEAR = 1970
+
+/**
+ * 눌러서 목록에서 고르는 칸. 글자를 치지 않으므로 잘못된 값이 아예 들어오지 않는다.
+ *
+ * 연도는 127개라 휠보다 **목록**이 낫다 —
+ * 휠은 글자가 작아지고 손을 놓는 순간 옆 값으로 밀린다.
+ * 목록은 열자마자 지금 고른 값으로 스크롤해 두어 멀리 헤매지 않게 한다.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PickerField(
+    label: String,
+    value: String,
+    placeholder: String,
+    options: List<Pair<Int, String>>,
+    selected: Int?,
+    defaultValue: Int? = null,
+    onPick: (Int) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = { },
+        readOnly = true,
+        enabled = false,          // 키보드가 뜨지 않게 아예 막고, 누르는 것은 아래 Box 가 받는다
+        label = { Text(label, style = TmtnText.Caption) },
+        placeholder = { Text(placeholder, style = TmtnText.Body) },
+        textStyle = TmtnText.Body,
+        shape = TmtnShape.Input,
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            disabledContainerColor = TmtnColor.Surface,
+            disabledTextColor = TmtnColor.OnSurface,
+            disabledBorderColor = TmtnColor.Outline,
+            disabledLabelColor = TmtnColor.OnSurfaceVariant,
+            disabledPlaceholderColor = TmtnColor.OnSurfaceVariant,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = TmtnTarget.Min)
+            .clickable { open = true },
+    )
+
+    if (open) {
+        // 아직 고른 값이 없으면 목록 맨 위(2026년)에서 시작하게 두지 않는다.
+        // 고혈압·당뇨 생활습관 앱이라 쓰는 사람 대부분이 중장년이고,
+        // 맨 위에서 시작하면 자기 연도까지 40~70번을 내려야 한다.
+        val startIndex = options.indexOfFirst { it.first == selected }
+            .takeIf { it >= 0 }
+            ?: options.indexOfFirst { it.first == defaultValue }.coerceAtLeast(0)
+        val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
+
+        ModalBottomSheet(
+            onDismissRequest = { open = false },
+            containerColor = TmtnColor.Background,
+        ) {
+            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
+                Text("${label} 고르기", style = TmtnText.Title, color = TmtnColor.OnSurface)
+                Spacer(Modifier.height(12.dp))
+                LazyColumn(state = listState, modifier = Modifier.heightIn(max = 360.dp)) {
+                    items(options.size) { i ->
+                        val (v, text) = options[i]
+                        val isSel = v == selected
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = TmtnTarget.Min)
+                                .clip(TmtnShape.Chip)
+                                .background(if (isSel) TmtnColor.Primary else TmtnColor.Background)
+                                .clickable { onPick(v); open = false }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            Text(
+                                text,
+                                style = TmtnText.BodyLarge,
+                                color = if (isSel) TmtnColor.OnPrimary else TmtnColor.OnSurface,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun StepBar(step: Int) {

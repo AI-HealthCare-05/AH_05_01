@@ -177,8 +177,23 @@ fun TmtnOutlinedButton(text: String, modifier: Modifier = Modifier, onClick: () 
 }
 
 @Composable
-fun TmtnQuietButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = modifier.fillMaxWidth()) {
+/**
+ * 가장 조용한 버튼. 세로로 쌓을 때가 많아 **기본은 전체 폭**이다.
+ *
+ * 가로로 나란히 둘 때는 [fillWidth] 를 꺼야 한다.
+ * 켠 채로 Row 에 넣으면 버튼마다 폭을 다 요구해서 옆 글자가 한 자씩 접힌다.
+ * (2026-08-30 기록 달력의 "2026년 8월" 이 세로로 쪼개진 원인이었다.)
+ */
+fun TmtnQuietButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    fillWidth: Boolean = true,
+    onClick: () -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = if (fillWidth) modifier.fillMaxWidth() else modifier,
+    ) {
         Text(text, style = TmtnText.Label, color = TmtnColor.OnSurfaceVariant)
     }
 }

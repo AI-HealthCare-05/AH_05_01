@@ -98,15 +98,17 @@ private fun MonthCalendar(
     val grid = remember(year, month) { TmtnDate.monthGrid(year, month) }
 
     TmtnCardBox {
+        // 이 줄의 주인공은 "몇 월" 이다. 이동 버튼은 옆에서 거드는 정도로 둔다.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            TmtnQuietButton("이전", onClick = onPrev)
+            TmtnQuietButton("이전", fillWidth = false, onClick = onPrev)
             Text(
                 "${year}년 ${month}월",
-                style = TmtnText.Label, color = TmtnColor.OnSurface,
+                style = TmtnText.Title, color = TmtnColor.OnSurface,
                 textAlign = TextAlign.Center,
+                maxLines = 1,
                 modifier = Modifier.weight(1f),
             )
-            TmtnQuietButton("다음", onClick = onNext)
+            TmtnQuietButton("다음", fillWidth = false, onClick = onNext)
         }
 
         // 월요일 시작

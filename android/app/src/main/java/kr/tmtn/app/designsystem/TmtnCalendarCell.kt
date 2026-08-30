@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,9 +55,14 @@ fun CalendarDayCell(
         if (isToday) append(", 오늘")
     }
 
+    // 그려지는 원은 34dp 지만 **누르는 영역은 그보다 넓다.**
+    // 날짜 칸을 원 크기 그대로 두면 손가락으로 정확히 짚기 어렵다.
+    // 가로는 달력이 나눠 준 칸을 다 쓰고, 세로는 최소 터치 크기를 지킨다.
+    // (7칸이라 가로로 48dp 를 온전히 주면 화면을 넘긴다 — 세로로 벌어 채운다.)
     Box(
         Modifier
-            .size(TmtnCalendar.CellSize)
+            .fillMaxWidth()
+            .height(TmtnTarget.Min)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             // 원·테두리는 그림일 뿐이다. 읽어 주는 것은 위에서 만든 한 문장이면 된다.
             .clearAndSetSemantics { contentDescription = label },

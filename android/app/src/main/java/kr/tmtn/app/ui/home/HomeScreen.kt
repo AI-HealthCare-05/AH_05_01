@@ -165,7 +165,7 @@ private fun RestConfirmDialog(left: Int, onDismiss: () -> Unit, onConfirm: () ->
             TmtnFilledButton("오늘 쉬어가기", onClick = onConfirm, modifier = Modifier.width(160.dp))
         },
         dismissButton = {
-            TmtnQuietButton("아니요", onClick = onDismiss)
+            TmtnQuietButton("아니요", fillWidth = false, onClick = onDismiss)
         },
     )
 }
@@ -235,7 +235,7 @@ private fun DamSummaryCard(today: TodayViewModel, onOpen: () -> Unit) {
                 Text("댐", style = TmtnText.Label, color = TmtnColor.OnSurface)
                 Text("${stage}단계 · 다음까지 ${toNext}개", style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
             }
-            TmtnQuietButton("보러 가기", onClick = onOpen, modifier = Modifier.width(110.dp))
+            TmtnQuietButton("보러 가기", fillWidth = false, onClick = onOpen)
         }
     }
 }
