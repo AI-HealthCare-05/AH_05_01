@@ -94,12 +94,12 @@ fun DamScreen(today: TodayViewModel) {
     }
 }
 
-/* ------------------------------------------------------------- 참고 탭 */
+/* --------------------------------------------------------- 틈튼지수 탭 */
 
 @Composable
 fun ReferenceScreen(today: TodayViewModel) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        TmtnTopBar("참고")
+        TmtnTopBar("틈튼지수")
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
             IndexCard(today.indexState, onDetail = { })
@@ -136,13 +136,13 @@ fun ReferenceScreen(today: TodayViewModel) {
     }
 }
 
-/* ------------------------------------------------------------- 마이 탭 */
+/* ---------------------------------------------------------- 내 정보 탭 */
 
 @Composable
 fun MyPageScreen(today: TodayViewModel, onLoggedOut: () -> Unit) {
     val p = today.profile
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        TmtnTopBar("마이")
+        TmtnTopBar("내 정보")
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
             TmtnCardBox {

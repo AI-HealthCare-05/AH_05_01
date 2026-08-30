@@ -176,7 +176,7 @@ private fun ExerciseStep(p: UserProfile, set: (UserProfile) -> Unit) {
 
     Hint("0분도 괜찮아요. 하지 않는다면 0으로 두세요.")
     NoteBox(
-        body = "세 가지 강도를 모두 채워 주세요. 나중에 마이에서 고칠 수 있어요. " +
+        body = "세 가지 강도를 모두 채워 주세요. 나중에 내 정보에서 고칠 수 있어요. " +
             "저강도는 참고용이고, 참고 정보 계산에는 중강도와 고강도 시간만 들어갑니다.",
     )
 }

@@ -39,7 +39,7 @@ private fun filled(name: String, d: String): ImageVector =
     }.build()
 
 object TmtnIcons {
-    /** 하단 탭 5개 — 기록 · 댐 · 홈 · 참고 · 마이 */
+    /** 하단 탭 5개 — 기록 · 댐 · 홈 · 틈튼지수 · 내 정보 */
     val Record: ImageVector = stroked("record", "M4 7h16v13H4z M8 4v5 M16 4v5 M4 12h16")
     val Dam: ImageVector = stroked("dam", "M6 7h12 M4 12h16 M7 17h10 M12 17v3")
     val Home: ImageVector = stroked("home", "M4 11l8-7 8 7 M6.5 10v10h11V10")

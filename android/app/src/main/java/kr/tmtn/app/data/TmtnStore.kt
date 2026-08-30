@@ -151,7 +151,7 @@ class TmtnStore(context: Context) {
 
     fun isDoneToday(date: String): Boolean = records().any { it.date == date }
 
-    /** 데모를 처음부터 다시 보고 싶을 때. 마이 탭에서 부른다. */
+    /** 데모를 처음부터 다시 보고 싶을 때. 내 정보 탭에서 부른다. */
     fun resetAll() {
         prefs.edit().clear().apply()
     }
