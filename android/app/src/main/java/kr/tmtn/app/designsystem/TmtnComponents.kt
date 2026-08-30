@@ -346,10 +346,10 @@ fun StatRow(label: String, value: String) {
 @Composable
 fun RewardChip(name: String, hint: String, count: Int = 1) {
     Row(
-        Modifier.clip(TmtnShape.SmallCard).background(TmtnColor.WoodContainer).padding(10.dp),
+        Modifier.clip(TmtnShape.SmallCard).background(TmtnColor.MaterialContainer).padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(TmtnIcons.Leaf, contentDescription = null, tint = TmtnColor.Wood, modifier = Modifier.size(20.dp))
+        Icon(TmtnIcons.Leaf, contentDescription = null, tint = materialColor(name), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
         Column {
             Text("$name ${count}개", style = TmtnText.Label, color = TmtnColor.OnSurface)
@@ -382,4 +382,21 @@ fun ImageSlot(tag: String, title: String, desc: String, height: Dp = 150.dp) {
         Spacer(Modifier.height(4.dp))
         Text(desc, style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant, textAlign = TextAlign.Center)
     }
+}
+
+/**
+ * 재료 5종의 색. v5 팔레트에 정의돼 있는데 그동안 아무 데서도 쓰이지 않아
+ * 모든 재료가 주황 하나로 그려지고 있었다 — 새잎까지 주황이었다.
+ *
+ * 재료색은 **"주황은 오늘에만" 규칙과 별개**다.
+ * 나뭇가지가 주황인 것은 그 재료의 색이지 "오늘" 을 뜻하는 게 아니다.
+ * 다만 그래서 재료색은 **재료를 가리킬 때만** 쓴다. 버튼이나 강조에 끌어 쓰지 않는다.
+ */
+fun materialColor(rewardName: String): Color = when {
+    rewardName.contains("나뭇가지") -> TmtnColor.MaterialBranch
+    rewardName.contains("받침돌") -> TmtnColor.MaterialStone
+    rewardName.contains("물길") -> TmtnColor.MaterialWater
+    rewardName.contains("다짐흙") -> TmtnColor.MaterialEarth
+    rewardName.contains("새잎") -> TmtnColor.MaterialLeaf
+    else -> TmtnColor.OnSurfaceVariant
 }

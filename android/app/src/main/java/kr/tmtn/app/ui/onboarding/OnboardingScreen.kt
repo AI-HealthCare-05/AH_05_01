@@ -180,9 +180,14 @@ private fun ExerciseStep(p: UserProfile, set: (UserProfile) -> Unit) {
     }
 
     SectionRow("보통 어느 정도 힘들게 하세요?", "강도")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // 힌트 길이가 제각각이라 한 장만 두 줄이 되면 그 카드만 키가 커진다.
+    // 셋을 같은 높이로 묶어 바닥을 맞춘다.
+    Row(
+        Modifier.height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         StrengthIntensity.entries.forEach { s ->
-            Box(Modifier.weight(1f)) {
+            Box(Modifier.weight(1f).fillMaxHeight()) {
                 IntensityCard(s.label, s.hint, p.strengthIntensity == s) { set(p.copy(strengthIntensity = s)) }
             }
         }
@@ -371,6 +376,7 @@ private fun IntensityCard(title: String, hint: String, selected: Boolean, onClic
     Column(
         Modifier
             .fillMaxWidth()
+            .fillMaxHeight()
             .clip(TmtnShape.SmallCard)
             // 칩과 같은 이유로 먹색 채움. SecondaryContainer 로는 표가 나지 않는다.
             .background(if (selected) TmtnColor.Primary else TmtnColor.Surface)

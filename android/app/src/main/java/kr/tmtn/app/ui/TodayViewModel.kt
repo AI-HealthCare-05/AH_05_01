@@ -121,6 +121,10 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
     var fit by mutableStateOf(container.store.fitOn(TmtnDate.todayKey()))
         private set
 
+    /** 지난 날의 회고를 읽는다. 기록 탭의 하루 상세에서 쓴다. */
+    fun reflectionOf(date: String): String = container.store.reflectionOn(date)
+    fun fitOf(date: String): String = container.store.fitOn(date)
+
     /** 한 줄과 적합도는 선택이다. 비워 두어도 기록은 이미 남아 있다. */
     fun saveReflection(note: String, fitAnswer: String) {
         container.store.saveReflection(dateKey, note, fitAnswer)

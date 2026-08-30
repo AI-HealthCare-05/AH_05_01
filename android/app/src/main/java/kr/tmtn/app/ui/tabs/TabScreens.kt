@@ -177,7 +177,10 @@ private fun DayDetailSheet(today: TodayViewModel, dateKey: String, onClose: () -
             Text(TmtnDate.weekdayLabel(dateKey), style = TmtnText.Title, color = TmtnColor.OnSurface)
 
             when (status) {
-                DayStatus.DONE -> records.forEach { RecordRow(it) }
+                DayStatus.DONE -> {
+                    records.forEach { RecordRow(it) }
+                    DayReflection(today, dateKey)
+                }
                 DayStatus.REST -> NoteBox(
                     title = "쉬어간 날이에요",
                     body = "직접 고른 쉼이라 연속 기록은 이어집니다.",
@@ -382,6 +385,28 @@ private fun WaistCard(today: TodayViewModel) {
             is ModelResult.Failed ->
                 NoteBox(tone = NoteTone.Warning, title = "추정에 실패했어요", body = state.reason)
             null -> NoteBox(body = "키·몸무게·성별을 넣으면 허리둘레를 추정해 드려요.")
+        }
+    }
+}
+
+/**
+ * 그날 남긴 한 줄과 적합도. (C20 · C08 을 나중에 다시 보는 자리)
+ *
+ * 완료 화면은 끝낸 직후에만 열려서, 그때 안 쓰면 다시 쓸 길이 없었다.
+ * 지나간 날은 고치지 않고 **읽기만** 한다 — 그날의 기분을 나중에 덮어쓰면
+ * 기록이 아니라 각색이 된다.
+ */
+@Composable
+private fun DayReflection(today: TodayViewModel, dateKey: String) {
+    val note = today.reflectionOf(dateKey)
+    val fit = today.fitOf(dateKey)
+    if (note.isBlank() && fit.isBlank()) return
+
+    TmtnCardBox {
+        Text("그날 남긴 것", style = TmtnText.Label, color = TmtnColor.OnSurface)
+        if (fit.isNotBlank()) StatRow("체감", fit)
+        if (note.isNotBlank()) {
+            Text(note, style = TmtnText.Body, color = TmtnColor.OnSurface)
         }
     }
 }
