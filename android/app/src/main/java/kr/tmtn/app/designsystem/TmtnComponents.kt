@@ -293,18 +293,22 @@ enum class NoteTone { Neutral, Notice, Warning }
  */
 @Composable
 fun NoteBox(tone: NoteTone = NoteTone.Neutral, title: String? = null, body: String) {
+    // 바탕은 세 톤 모두 차분하게 둔다. **구분은 왼쪽 강조 바가 한다.**
+    // v5 에서 RewardContainer 가 진한 앰버(#FFB400)로 바뀌었는데, 그걸 Notice
+    // 바탕으로 쓰니 안내 박스가 화면에서 가장 센 덩어리가 되어 정작 봐야 할
+    // 미션 내용을 눌렀다. (2026-08-30 실기기에서 확인)
     val bg = when (tone) {
         NoteTone.Neutral -> TmtnColor.DisabledContainer
-        NoteTone.Notice -> TmtnColor.RewardContainer
+        NoteTone.Notice -> TmtnColor.DisabledContainer
         NoteTone.Warning -> TmtnColor.ErrorContainer
     }
+    // Notice 는 먹색 바, Neutral 은 회색 바로 가른다. 주황은 "오늘" 에만 쓴다.
     val accent = when (tone) {
         NoteTone.Neutral -> TmtnColor.OnSurfaceVariant
         NoteTone.Notice -> TmtnColor.OnSurface
         NoteTone.Warning -> TmtnColor.Error
     }
-    // 진한 앰버 위에서는 보조색 글자가 AA 에 못 미친다. 본문도 먹색으로 올린다.
-    val bodyColor = if (tone == NoteTone.Notice) TmtnColor.OnSurface else TmtnColor.OnSurfaceVariant
+    val bodyColor = TmtnColor.OnSurfaceVariant
 
     Row(
         Modifier.fillMaxWidth().height(IntrinsicSize.Min)

@@ -6,7 +6,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -30,6 +35,26 @@ fun CardFrontScreen(today: TodayViewModel, nav: NavHostController) {
         return
     }
     val done = today.isDoneToday()
+    var showHardToday by remember { mutableStateOf(false) }
+
+    // 오늘 못 하겠다고 그냥 나가면 그 날은 **미완료**로 남는다.
+    // 쉼은 직접 골라야만 기록되므로, 여기서 고를 기회를 준다.
+    // (CLAUDE.md 가 정한 쉼 버튼 자리 중 하나가 이 화면 B06 이다.)
+    if (showHardToday) {
+        HardTodayDialog(
+            restLeft = today.restLeftThisWeek(),
+            onRest = {
+                today.markRestToday()
+                showHardToday = false
+                nav.navigate(Route.HOME) { popUpTo(Route.HOME) }
+            },
+            onJustLeave = {
+                showHardToday = false
+                nav.navigate(Route.HOME) { popUpTo(Route.HOME) }
+            },
+            onDismiss = { showHardToday = false },
+        )
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         TmtnTopBar("오늘의 카드", onBack = { nav.popBackStack() })
@@ -83,7 +108,7 @@ fun CardFrontScreen(today: TodayViewModel, nav: NavHostController) {
                         nav.navigate(next)
                     },
                 )
-                TmtnQuietButton("오늘은 하기 어려워") { nav.navigate(Route.HOME) { popUpTo(Route.HOME) } }
+                TmtnQuietButton("오늘은 하기 어려워") { showHardToday = true }
             }
             Spacer(Modifier.height(40.dp))
         }
@@ -107,4 +132,53 @@ private fun EmptyPicked(nav: NavHostController) {
         NoteBox(title = "아직 고른 카드가 없어요", body = "오늘의 카드를 먼저 골라 주세요.")
         TmtnFilledButton("카드 고르러 가기", onClick = { nav.navigate(Route.CARD_PICK) })
     }
+}
+
+/**
+ * "오늘은 하기 어려워" 를 눌렀을 때.
+ *
+ * 그냥 내보내면 그 날은 미완료가 되어 연속 기록이 끊긴다.
+ * 쉼은 **직접 고른 날만** 인정되므로, 나가기 전에 고를 기회를 준다.
+ * 이번 주 몫을 다 썼으면 쉼을 권하지 않고 이유를 밝힌다.
+ */
+@Composable
+private fun HardTodayDialog(
+    restLeft: Int,
+    onRest: () -> Unit,
+    onJustLeave: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = TmtnColor.Background,
+        shape = TmtnShape.Sheet,
+        title = { Text("오늘은 쉬어갈까요?", style = TmtnText.Title, color = TmtnColor.OnSurface) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (restLeft > 0) {
+                    Text(
+                        "쉼으로 표시하면 연속 기록이 끊기지 않아요.",
+                        style = TmtnText.Body, color = TmtnColor.OnSurface,
+                    )
+                    Text(
+                        "이번 주에 ${restLeft}번 쉴 수 있어요.",
+                        style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        "이번 주 쉼을 다 썼어요. 그냥 나가면 오늘은 기록이 비어요.",
+                        style = TmtnText.Body, color = TmtnColor.OnSurface,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (restLeft > 0) {
+                TmtnQuietButton("오늘은 쉬어가기", fillWidth = false, onClick = onRest)
+            }
+        },
+        dismissButton = {
+            TmtnQuietButton("그냥 나가기", fillWidth = false, onClick = onJustLeave)
+        },
+    )
 }
