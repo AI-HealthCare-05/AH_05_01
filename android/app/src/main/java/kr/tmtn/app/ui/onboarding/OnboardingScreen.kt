@@ -124,7 +124,6 @@ private fun BasicStep(p: UserProfile, set: (UserProfile) -> Unit) {
             }
         }
     }
-    Hint("여기 적은 값은 계정에만 저장되고 외부 제공에 쓰지 않습니다.")
 
     SectionRow("임신 중이신가요", "안전 확인")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

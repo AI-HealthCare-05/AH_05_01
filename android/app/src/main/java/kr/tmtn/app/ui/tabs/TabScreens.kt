@@ -120,6 +120,7 @@ fun ReferenceScreen(today: TodayViewModel) {
             WaistCard(today)
 
             TmtnCardBox {
+                // [DEMO-MODEL] "샘플" 대신 실제 버전이 뜬다. 지우지 말 것.
                 Text("연결된 모델", style = TmtnText.Label, color = TmtnColor.OnSurface)
                 StatRow("허리둘레 추정", ModelRegistry.waistEstimator.info.let { if (it.isPlaceholder) "샘플" else it.version })
                 StatRow("행동 인식", ModelRegistry.activityRecognizer.info.let { if (it.isPlaceholder) "샘플" else it.version })
@@ -156,10 +157,7 @@ fun MyPageScreen(today: TodayViewModel, onLoggedOut: () -> Unit) {
                 StatRow("유산소 · 고강도", p.aerobicVigorousMinWeek?.let { "주 ${it}분" } ?: "입력 안 함")
             }
 
-            NoteBox(
-                body = "주민등록번호와 전체 생년월일은 받지 않습니다. 위치는 거리 미션을 할 때만 쓰고 기록으로 남기지 않습니다.",
-            )
-
+            // [DEMO] 데모 단계 전용. 서버가 붙으면 지운다.
             TmtnOutlinedButton("데모 데이터 초기화") { today.resetDemo() }
             TmtnQuietButton("로그아웃") {
                 today.logout()

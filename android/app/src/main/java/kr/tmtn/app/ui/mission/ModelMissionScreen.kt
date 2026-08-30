@@ -104,6 +104,8 @@ fun ModelMissionScreen(today: TodayViewModel, nav: NavHostController) {
             }
 
             val info = ModelRegistry.activityRecognizer.info
+            // [DEMO-MODEL] 진짜 모델을 넣고 ModelSlot.info.isPlaceholder = false 로 두면
+            // 저절로 사라진다. 코드를 지우지 말 것.
             if (info.isPlaceholder) {
                 NoteBox(tone = NoteTone.Notice, title = "샘플 측정 중이에요", body = info.note)
             }

@@ -83,6 +83,8 @@ fun LoginScreen(onDone: () -> Unit) {
 
         TmtnQuietButton("둘러보기", onClick = onDone)
 
+        // [DEMO] 서버가 붙으면 이 NoteBox 를 통째로 지운다.
+        // 서버 연동 뒤에는 사실과 달라지는 문장이라 그냥 두면 안 된다.
         NoteBox(
             tone = NoteTone.Neutral,
             title = "아직 데모 단계예요",

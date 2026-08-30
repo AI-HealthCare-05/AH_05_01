@@ -75,6 +75,7 @@ fun MissionCompleteScreen(today: TodayViewModel, nav: NavHostController) {
                 )
             }
 
+            // [DEMO-MODEL] isPlaceholder = false 가 되면 저절로 사라진다. 지우지 말 것.
             if (record.fromPlaceholderModel) {
                 NoteBox(
                     tone = NoteTone.Notice,

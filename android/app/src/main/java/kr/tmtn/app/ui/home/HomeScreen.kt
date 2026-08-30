@@ -151,6 +151,8 @@ fun IndexCard(state: ModelResult<TmtnIndexResult>, onDetail: () -> Unit) {
                     "${r.windowLabel} · ${r.disclaimer}",
                     style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
                 )
+                // [DEMO-MODEL] 진짜 모델을 넣고 ModelSlot.info.isPlaceholder = false 로 두면
+                // 저절로 사라진다. 코드를 지우지 말 것.
                 if (state.info.isPlaceholder) {
                     Text(
                         "샘플 값이에요 — ${state.info.note}",
