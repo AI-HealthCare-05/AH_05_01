@@ -14,6 +14,8 @@ import kr.tmtn.app.domain.ml.TmtnIndexInput
 import kr.tmtn.app.domain.ml.TmtnIndexResult
 import kr.tmtn.app.domain.ml.WaistEstimate
 import kr.tmtn.app.domain.model.DailyRecord
+import kr.tmtn.app.domain.model.DayStatus
+import kr.tmtn.app.domain.model.REST_PER_WEEK
 import kr.tmtn.app.domain.model.MissionCard
 import kr.tmtn.app.domain.model.UserProfile
 
@@ -110,6 +112,66 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun isDoneToday(): Boolean = records.any { it.date == dateKey }
+
+    /* ------------------------------------------------------------ 쉼 */
+
+    /** 오늘을 쉼으로 표시했나 */
+    var isRestToday by mutableStateOf(container.store.isRest(TmtnDate.todayKey()))
+        private set
+
+    /** 이번 주에 이미 쉰 횟수 (월요일 시작) */
+    fun restUsedThisWeek(): Int = container.store.restDaysInWeek(TmtnDate.thisWeek()).size
+
+    /** 이번 주에 남은 쉼 횟수 */
+    fun restLeftThisWeek(): Int = (REST_PER_WEEK - restUsedThisWeek()).coerceAtLeast(0)
+
+    /**
+     * 오늘을 쉼으로 표시한다.
+     * 이미 미션을 끝냈거나 이번 주 몫을 다 썼으면 아무 일도 하지 않는다 —
+     * 화면에서 미리 막지만, 여기서도 한 번 더 막는다.
+     */
+    fun markRestToday(): Boolean {
+        if (isDoneToday() || isRestToday || restLeftThisWeek() <= 0) return false
+        container.store.markRest(dateKey)
+        isRestToday = true
+        return true
+    }
+
+    /** 잘못 눌렀을 때 되돌리기 */
+    fun undoRestToday() {
+        container.store.clearRest(dateKey)
+        isRestToday = false
+    }
+
+    fun statusOf(date: String): DayStatus = when {
+        records.any { it.date == date } -> DayStatus.DONE
+        container.store.isRest(date) -> DayStatus.REST
+        TmtnDate.isFuture(date) -> DayStatus.FUTURE
+        date == dateKey -> DayStatus.FUTURE   // 오늘은 아직 지나지 않았다. 미완료로 몰지 않는다
+        else -> DayStatus.MISSED
+    }
+
+    /**
+     * 연속 기록. 오늘부터 거슬러 올라가며 센다.
+     *
+     * **쉼은 끊지 않고 건너뛴다** — 대신 연속일수로 세지도 않는다.
+     * 미완료를 만나면 거기서 멈춘다.
+     */
+    fun streak(): Int {
+        var n = 0
+        var cursor = java.time.LocalDate.now()
+        // 오늘을 아직 안 했다고 연속이 깨진 것은 아니다. 어제부터 본다.
+        if (statusOf(cursor.toString()) != DayStatus.DONE) cursor = cursor.minusDays(1)
+        while (true) {
+            when (statusOf(cursor.toString())) {
+                DayStatus.DONE -> n++
+                DayStatus.REST -> Unit          // 건너뛴다
+                else -> return n
+            }
+            cursor = cursor.minusDays(1)
+            if (n > 400) return n               // 안전장치
+        }
+    }
 
     fun resetDemo() {
         container.store.resetAll()

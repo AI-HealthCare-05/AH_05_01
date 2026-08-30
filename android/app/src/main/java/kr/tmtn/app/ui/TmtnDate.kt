@@ -28,6 +28,42 @@ object TmtnDate {
 
     fun lastDays(n: Int): List<String> =
         (0 until n).map { LocalDate.now().minusDays((n - 1 - it).toLong()).toString() }
+
+    /* ── 달력 ────────────────────────────────────────────── */
+
+    /** 주간·월간 달력 모두 **월요일 시작**이다. */
+    fun weekStart(d: LocalDate): LocalDate = d.minusDays((d.dayOfWeek.value - 1).toLong())
+
+    /** 그 날이 속한 주의 월요일 (키 문자열) */
+    fun weekStartKey(key: String): String = runCatching {
+        weekStart(LocalDate.parse(key)).toString()
+    }.getOrDefault(key)
+
+    /** 이번 주 월요일부터 일요일까지 7일 */
+    fun thisWeek(): List<String> {
+        val mon = weekStart(LocalDate.now())
+        return (0..6).map { mon.plusDays(it.toLong()).toString() }
+    }
+
+    /**
+     * 월간 달력 격자. 앞뒤로 빈 칸을 두지 않고 **이전·다음 달 날짜로 채운다.**
+     * 6주 × 7일 = 42칸 고정이라 달을 넘겨도 표 높이가 흔들리지 않는다.
+     */
+    fun monthGrid(year: Int, month: Int): List<String> {
+        val first = LocalDate.of(year, month, 1)
+        val start = weekStart(first)
+        return (0 until 42).map { start.plusDays(it.toLong()).toString() }
+    }
+
+    fun monthOf(key: String): Int = runCatching { LocalDate.parse(key).monthValue }.getOrDefault(0)
+    fun dayOf(key: String): Int = runCatching { LocalDate.parse(key).dayOfMonth }.getOrDefault(0)
+
+    /** 오늘보다 뒤인가 (아직 오지 않은 날) */
+    fun isFuture(key: String): Boolean = runCatching {
+        LocalDate.parse(key).isAfter(LocalDate.now())
+    }.getOrDefault(false)
+
+    val weekdayHeaders = listOf("월", "화", "수", "목", "금", "토", "일")
 }
 
 /** 초 → `08:04` */

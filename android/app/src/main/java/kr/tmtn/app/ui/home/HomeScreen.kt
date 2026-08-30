@@ -1,12 +1,18 @@
 package kr.tmtn.app.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -14,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import kr.tmtn.app.designsystem.*
 import kr.tmtn.app.domain.ml.IndexBand
+import kr.tmtn.app.domain.model.DayStatus
 import kr.tmtn.app.domain.ml.ModelResult
 import kr.tmtn.app.domain.ml.TmtnIndexResult
 import kr.tmtn.app.ui.TmtnDate
@@ -24,6 +31,19 @@ import kr.tmtn.app.ui.nav.Route
 fun HomeScreen(today: TodayViewModel, nav: NavHostController) {
     val picked = today.picked
     val done = today.isDoneToday()
+    var showRestConfirm by remember { mutableStateOf(false) }
+
+    // B16 · 쉬어가기 확인. 쉼은 **직접 누른 날에만** 기록되므로 한 번 더 묻는다.
+    if (showRestConfirm) {
+        RestConfirmDialog(
+            left = today.restLeftThisWeek(),
+            onDismiss = { showRestConfirm = false },
+            onConfirm = {
+                today.markRestToday()
+                showRestConfirm = false
+            },
+        )
+    }
 
     Column(
         Modifier
@@ -61,10 +81,21 @@ fun HomeScreen(today: TodayViewModel, nav: NavHostController) {
                         Text("오늘 할 만큼 했어. 내일 또 보자.", style = TmtnText.Title, color = TmtnColor.OnSurface)
                         TmtnTonalButton("오늘 카드 다시 보기") { nav.navigate(Route.CARD_FRONT) }
                     }
+                    // B17 · 홈 · 오늘은 쉼
+                    today.isRestToday -> {
+                        StatusBadge(BadgeState.Info, "오늘은 쉼")
+                        Text("오늘은 쉬어 가기로 했지. 그것도 잘한 거야.", style = TmtnText.Title, color = TmtnColor.OnSurface)
+                        Text(
+                            "연속 기록은 그대로 이어져. 내일 다시 만나자.",
+                            style = TmtnText.Body, color = TmtnColor.OnSurfaceVariant,
+                        )
+                        TmtnQuietButton("쉼 취소하기") { today.undoRestToday() }
+                    }
                     picked != null -> {
                         StatusBadge(BadgeState.Running, "진행 중")
                         Text("${picked.oneLine} 같이 해보자.", style = TmtnText.Title, color = TmtnColor.OnSurface)
                         TmtnFilledButton("미션 이어하기", onClick = { nav.navigate(Route.CARD_FRONT) })
+                        RestLink(today) { showRestConfirm = true }
                     }
                     else -> {
                         Text(
@@ -72,6 +103,7 @@ fun HomeScreen(today: TodayViewModel, nav: NavHostController) {
                             style = TmtnText.Title, color = TmtnColor.OnSurface,
                         )
                         TmtnFilledButton("오늘의 카드 고르기", onClick = { nav.navigate(Route.CARD_PICK) })
+                        RestLink(today) { showRestConfirm = true }
                     }
                 }
             }
@@ -83,30 +115,112 @@ fun HomeScreen(today: TodayViewModel, nav: NavHostController) {
     }
 }
 
+/**
+ * 쉬어가기 진입점. 주 버튼과 나란히 두지 않고 **한 단계 낮은 무게**로 둔다 —
+ * 오늘의 주된 행동은 어디까지나 카드를 고르는 것이다.
+ * 이번 주 몫을 다 썼으면 누를 수 없게 하고 이유를 밝힌다.
+ */
+@Composable
+private fun RestLink(today: TodayViewModel, onClick: () -> Unit) {
+    val left = today.restLeftThisWeek()
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        if (left > 0) {
+            TmtnQuietButton("오늘은 쉬어가기", onClick = onClick)
+        } else {
+            Text(
+                "이번 주 쉼을 다 썼어요",
+                style = TmtnText.Label,
+                color = TmtnColor.OnDisabled,
+            )
+        }
+        Text(
+            if (left > 0) "이번 주 ${left}번 남음" else "다음 주 월요일에 다시 채워져요",
+            style = TmtnText.Caption,
+            color = TmtnColor.OnSurfaceVariant,
+        )
+    }
+}
+
+/** B16 · 홈 · 쉬어가기 확인 */
+@Composable
+private fun RestConfirmDialog(left: Int, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = TmtnColor.Background,
+        shape = TmtnShape.Sheet,
+        title = { Text("오늘은 쉬어갈까요?", style = TmtnText.Title, color = TmtnColor.OnSurface) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "쉼으로 표시하면 연속 기록이 끊기지 않아요.",
+                    style = TmtnText.Body, color = TmtnColor.OnSurface,
+                )
+                Text(
+                    "이번 주에 ${left}번 쉴 수 있어요. 쉼은 월요일에 다시 채워집니다.",
+                    style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TmtnFilledButton("오늘 쉬어가기", onClick = onConfirm, modifier = Modifier.width(160.dp))
+        },
+        dismissButton = {
+            TmtnQuietButton("아니요", onClick = onDismiss)
+        },
+    )
+}
+
 @Composable
 private fun RecentWeekCard(today: TodayViewModel) {
-    val days = TmtnDate.lastDays(7)
-    val doneDays = today.records.map { it.date }.toSet()
-    val count = days.count { doneDays.contains(it) }
+    // 홈은 이번 주(월~일)를 보여 준다. 기록 탭의 달력과 주 경계가 같아야 헷갈리지 않는다.
+    val days = TmtnDate.thisWeek()
+    val count = days.count { today.statusOf(it) == DayStatus.DONE }
+    val streak = today.streak()
 
     TmtnCardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("최근 7일", style = TmtnText.Label, color = TmtnColor.OnSurface)
-                Text("이번 주 ${count}일 실천했어요", style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
+                Text("이번 주", style = TmtnText.Label, color = TmtnColor.OnSurface)
+                Text(
+                    if (streak > 0) "${count}일 실천 · 연속 ${streak}일" else "${count}일 실천했어요",
+                    style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 days.forEach { d ->
-                    Box(
-                        Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(if (doneDays.contains(d)) TmtnColor.Primary else TmtnColor.OutlineVariant),
-                    )
+                    WeekDot(today.statusOf(d), isToday = d == today.dateKey)
                 }
             }
         }
     }
+}
+
+/**
+ * 주간 점 하나. 달력과 같은 규칙으로 읽히도록 **실천은 채우고, 쉼은 실선 테두리**로 둔다.
+ * 크기가 작아 점선까지는 표현하지 못하므로 미완료는 옅은 채움으로 둔다 —
+ * 정확한 네 상태 구분은 기록 탭 달력이 맡는다.
+ */
+@Composable
+private fun WeekDot(status: DayStatus, isToday: Boolean) {
+    Box(
+        Modifier
+            .size(10.dp)
+            .clip(CircleShape)
+            .background(
+                when (status) {
+                    DayStatus.DONE -> TmtnColor.Primary
+                    DayStatus.REST -> TmtnColor.DisabledContainer
+                    else -> TmtnColor.OutlineVariant
+                },
+            )
+            .then(
+                when {
+                    isToday -> Modifier.border(2.dp, TmtnColor.Secondary, CircleShape)
+                    status == DayStatus.REST -> Modifier.border(1.5.dp, TmtnColor.OnSurface, CircleShape)
+                    else -> Modifier
+                },
+            ),
+    )
 }
 
 @Composable

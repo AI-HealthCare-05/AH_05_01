@@ -151,6 +151,30 @@ class TmtnStore(context: Context) {
 
     fun isDoneToday(date: String): Boolean = records().any { it.date == date }
 
+    /* ---------------------------------------------------------- 쉼 */
+
+    /**
+     * 쉼은 **사용자가 직접 누른 날에만** 기록된다. 저절로 쉼이 되는 날은 없다.
+     * 아무것도 안 하고 지나간 날은 쉼이 아니라 미완료다.
+     *
+     * 한 주에 [REST_PER_WEEK] 번까지. 주는 월요일에 시작한다.
+     *
+     * TODO(서버): 이 카운트는 **서버가 세야** 기기를 바꾸거나 앱을 지웠다
+     *  깔아도 맞는다. 지금은 서버가 없어 이 기기 안에서만 센다.
+     */
+    fun isRest(date: String): Boolean = prefs.getBoolean("rest_$date", false)
+
+    fun markRest(date: String) {
+        prefs.edit().putBoolean("rest_$date", true).apply()
+    }
+
+    fun clearRest(date: String) {
+        prefs.edit().remove("rest_$date").apply()
+    }
+
+    /** 그 주에 이미 쉰 날들 (월요일 시작 7일 중) */
+    fun restDaysInWeek(weekDates: List<String>): List<String> = weekDates.filter { isRest(it) }
+
     /** 데모를 처음부터 다시 보고 싶을 때. 내 정보 탭에서 부른다. */
     fun resetAll() {
         prefs.edit().clear().apply()

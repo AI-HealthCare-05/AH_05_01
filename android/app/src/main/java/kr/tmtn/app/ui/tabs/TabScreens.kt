@@ -4,11 +4,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kr.tmtn.app.designsystem.*
 import kr.tmtn.app.domain.ml.ModelRegistry
+import kr.tmtn.app.domain.model.DayStatus
+import kr.tmtn.app.domain.model.REST_PER_WEEK
 import kr.tmtn.app.domain.ml.ModelResult
 import kr.tmtn.app.ui.TmtnDate
 import kr.tmtn.app.ui.TodayViewModel
@@ -16,40 +27,191 @@ import kr.tmtn.app.ui.home.IndexCard
 
 /* ------------------------------------------------------------- 기록 탭 */
 
+/**
+ * D01 · 기록 · 월 캘린더.
+ *
+ * 계층은 **달력 → 연속 기록 → 그 달의 기록 목록** 순이다.
+ * 달력이 이 화면의 주인공이므로 맨 위에 두고, 목록은 딸린 정보로 아래에 둔다.
+ */
 @Composable
 fun RecordScreen(today: TodayViewModel) {
+    val now = remember { java.time.LocalDate.now() }
+    var year by remember { mutableIntStateOf(now.year) }
+    var month by remember { mutableIntStateOf(now.monthValue) }
+    var selected by remember { mutableStateOf<String?>(null) }
+
+    // D03 · 하루 상세 시트
+    selected?.let { key ->
+        DayDetailSheet(today, key) { selected = null }
+    }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         TmtnTopBar("기록")
-        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (today.records.isEmpty()) {
-                NoteBox(title = "아직 기록이 없어요", body = "오늘의 카드를 한 장 끝내면 여기에 쌓여요.")
+        Column(
+            Modifier.padding(horizontal = TmtnSpace.ScreenMargin),
+            verticalArrangement = Arrangement.spacedBy(TmtnSpace.S16),
+        ) {
+            MonthCalendar(
+                today = today,
+                year = year, month = month,
+                onPrev = {
+                    val d = java.time.LocalDate.of(year, month, 1).minusMonths(1)
+                    year = d.year; month = d.monthValue
+                },
+                onNext = {
+                    val d = java.time.LocalDate.of(year, month, 1).plusMonths(1)
+                    year = d.year; month = d.monthValue
+                },
+                onPick = { selected = it },
+            )
+
+            StreakCard(today)
+
+            /* ── 그 달의 기록 ─────────────────────────────── */
+            val monthRecords = today.records.filter {
+                TmtnDate.monthOf(it.date) == month && it.date.startsWith("$year-")
+            }
+            if (monthRecords.isEmpty()) {
+                // D04 · 기록 없음
+                NoteBox(
+                    title = "이 달에는 아직 기록이 없어요",
+                    body = "카드를 한 장 끝내면 여기에 쌓여요.",
+                )
             } else {
-                today.records.forEach { r ->
-                    TmtnCardBox {
-                        Row {
-                            Text(TmtnDate.label(r.date), style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
-                            Spacer(Modifier.weight(1f))
-                            // 둘 다 이미 완료된 기록이다. 측정 "방식" 이지 상태가 아니므로
-                            // 진행중(주황)·완료(먹색) 칩을 쓰지 않는다. 구분은 글자가 한다.
-                            StatusBadge(
-                                BadgeState.Info,
-                                if (r.measuredByModel) "자동 측정" else "직접 확인",
-                            )
-                        }
-                        Text(r.title, style = TmtnText.Label, color = TmtnColor.OnSurface)
-                        Text(
-                            "${r.achieved}${r.unit} · 목표 ${r.targetNumber}${r.unit} · ${r.completedAtLabel}",
-                            style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
-                        )
-                        Text(
-                            "${r.axis.accessibleText()} · ${r.rewardName} 1개",
-                            style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                Text("${month}월의 기록", style = TmtnText.Label, color = TmtnColor.OnSurface)
+                monthRecords.sortedByDescending { it.date }.forEach { r -> RecordRow(r) }
+            }
+            Spacer(Modifier.height(TmtnSpace.S24))
+        }
+    }
+}
+
+@Composable
+private fun MonthCalendar(
+    today: TodayViewModel,
+    year: Int,
+    month: Int,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onPick: (String) -> Unit,
+) {
+    val grid = remember(year, month) { TmtnDate.monthGrid(year, month) }
+
+    TmtnCardBox {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            TmtnQuietButton("이전", onClick = onPrev)
+            Text(
+                "${year}년 ${month}월",
+                style = TmtnText.Label, color = TmtnColor.OnSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            TmtnQuietButton("다음", onClick = onNext)
+        }
+
+        // 월요일 시작
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TmtnDate.weekdayHeaders.forEach {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text(it, style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
+                }
+            }
+        }
+
+        grid.chunked(7).forEach { week ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                week.forEach { key ->
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        CalendarDayCell(
+                            day = TmtnDate.dayOf(key),
+                            status = today.statusOf(key),
+                            isToday = key == today.dateKey,
+                            inCurrentMonth = TmtnDate.monthOf(key) == month,
+                            onClick = { onPick(key) },
                         )
                     }
                 }
             }
-            Spacer(Modifier.height(24.dp))
         }
+
+        Spacer(Modifier.height(TmtnSpace.S4))
+        CalendarLegend()
+    }
+}
+
+/** D05 · 연속 기록 · 쉼 규칙 */
+@Composable
+private fun StreakCard(today: TodayViewModel) {
+    TmtnCardBox {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("연속 기록", style = TmtnText.Label, color = TmtnColor.OnSurface)
+                Text(
+                    "쉼으로 표시한 날은 끊기지 않아요",
+                    style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                )
+            }
+            Text("${today.streak()}일", style = TmtnText.Title, color = TmtnColor.OnSurface)
+        }
+        StatRow("이번 주 쉼", "${today.restUsedThisWeek()} / $REST_PER_WEEK")
+    }
+}
+
+/** D03 · 하루 상세 시트 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DayDetailSheet(today: TodayViewModel, dateKey: String, onClose: () -> Unit) {
+    val records = today.records.filter { it.date == dateKey }
+    val status = today.statusOf(dateKey)
+
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        containerColor = TmtnColor.Background,
+    ) {
+        Column(
+            Modifier.padding(horizontal = TmtnSpace.ScreenMargin).padding(bottom = TmtnSpace.S32),
+            verticalArrangement = Arrangement.spacedBy(TmtnSpace.S12),
+        ) {
+            Text(TmtnDate.weekdayLabel(dateKey), style = TmtnText.Title, color = TmtnColor.OnSurface)
+
+            when (status) {
+                DayStatus.DONE -> records.forEach { RecordRow(it) }
+                DayStatus.REST -> NoteBox(
+                    title = "쉬어간 날이에요",
+                    body = "직접 고른 쉼이라 연속 기록은 이어집니다.",
+                )
+                DayStatus.MISSED -> NoteBox(
+                    title = "기록이 없는 날이에요",
+                    body = "지나간 날은 되돌려 기록할 수 없어요. 오늘부터 다시 쌓으면 됩니다.",
+                )
+                DayStatus.FUTURE -> NoteBox(body = "아직 오지 않은 날이에요.")
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordRow(r: kr.tmtn.app.domain.model.DailyRecord) {
+    TmtnCardBox {
+        Row {
+            Text(TmtnDate.label(r.date), style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
+            Spacer(Modifier.weight(1f))
+            // 둘 다 이미 완료된 기록이다. 측정 "방식" 이지 상태가 아니므로
+            // 진행중(주황)·완료(먹색) 칩을 쓰지 않는다. 구분은 글자가 한다.
+            StatusBadge(
+                BadgeState.Info,
+                if (r.measuredByModel) "자동 측정" else "직접 확인",
+            )
+        }
+        Text(r.title, style = TmtnText.Label, color = TmtnColor.OnSurface)
+        Text(
+            "${r.achieved}${r.unit} · 목표 ${r.targetNumber}${r.unit} · ${r.completedAtLabel}",
+            style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+        )
+        Text(
+            "${r.axis.accessibleText()} · ${r.rewardName} 1개",
+            style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+        )
     }
 }
 
