@@ -1,6 +1,7 @@
 package kr.tmtn.app.ui.nav
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,7 +62,11 @@ fun TmtnApp(today: TodayViewModel) {
         NavHost(
             navController = nav,
             startDestination = start,
-            modifier = Modifier.padding(inner),
+            // 키보드가 올라오면 그만큼 화면을 밀어 올린다.
+            // Manifest 의 adjustResize 만으로는 부족하다 — enableEdgeToEdge() 를 쓰는 순간
+            // 앱이 창 여백을 직접 맡게 되어, 키보드가 입력 칸을 덮어 버린다.
+            // (2026-08-30 키·몸무게 칸이 가려진다는 제보로 확인)
+            modifier = Modifier.padding(inner).imePadding(),
         ) {
             composable(Route.LOGIN) {
                 LoginScreen(onDone = {

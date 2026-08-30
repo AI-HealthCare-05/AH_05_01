@@ -399,21 +399,39 @@ fun ImageSlot(tag: String, title: String, desc: String, height: Dp = 150.dp) {
  * 재료 5종의 그림. 이름으로 고른다.
  * 아직 이름이 안 맞는 재료가 오면 그림 없이 색만 쓴다 — 엉뚱한 그림을 보여 주지 않는다.
  */
-fun materialDrawable(rewardName: String): Int? = when {
-    rewardName.contains("나뭇가지") -> R.drawable.material_branch
-    rewardName.contains("받침돌") -> R.drawable.material_stone
-    rewardName.contains("물길") -> R.drawable.material_water
-    rewardName.contains("다짐흙") -> R.drawable.material_earth
-    rewardName.contains("새잎") -> R.drawable.material_leaf
+fun materialDrawable(reward: String): Int? = when (materialKey(reward)) {
+    "branch" -> R.drawable.material_branch
+    "stone" -> R.drawable.material_stone
+    "water" -> R.drawable.material_water
+    "soil" -> R.drawable.material_earth
+    "leaf" -> R.drawable.material_leaf
     else -> null
 }
 
-fun materialColor(rewardName: String): Color = when {
-    rewardName.contains("나뭇가지") -> TmtnColor.MaterialBranch
-    rewardName.contains("받침돌") -> TmtnColor.MaterialStone
-    rewardName.contains("물길") -> TmtnColor.MaterialWater
-    rewardName.contains("다짐흙") -> TmtnColor.MaterialEarth
-    rewardName.contains("새잎") -> TmtnColor.MaterialLeaf
+/**
+ * 재료 식별자. `missions.json` 의 `rewardMaterial`(BRANCH·STONE·WATERWAY·SOIL·LEAF)과
+ * 화면에 보이는 한글 이름(나뭇가지·받침돌·물길·다짐흙·새잎) **둘 다** 받는다.
+ *
+ * 코드 쪽이 안전하므로 먼저 본다. 한글 이름은 이름이 바뀌면 같이 깨지기 때문이다.
+ */
+private fun materialKey(reward: String): String {
+    val v = reward.trim().uppercase()
+    return when {
+        v == "BRANCH" || reward.contains("나뭇가지") -> "branch"
+        v == "STONE" || reward.contains("받침돌") -> "stone"
+        v == "WATERWAY" || v == "WATER" || reward.contains("물길") -> "water"
+        v == "SOIL" || v == "EARTH" || reward.contains("다짐흙") -> "soil"
+        v == "LEAF" || reward.contains("새잎") -> "leaf"
+        else -> ""
+    }
+}
+
+fun materialColor(reward: String): Color = when (materialKey(reward)) {
+    "branch" -> TmtnColor.MaterialBranch
+    "stone" -> TmtnColor.MaterialStone
+    "water" -> TmtnColor.MaterialWater
+    "soil" -> TmtnColor.MaterialEarth
+    "leaf" -> TmtnColor.MaterialLeaf
     else -> TmtnColor.OnSurfaceVariant
 }
 

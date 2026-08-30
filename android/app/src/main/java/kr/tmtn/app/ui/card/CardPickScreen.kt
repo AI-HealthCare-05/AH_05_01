@@ -1,6 +1,7 @@
 package kr.tmtn.app.ui.card
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import kr.tmtn.app.R
 import androidx.navigation.NavHostController
 import kr.tmtn.app.designsystem.*
 import kr.tmtn.app.ui.TmtnDate
@@ -115,42 +119,35 @@ fun CardPickScreen(today: TodayViewModel, nav: NavHostController) {
 
 @Composable
 private fun CardBack(index: Int, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Column(
+    // 뒷면은 브랜드 카드 그림이다. 고른 카드는 **테두리와 확대**로 표시한다 —
+    // 그림 위에 색을 덮으면 카드가 안 보인다.
+    Box(
         modifier
             .height(160.dp)
             .clip(TmtnShape.TodayCard)
-            .background(if (selected) TmtnColor.Primary else TmtnColor.SecondaryContainer)
             .border(
                 width = if (selected) 3.dp else 1.dp,
                 color = if (selected) TmtnColor.Primary else TmtnColor.OutlineVariant,
                 shape = TmtnShape.TodayCard,
             )
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .clickable(onClick = onClick),
     ) {
-        Box(
-            Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                // 고른 카드는 이미 먹색 채움과 굵은 테두리로 드러난다.
-                // 여기에 주황까지 얹을 이유가 없다 — 주황은 "오늘" 에만 쓴다.
-                .background(if (selected) TmtnColor.OnPrimary else TmtnColor.Surface),
+        Image(
+            painter = painterResource(R.drawable.card_back),
+            contentDescription = "카드 뒷면",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
         )
-        Text(
-            "심볼",
-            style = TmtnText.Caption,
-            textAlign = TextAlign.Center,
-            color = if (selected) TmtnColor.OnPrimary else TmtnColor.OnSurfaceVariant,
-        )
-        Text(
-            "뒷면",
-            style = TmtnText.Label,
-            color = if (selected) TmtnColor.OnPrimary else TmtnColor.OnSurface,
-        )
+        if (selected) {
+            // 고른 카드에만 얇은 먹색 막을 덮어 나머지와 갈라 준다.
+            Box(Modifier.fillMaxSize().background(TmtnColor.Scrim.copy(alpha = 0.28f)))
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("고름", style = TmtnText.Label, color = TmtnColor.OnPrimary)
+            }
+        }
     }
 }
+
 
 /**
  * B09 · 카드 덱 오류.
