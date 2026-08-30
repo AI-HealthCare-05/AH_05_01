@@ -48,7 +48,7 @@ fun CardFrontScreen(today: TodayViewModel, nav: NavHostController) {
                 HorizontalRule()
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(TmtnIcons.Walk, contentDescription = null, tint = TmtnColor.Secondary, modifier = Modifier.size(22.dp))
+                    Icon(TmtnIcons.Walk, contentDescription = null, tint = TmtnColor.OnSurfaceVariant, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text("오늘의 행동", style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)

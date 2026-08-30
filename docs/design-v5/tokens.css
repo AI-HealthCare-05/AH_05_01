@@ -1,0 +1,96 @@
+/* ==========================================================================
+   틈튼 TMTN · 디자인 토큰 v5 (2026-08-29)
+   Figma: ByGT2uoinUBxAQOBqAK7sM
+   컬렉션 "TMTN / 2 Semantic" · 모드 "순백 + 채도 블록"
+   v4(초록 팔레트)는 폐기. 여기 없는 색은 쓰지 마세요.
+   ========================================================================== */
+
+:root {
+  /* ---- 바탕 ---- */
+  --color-background:           #FFFFFF;   /* 화면 바탕 · 순백 */
+  --color-surface:              #F7F4EE;   /* 카드 · 시트 */
+
+  /* ---- 글자 ---- */
+  --color-on-surface:           #16181C;   /* 본문 · 제목 */
+  --color-on-surface-variant:   #666A71;   /* 보조 · 날짜 · 단위 */
+
+  /* ---- 주 동작 ---- */
+  --color-primary:              #16181C;
+  --color-on-primary:           #FFFFFF;
+
+  /* ---- 강조 · 주황은 '오늘'에만 ---- */
+  --color-secondary:            #FF7A1A;
+  --color-secondary-container:  #F7F4EE;
+
+  /* ---- 보상 ---- */
+  --color-reward:               #FF7A1A;
+  --color-on-reward:            #16181C;
+  --color-reward-container:     #FFB400;
+
+  /* ---- 오류 ---- */
+  --color-error:                #C92A2A;
+  --color-on-error:             #FFFFFF;
+  --color-error-container:      #FDECEC;
+
+  /* ---- 선 ---- */
+  --color-outline:              #B8B2A6;   /* 또렷한 선 · 미완료 링 */
+  --color-outline-variant:      #E5E0D6;   /* 옅은 구분선 */
+
+  /* ---- 비활성 ---- */
+  --color-disabled-container:   #EFEAE0;
+  --color-on-disabled:          #807D76;
+
+  --color-scrim:                #16181C;   /* 32% 알파로 사용 */
+
+  /* ---- 댐 재료 5종 ---- */
+  --color-material-branch:      #FF7A1A;   /* 나뭇가지 · 움직임/유산소 */
+  --color-material-stone:       #E03131;   /* 받침돌   · 근력 */
+  --color-material-water:       #1C6DD0;   /* 물길     · 수분 */
+  --color-material-earth:       #FFB400;   /* 다짐흙   · 생활리듬 */
+  --color-material-leaf:        #2F9E44;   /* 새잎     · 식사/기록 */
+  --color-material-container:   #F7F4EE;
+
+  /* ---- 글자 · 7단계뿐 ---- */
+  --font-family:                'Noto Sans KR', system-ui, sans-serif;
+  --text-display:               700 40px/50px var(--font-family);   /* Black 900 */
+  --text-headline:              700 32px/42px var(--font-family);   /* Black 900 */
+  --text-title:                 700 24px/32px var(--font-family);
+  --text-body-large:            500 19px/28px var(--font-family);
+  --text-body:                  400 16px/26px var(--font-family);
+  --text-label:                 700 14px/20px var(--font-family);
+  --text-caption:               500 14px/20px var(--font-family);
+
+  /* ---- 간격 ---- */
+  --space-4: 4px;   --space-8: 8px;   --space-12: 12px;
+  --space-16: 16px; --space-20: 20px; --space-24: 24px;
+  --space-32: 32px; --space-40: 40px; --space-48: 48px;
+  --screen-margin: 20px;
+
+  /* ---- 모서리 ---- */
+  --radius-input: 12px;
+  --radius-card-small: 12px;
+  --radius-card: 16px;
+  --radius-card-today: 24px;
+  --radius-sheet: 24px;
+  --radius-button: 14px;
+  --radius-pill: 999px;
+
+  /* ---- 누를 수 있는 것의 최소 크기 ---- */
+  --target-min: 48px;
+  --target-large: 56px;
+
+  /* ---- 그림자 · 먹색을 옅게 ---- */
+  --elevation-1: 0 1px 2px rgba(22,20,17,.04), 0 2px 6px rgba(22,20,17,.05);
+  --elevation-2: 0 2px 6px rgba(22,20,17,.06), 0 10px 24px rgba(22,20,17,.10);
+  --elevation-3: 0 4px 8px rgba(22,20,17,.08), 0 16px 36px rgba(22,20,17,.12), 0 32px 64px rgba(22,20,17,.06);
+
+  /* ---- 움직임 ---- */
+  --motion-standard: cubic-bezier(0.2, 0, 0, 1) 300ms;      /* 탭 전환 · 색 변화 */
+  --motion-enter:    cubic-bezier(0.05, 0.7, 0.1, 1) 350ms; /* 시트 열림 */
+  --motion-exit:     cubic-bezier(0.3, 0, 0.8, 0.15) 200ms; /* 닫힘. 항상 더 빠르게 */
+  --motion-press:    cubic-bezier(0.2, 0, 0, 1) 120ms;      /* scale(.98) + y1 */
+  --motion-reward:   cubic-bezier(0.34, 1.56, 0.64, 1) 450ms;
+}
+
+/* 숫자가 흔들리지 않게 */
+.tnum, [data-numeric] { font-variant-numeric: tabular-nums; }

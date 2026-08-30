@@ -61,7 +61,7 @@ fun MissionCompleteScreen(today: TodayViewModel, nav: NavHostController) {
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(TmtnIcons.Check, contentDescription = null, tint = TmtnColor.Secondary, modifier = Modifier.size(18.dp))
+                    Icon(TmtnIcons.Check, contentDescription = null, tint = TmtnColor.Primary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("틈튼카드첩에 저장했어요", style = TmtnText.Body, color = TmtnColor.OnSurfaceVariant)
                 }

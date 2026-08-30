@@ -1,5 +1,6 @@
 <resources>
-    <color name="tmtn_background">#F4F5F3</color>
-    <color name="tmtn_surface">#FFFFFF</color>
-    <color name="tmtn_primary">#0C3B2E</color>
+    <!-- Compose 의 TmtnColor 와 같은 값. 앱이 뜨기 전 잠깐의 창 배경에만 쓴다. -->
+    <color name="tmtn_background">#FFFFFF</color>
+    <color name="tmtn_surface">#F7F4EE</color>
+    <color name="tmtn_primary">#16181C</color>
 </resources>

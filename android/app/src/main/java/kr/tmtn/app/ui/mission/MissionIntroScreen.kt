@@ -48,7 +48,7 @@ fun MissionIntroScreen(today: TodayViewModel, nav: NavHostController) {
 
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(card.title, style = TmtnText.Headline, color = TmtnColor.OnSurface)
-            StatusBadge(BadgeState.Rest, "이 미션은 자동으로 측정해요")
+            StatusBadge(BadgeState.Info, "이 미션은 자동으로 측정해요")
 
             TmtnCardBox {
                 Text("무엇을 읽고 무엇을 읽지 않나요", style = TmtnText.Label, color = TmtnColor.OnSurface)

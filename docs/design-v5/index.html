@@ -1,0 +1,189 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>틈튼 TMTN · UI 핸드오프 v5</title>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:#FFFFFF;color:#16181C;
+ font:400 16px/26px 'Noto Sans KR','Malgun Gothic',system-ui,sans-serif;padding:40px 24px 80px}
+.wrap{max-width:1000px;margin:0 auto}
+h1{font-size:32px;line-height:42px;font-weight:900;margin:0 0 8px}
+.sub{color:#666A71;font-size:14px;line-height:20px;margin:0 0 32px}
+h2{font-size:24px;line-height:32px;font-weight:700;margin:40px 0 12px}
+.n{font-size:14px;font-weight:500;color:#666A71}
+.note{background:#F7F4EE;border-radius:16px;padding:20px;margin:0 0 24px}
+.note b{color:#FF7A1A}
+.tokens{display:flex;flex-wrap:wrap;gap:8px 20px;margin:0 0 24px}
+.tok{display:flex;align-items:center;gap:8px;font-size:14px;line-height:20px;color:#666A71;
+ font-variant-numeric:tabular-nums}
+.chip{width:20px;height:20px;border-radius:6px;display:inline-block;flex:0 0 auto}
+table{width:100%;border-collapse:collapse;margin:0 0 8px}
+th{text-align:left;font-size:14px;font-weight:700;color:#666A71;padding:8px 10px;
+ border-bottom:1px solid #E5E0D6;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid #E5E0D6;font-size:15px;vertical-align:top}
+td.c{white-space:nowrap;font-weight:700}
+td.c a{color:#16181C;text-decoration:none;border-bottom:2px solid #FF7A1A;padding-bottom:1px}
+td.c a:hover{color:#FF7A1A}
+td.d{color:#666A71;font-size:14px}
+td.m{text-align:center;color:#B8B2A6}
+em{font-style:normal;font-size:12px;font-weight:700;color:#FFFFFF;background:#FF7A1A;
+ border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:1px}
+em.mod{background:#16181C}
+a.top{color:#16181C}
+@media (max-width:640px){body{padding:24px 14px 60px}th:nth-child(3),td:nth-child(3){display:none}}
+</style></head><body><div class="wrap">
+<h1>틈튼 TMTN · UI 핸드오프 v5</h1>
+<p class="sub">2026-08-29 · 화면 107장 · Figma ByGT2uoinUBxAQOBqAK7sM</p>
+<div class="note">
+<p style="margin:0 0 8px"><b>먼저</b> <code>CHANGELOG_v4_to_v5.md</code> 를 읽으세요. 8/27 대비 바뀐 것과 고치는 순서가 들어 있습니다.</p>
+<p style="margin:0">아래 표에서 <b>코드를 누르면</b> 그 화면의 Figma가 열립니다. 이미지가 아니라 링크라서 항상 최신입니다.</p>
+</div>
+<h2>색 토큰 <span class="n">순백 + 채도 블록</span></h2>
+
+<div class="tokens">
+<div class="tok"><span class="chip" style="background:#FFFFFF;border:1px solid #E5E0D6"></span>background #FFFFFF</div>
+<div class="tok"><span class="chip" style="background:#F7F4EE"></span>surface #F7F4EE</div>
+<div class="tok"><span class="chip" style="background:#16181C"></span>on-surface / primary #16181C</div>
+<div class="tok"><span class="chip" style="background:#666A71"></span>on-surface-variant #666A71</div>
+<div class="tok"><span class="chip" style="background:#FF7A1A"></span>secondary #FF7A1A <b>오늘 전용</b></div>
+<div class="tok"><span class="chip" style="background:#FFB400"></span>reward-container #FFB400</div>
+<div class="tok"><span class="chip" style="background:#C92A2A"></span>error #C92A2A</div>
+<div class="tok"><span class="chip" style="background:#B8B2A6"></span>outline #B8B2A6</div>
+<div class="tok"><span class="chip" style="background:#E5E0D6"></span>outline-variant #E5E0D6</div>
+<div class="tok"><span class="chip" style="background:#EFEAE0"></span>disabled-container #EFEAE0</div>
+<div class="tok"><span class="chip" style="background:#807D76"></span>on-disabled #807D76</div>
+</div>
+
+<p class="sub" style="margin:-12px 0 0">주황은 <b>오늘</b>에만 씁니다. 완료·실천은 먹색입니다.</p>
+<h2>A · 인증 · 동의 · 온보딩 <span class="n">16장</span></h2>
+<table><thead><tr><th>코드</th><th>화면</th><th>앱바</th><th>주 버튼</th><th>탭</th><th>오버레이</th></tr></thead><tbody>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=99-2" target="_blank">A01</a></td><td>A01 · 스플래시</td><td class="d"></td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=99-21" target="_blank">A02</a></td><td>A02 · 시작 (로그인 · 가입)</td><td class="d"></td><td class="d">이메일로 시작하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=99-44" target="_blank">A03</a></td><td>A03 · 이메일 회원가입</td><td class="d">이메일로 시작하기</td><td class="d">인증번호 받기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=99-90" target="_blank">A04</a></td><td>A04 · 이메일 인증번호</td><td class="d">이메일 인증</td><td class="d">확인하고 가입 완료</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=100-68" target="_blank">A05</a></td><td>A05 · 로그인</td><td class="d">로그인</td><td class="d">로그인</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=100-107" target="_blank">A06</a></td><td>A06 · 필수 동의</td><td class="d">약관 동의</td><td class="d">동의하고 시작하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=136-148" target="_blank">A07</a></td><td>A07 · 필수 입력 · 기본 정보</td><td class="d">필수 입력</td><td class="d">운동 정보 입력하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=136-235" target="_blank">A08</a></td><td>A08 · 필수 입력 · 운동 정보</td><td class="d">필수 입력</td><td class="d">완료하고 시작하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=100-161" target="_blank">A09</a></td><td>A09 · 선택 온보딩 안내</td><td class="d">선택 입력</td><td class="d">생활 패턴 알려주기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=100-196" target="_blank">A10</a></td><td>A10 · 선택 온보딩 · 생활 패턴</td><td class="d">선택 입력</td><td class="d">이 시간으로 맞추기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=281-4428" target="_blank">A11</a></td><td>A11 · 인증번호 오류 · 재발송</td><td class="d">이메일 인증</td><td class="d">인증번호 다시 받기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=282-659" target="_blank">A12</a></td><td>A12 · 비밀번호 재설정 요청</td><td class="d">비밀번호 재설정</td><td class="d">재설정 링크 받기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=282-4570" target="_blank">A13</a></td><td>A13 · 새 비밀번호 설정</td><td class="d">새 비밀번호</td><td class="d">비밀번호 바꾸기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=282-4683" target="_blank">A14</a></td><td>A14 · 약관 상세 보기</td><td class="d">서비스 이용약관</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=282-4788" target="_blank">A15</a></td><td>A15 · 온보딩 완료</td><td class="d"></td><td class="d">오늘의 카드 보러 가기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=474-4241" target="_blank">A16</a></td><td>A16 · 자동 측정 권한 요청</td><td class="d">자동 측정 준비</td><td class="d">권한 허용하기</td><td class="m"></td><td class="m"></td></tr>
+</tbody></table>
+<h2>B · 홈 · 오늘의 카드 <span class="n">18장</span></h2>
+<table><thead><tr><th>코드</th><th>화면</th><th>앱바</th><th>주 버튼</th><th>탭</th><th>오버레이</th></tr></thead><tbody>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=96-2" target="_blank">B01</a></td><td>B01 · 홈 · 오늘 카드 미선택</td><td class="d">틈튼</td><td class="d">오늘의 카드 고르기</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=137-615" target="_blank">B01b</a></td><td>B01b · 홈 · 카드 선택됨 · 미션 이어하기</td><td class="d">틈튼</td><td class="d">미션 이어하기</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=97-138" target="_blank">B03</a></td><td>B03 · 카드 · 덱 (선택 전)</td><td class="d">오늘의 카드</td><td class="d">이 카드로 확정</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=97-201" target="_blank">B04</a></td><td>B04 · 카드 · 한 장 선택됨</td><td class="d">오늘의 카드</td><td class="d">이 카드로 확정</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=98-235" target="_blank">B05</a></td><td>B05 · 카드 · 확정 확인</td><td class="d">오늘의 카드</td><td class="d">확정하기</td><td class="m">●</td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=98-308" target="_blank">B06</a></td><td>B06 · 카드 · 공개 (winner)</td><td class="d">오늘의 카드</td><td class="d">이 행동 시작하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=98-368" target="_blank">B07</a></td><td>B07 · 카드 · 오늘 완료</td><td class="d">오늘의 카드</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=118-656" target="_blank">B08</a></td><td>B08 · 카드 · 덱 불러오는 중</td><td class="d">오늘의 카드</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=118-703" target="_blank">B09</a></td><td>B09 · 카드 · 덱 오류</td><td class="d">오늘의 카드</td><td class="d">다시 시도</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=287-1259" target="_blank">B10</a></td><td>B10 · 카드 상세 · 추천 이유</td><td class="d">오늘의 카드</td><td class="d">이 행동 시작하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=287-1302" target="_blank">B11</a></td><td>B11 · 대체 미션 요청</td><td class="d">오늘의 카드</td><td class="d">다른 방법 보기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=287-1355" target="_blank">B12</a></td><td>B12 · 대체 미션 적용 완료</td><td class="d">오늘의 카드</td><td class="d">이 행동 시작하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=287-1413" target="_blank">B13</a></td><td>B13 · 알림함</td><td class="d">알림</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=287-1443" target="_blank">B14</a></td><td>B14 · 홈 · 첫 진입 코치마크</td><td class="d">틈튼</td><td class="d">오늘의 카드 고르기</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=473-4204" target="_blank">B14b</a></td><td>B14b · 홈 · 첫 진입 코치마크 2</td><td class="d">틈튼</td><td class="d">오늘의 카드 고르기</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=475-6574" target="_blank">B15</a></td><td>B15 · 알림함 · 비어 있음</td><td class="d">알림</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=514-4291" target="_blank">B16</a></td><td>B16 · 홈 · 쉬어가기 확인 <em>신규</em></td><td class="d">틈튼</td><td class="d">오늘 쉬어가기</td><td class="m">●</td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=514-6872" target="_blank">B17</a></td><td>B17 · 홈 · 오늘은 쉼 <em>신규</em></td><td class="d">틈튼</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+</tbody></table>
+<h2>C · 챌린지 · 자동 측정 · 보상 <span class="n">21장</span></h2>
+<table><thead><tr><th>코드</th><th>화면</th><th>앱바</th><th>주 버튼</th><th>탭</th><th>오버레이</th></tr></thead><tbody>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=101-2" target="_blank">C01</a></td><td>C01 · 체크형 챌린지</td><td class="d">오늘의 행동</td><td class="d">마셨어요 · 완료하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=101-43" target="_blank">C02</a></td><td>C02 · 타이머형 · 시작 전</td><td class="d">오늘의 행동</td><td class="d">시작하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=101-87" target="_blank">C03</a></td><td>C03 · 타이머형 · 진행 중</td><td class="d">오늘의 행동</td><td class="d">완료하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=101-122" target="_blank">C04</a></td><td>C04 · 타이머형 · 일시정지</td><td class="d">오늘의 행동</td><td class="d">이어서 하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=103-96" target="_blank">C05</a></td><td>C05 · 완료 처리 중</td><td class="d">오늘의 행동</td><td class="d">기록하는 중…</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=104-160" target="_blank">C06</a></td><td>C06 · 오프라인 · 기록 복구</td><td class="d">오늘의 행동</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=104-201" target="_blank">C07</a></td><td>C07 · 완료 보상 · 재료 획득</td><td class="d">오늘 완료</td><td class="d">댐 보러 가기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=104-249" target="_blank">C08</a></td><td>C08 · 적합도 피드백 시트</td><td class="d">오늘 완료</td><td class="d">보내기</td><td class="m"></td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=140-247" target="_blank">C09</a></td><td>C09 · 자동 측정 · 공통 안내</td><td class="d">오늘의 행동</td><td class="d">측정 시작</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=140-297" target="_blank">C10</a></td><td>C10 · 자동 측정 · 활동 시간 · 측정 중</td><td class="d">오늘의 행동</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=140-342" target="_blank">C11</a></td><td>C11 · 자동 측정 · 활동 시간 · 자동 일시정지</td><td class="d">오늘의 행동</td><td class="d">다시 시작</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=140-384" target="_blank">C12</a></td><td>C12 · 자동 측정 · 거리 · 측정 중</td><td class="d">오늘의 행동</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=140-430" target="_blank">C13</a></td><td>C13 · 자동 측정 · 거리 · 신호 낮음</td><td class="d">오늘의 행동</td><td class="d">이대로 계속하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=141-324" target="_blank">C14</a></td><td>C14 · 자동 측정 · 계단 · 측정 중</td><td class="d">오늘의 행동</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=141-370" target="_blank">C15</a></td><td>C15 · 자동 측정 · 백그라운드 알림</td><td class="d"></td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=141-406" target="_blank">C16</a></td><td>C16 · 자동 측정 · 권한 거부 · 미지원</td><td class="d">오늘의 행동</td><td class="d">직접 체크로 진행하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=141-455" target="_blank">C17</a></td><td>C17 · 자동 측정 · 앱 복구</td><td class="d">오늘의 행동</td><td class="d">이어서 하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=141-500" target="_blank">C18</a></td><td>C18 · 자동 측정 · 완료 결과</td><td class="d">오늘 완료</td><td class="d">메모 남기기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=281-347" target="_blank">C19</a></td><td>C19 · 챌린지 중단 확인</td><td class="d">오늘의 행동</td><td class="d">완료하기</td><td class="m"></td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=281-4470" target="_blank">C20</a></td><td>C20 · 완료 후 한 줄 회고</td><td class="d">오늘 완료</td><td class="d">저장하기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=282-4630" target="_blank">C21</a></td><td>C21 · 연속 3회 미달성 · 조정 안내</td><td class="d">오늘의 카드</td><td class="d">알려주기</td><td class="m"></td><td class="m"></td></tr>
+</tbody></table>
+<h2>D · 기록 <span class="n">8장</span></h2>
+<table><thead><tr><th>코드</th><th>화면</th><th>앱바</th><th>주 버튼</th><th>탭</th><th>오버레이</th></tr></thead><tbody>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=105-2" target="_blank">D01</a></td><td>D01 · 기록 · 월 캘린더 <em class="mod">개편</em></td><td class="d">기록</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=105-245" target="_blank">D02</a></td><td>D02 · 기록 · 주간 리포트 <em class="mod">개편</em></td><td class="d">기록</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=107-208" target="_blank">D03</a></td><td>D03 · 하루 상세 시트 <em class="mod">개편</em></td><td class="d">기록</td><td class="d"></td><td class="m">●</td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=107-316" target="_blank">D04</a></td><td>D04 · 기록 없음</td><td class="d">기록</td><td class="d">오늘의 카드 고르기</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=107-374" target="_blank">D05</a></td><td>D05 · 연속 기록 · 쉼 규칙 <em class="mod">개편</em></td><td class="d">연속 기록</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=292-962" target="_blank">D06</a></td><td>D06 · 쉼으로 표시 <em class="mod">개편</em></td><td class="d">기록</td><td class="d">쉼으로 표시하기</td><td class="m">●</td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=292-1059" target="_blank">D07</a></td><td>D07 · 기록 일부 불러오기 실패</td><td class="d">기록</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=292-1142" target="_blank">D08</a></td><td>D08 · 주간 리포트 · 데이터 없음</td><td class="d">기록</td><td class="d">오늘의 카드 고르러 가기</td><td class="m">●</td><td class="m"></td></tr>
+</tbody></table>
+<h2>E · 틈튼지수 <span class="n">7장</span></h2>
+<table><thead><tr><th>코드</th><th>화면</th><th>앱바</th><th>주 버튼</th><th>탭</th><th>오버레이</th></tr></thead><tbody>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=111-2" target="_blank">E01</a></td><td>E01 · 틈튼지수 (탭 홈)</td><td class="d">틈튼지수</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=111-79" target="_blank">E02</a></td><td>E02 · 틈튼지수 · 구간 기준과 출처</td><td class="d">구간 기준과 출처</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=111-118" target="_blank">E03</a></td><td>E03 · 이번 계산에 반영된 항목</td><td class="d">이번 계산에 반영된 항목</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=112-92" target="_blank">E04</a></td><td>E04 · 계산에 쓰인 값</td><td class="d">계산에 쓰인 값</td><td class="d">값 고치고 다시 계산</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=112-137" target="_blank">E05</a></td><td>E05 · 데이터 부족 · 산출 불가</td><td class="d">참고</td><td class="d">오늘의 카드 고르러 가기</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=112-208" target="_blank">E06</a></td><td>E06 · 참고 자료 · 안내</td><td class="d">이 지수에 대하여</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=294-5136" target="_blank">E07</a></td><td>E07 · 틈튼지수 · 분석 미동의</td><td class="d">참고</td><td class="d">동의하고 계산 시작</td><td class="m">●</td><td class="m"></td></tr>
+</tbody></table>
+<h2>F · 내 정보 <span class="n">23장</span></h2>
+<table><thead><tr><th>코드</th><th>화면</th><th>앱바</th><th>주 버튼</th><th>탭</th><th>오버레이</th></tr></thead><tbody>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=114-2" target="_blank">F01</a></td><td>F01 · 내 정보 · 홈</td><td class="d">내 정보</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=114-90" target="_blank">F02</a></td><td>F02 · 생활시간 · 알림 설정</td><td class="d">생활시간 · 알림</td><td class="d">알림 설정 저장</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=114-141" target="_blank">F03</a></td><td>F03 · 연동 · 권한</td><td class="d">연동 · 권한</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=114-186" target="_blank">F04</a></td><td>F04 · 계정</td><td class="d">계정</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=115-157" target="_blank">F05</a></td><td>F05 · 개인정보 · 내 데이터</td><td class="d">개인정보 · 내 데이터</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=115-208" target="_blank">F06</a></td><td>F06 · 도움말 · 문의</td><td class="d">도움말 · 문의</td><td class="d">문의 남기기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=115-257" target="_blank">F07</a></td><td>F07 · 계정 삭제 확인</td><td class="d">계정</td><td class="d">그만두기</td><td class="m"></td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-1428" target="_blank">F08</a></td><td>F08 · 몸 정보 수정</td><td class="d">몸 정보</td><td class="d">저장하고 다시 계산</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-1492" target="_blank">F09</a></td><td>F09 · 운동 정보 수정</td><td class="d">운동 정보</td><td class="d">저장하고 다시 계산</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-5600" target="_blank">F10</a></td><td>F10 · 동의 관리</td><td class="d">동의 관리</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-5869" target="_blank">F11</a></td><td>F11 · 선택 동의 철회 확인</td><td class="d">동의 관리</td><td class="d">그만두기</td><td class="m"></td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-5630" target="_blank">F12</a></td><td>F12 · 접근성 설정</td><td class="d">접근성</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-5659" target="_blank">F13</a></td><td>F13 · 기록만 삭제 확인</td><td class="d">개인정보 · 내 데이터</td><td class="d">그만두기</td><td class="m"></td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-5691" target="_blank">F14</a></td><td>F14 · 내 데이터 내보내기</td><td class="d">내 데이터 내보내기</td><td class="d">내보내기 요청</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-6323" target="_blank">F15</a></td><td>F15 · 이메일 변경</td><td class="d">이메일 변경</td><td class="d">인증번호 받기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-6076" target="_blank">F16</a></td><td>F16 · 비밀번호 변경</td><td class="d">비밀번호 변경</td><td class="d">비밀번호 바꾸기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-6258" target="_blank">F17</a></td><td>F17 · 계정 삭제 재인증</td><td class="d">계정 삭제</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-6392" target="_blank">F18</a></td><td>F18 · 삭제 완료</td><td class="d"></td><td class="d">홈으로 가기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-6428" target="_blank">F19</a></td><td>F19 · 앱 정보 · 오픈소스 라이선스</td><td class="d">앱 정보</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-6496" target="_blank">F20</a></td><td>F20 · 도움말 상세</td><td class="d">도움말</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=300-675" target="_blank">F21</a></td><td>F21 · 문의 남기기</td><td class="d">문의</td><td class="d">보내기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=301-707" target="_blank">F22</a></td><td>F22 · 로그아웃 확인</td><td class="d">계정</td><td class="d">그만두기</td><td class="m"></td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=302-747" target="_blank">F23</a></td><td>F23 · 알림 시각 선택</td><td class="d">생활시간 · 알림</td><td class="d">이 시각으로 저장</td><td class="m"></td><td class="m">●</td></tr>
+</tbody></table>
+<h2>G · 댐 <span class="n">7장</span></h2>
+<table><thead><tr><th>코드</th><th>화면</th><th>앱바</th><th>주 버튼</th><th>탭</th><th>오버레이</th></tr></thead><tbody>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=116-2" target="_blank">G01</a></td><td>G01 · 댐 홈</td><td class="d">집 · 댐</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=116-46" target="_blank">G02</a></td><td>G02 · 재료 도감</td><td class="d">재료 도감</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=116-102" target="_blank">G03</a></td><td>G03 · 댐 단계 안내</td><td class="d">댐이 자라는 순서</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=116-144" target="_blank">G04</a></td><td>G04 · 캐릭터 포즈 · 모션 명세</td><td class="d">필요한 캐릭터 컷</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=297-1556" target="_blank">G05</a></td><td>G05 · 재료별 기록 상세</td><td class="d">나뭇가지</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=294-5189" target="_blank">G06</a></td><td>G06 · 틈튼 카드첩</td><td class="d">카드첩</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=475-4256" target="_blank">G07</a></td><td>G07 · 댐 단계 상승 · 축하</td><td class="d"></td><td class="d">자란 댐 보러 가기</td><td class="m">●</td><td class="m"></td></tr>
+</tbody></table>
+<h2>H · 상태 · 복구 · 접근성 <span class="n">7장</span></h2>
+<table><thead><tr><th>코드</th><th>화면</th><th>앱바</th><th>주 버튼</th><th>탭</th><th>오버레이</th></tr></thead><tbody>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=117-2" target="_blank">H01</a></td><td>H01 · 로딩 · 스켈레톤</td><td class="d">틈튼</td><td class="d"></td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=117-51" target="_blank">H02</a></td><td>H02 · 네트워크 오류</td><td class="d">틈튼</td><td class="d">다시 시도</td><td class="m">●</td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=117-105" target="_blank">H03</a></td><td>H03 · 서버 점검</td><td class="d">틈튼</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=117-134" target="_blank">H04</a></td><td>H04 · 업데이트 필요</td><td class="d">틈튼</td><td class="d">스토어 열기</td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=117-162" target="_blank">H05</a></td><td>H05 · 접근성 · 큰 글자 대응</td><td class="d">접근성</td><td class="d"></td><td class="m"></td><td class="m"></td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=117-225" target="_blank">H06</a></td><td>H06 · 앱 종료 확인</td><td class="d">틈튼</td><td class="d">닫기</td><td class="m">●</td><td class="m">●</td></tr>
+<tr><td class="c"><a href="https://www.figma.com/design/ByGT2uoinUBxAQOBqAK7sM/?node-id=117-255" target="_blank">H07</a></td><td>H07 · 세션 만료 · 재로그인</td><td class="d">틈튼</td><td class="d">로그인하기</td><td class="m"></td><td class="m"></td></tr>
+</tbody></table>
+</div></body></html>

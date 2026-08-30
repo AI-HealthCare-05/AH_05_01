@@ -58,7 +58,7 @@ fun CardPickScreen(today: TodayViewModel, nav: NavHostController) {
             }
 
             if (selected >= 0) {
-                StatusBadge(BadgeState.Rest, "${listOf("첫", "두", "세")[selected]} 번째를 골랐어요")
+                StatusBadge(BadgeState.Info, "${listOf("첫", "두", "세")[selected]} 번째를 골랐어요")
             }
 
             NoteBox(

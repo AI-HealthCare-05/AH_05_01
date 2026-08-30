@@ -8,11 +8,12 @@
 
 이 저장소는 아직 완성된 TMTN 앱이 아닙니다.
 
-- **있는 것:** FastAPI 백엔드 기초, 인증·사용자 API, MySQL·Redis·Nginx Docker 구성, 테스트·CI 초안
-- **없는 것:** Android Compose 프로젝트와 APK/AAB 빌드, TMTN 카드·챌린지·기록·알림 등 대부분의 도메인, 실제 AI Worker
+- **있는 것(백엔드):** FastAPI 기초, 인증·사용자 API, MySQL·Redis·Nginx Docker 구성, 테스트·CI 초안
+- **있는 것(Android):** `android/` 의 Compose 앱과 debug APK 빌드, v5 디자인 시스템 토큰, 카드 200장 로컬 실행
+- **없는 것:** 앱과 서버를 잇는 API 연동, TMTN 챌린지·알림 등 나머지 도메인, 실제 AI Worker
 - **API 구현량:** 계획 64개 작업 중 현재 5개 라우터 작업
 
-Python FastAPI 코드는 APK 안에 넣는 코드가 아니라 **Android 앱이 호출할 Web API 서버**입니다. 설치 가능한 앱을 만들려면 Android 클라이언트를 별도로 추가해야 합니다. 전체 차이와 우선순위는 [저장소 준비도 점검](docs/TMTN_READINESS_AUDIT.md)을 먼저 확인하세요.
+Python FastAPI 코드는 APK 안에 넣는 코드가 아니라 **Android 앱이 호출할 Web API 서버**입니다. Android 클라이언트는 `android/` 에 있고, 아직 서버를 호출하지 않고 기기 안에서만 동작합니다. 전체 차이와 우선순위는 [저장소 준비도 점검](docs/TMTN_READINESS_AUDIT.md)을 먼저 확인하세요.
 
 ## 제품 원칙
 
@@ -53,7 +54,7 @@ flowchart LR
 | 기록·리포트 | 미구현 | 활동 기록, 타임라인, 캘린더, 주간 리포트 필요 |
 | 알림·Health Connect | 미구현 | FCM, 선택 권한, 수동 기록 폴백 필요 |
 | AI Worker | 껍데기 | worker entrypoint와 Redis 소비 로직 없음 |
-| Android | 미구현 | Gradle·Manifest·Compose·APK/AAB 전체 필요 |
+| Android | 일부 구현 | Compose 앱·debug APK·v5 디자인 토큰 완료. API 연동과 AAB 서명 필요 |
 | 인프라 | 초안 | 로컬/운영 Compose, Nginx, 배포 스크립트 |
 | 품질 | 초안 | Ruff·Mypy·Pytest·GitHub Actions 보강 필요 |
 
@@ -65,6 +66,13 @@ flowchart LR
 │   ├── workflows/checks.yml          # 현재 Python CI
 │   └── PULL_REQUEST_TEMPLATE.md       # TMTN PR 템플릿
 ├── ai_worker/                         # AI 작업 프로세스 초안
+├── android/                           # Android Compose 앱 (독립 Gradle 프로젝트, ADR 0001)
+│   ├── app/src/main/java/kr/tmtn/app/
+│   │   ├── designsystem/              # v5 토큰 (색·글자·간격)
+│   │   ├── ui/                        # Compose 화면과 ViewModel
+│   │   ├── domain/ml/                 # 모델 3종 교체 지점
+│   │   └── data/
+│   └── README.md                      # Android 빌드·구조 안내
 ├── app/
 │   ├── apis/v1/                       # FastAPI v1 라우터
 │   ├── core/                          # 설정, DB, JWT, validator
@@ -76,7 +84,10 @@ flowchart LR
 │   ├── tests/                         # API 테스트
 │   └── main.py                        # FastAPI entrypoint
 ├── docs/
+│   ├── adr/                           # 아키텍처 결정 기록
+│   ├── design-v5/                     # Figma v5 핸드오프 (토큰 원본·SCREENS.csv)
 │   ├── DEVELOPMENT_ENVIRONMENT.md
+│   ├── TMTN_ANDROID_GUIDE.md
 │   ├── TMTN_READINESS_AUDIT.md
 │   ├── GIT_BRANCH_STRATEGY.md
 │   └── PR_AND_CODE_REVIEW_GUIDE.md
@@ -88,7 +99,7 @@ flowchart LR
 └── uv.lock                            # 잠금 파일
 ```
 
-한 저장소에 Android를 추가할 경우 Python의 `app/`과 Android 기본 `app` 모듈 이름이 충돌합니다. 기능 개발 전에 `backend/`, `android/`, `contracts/`, `docs/` 형태의 모노레포 구조를 ADR로 확정하는 것을 권장합니다.
+Python의 `app/`과 Android 기본 `app` 모듈은 이름이 겹칩니다. 이 문제는 [ADR 0001](docs/adr/0001-android-module-placement.md)에서 정리했습니다 — 전면 모노레포 재구성 대신 `android/`를 **독립 Gradle 프로젝트**로 두어 실제 디렉터리가 `android/app/`이 되도록 했습니다. 따라서 **Android Studio는 루트가 아니라 `android/` 폴더를 열어야 합니다.**
 
 ## 사전 준비
 
@@ -214,22 +225,21 @@ uv run coverage report -m
 
 고정된 Python 3.13.15와 MySQL 8.0.46 환경에서 Ruff, 포맷 검사, Mypy 52개 파일, Pytest 9개 전체 테스트가 통과했습니다. 현재 테스트 커버리지는 91%입니다. 새 기능 PR은 이 기준선을 낮추지 않아야 합니다.
 
-## Android·APK 계획
+## Android·APK
 
-APK는 FastAPI를 패키징해서 만드는 것이 아닙니다. Android Studio에서 Kotlin·Compose 앱을 만들고 HTTPS API를 호출합니다.
+APK는 FastAPI를 패키징해서 만드는 것이 아닙니다. Android Studio에서 Kotlin·Compose 앱을 만들고 HTTPS API를 호출합니다. 앱은 `android/`에 있고 빌드 방법은 [`android/README.md`](android/README.md)에 있습니다.
 
-권장 Android 계층:
+현재 구조는 **단일 `:app` 모듈**입니다. 첫 APK를 빨리 뽑기 위한 선택이며, [ADR 0001](docs/adr/0001-android-module-placement.md)에 따라 화면이 30개를 넘으면 분리합니다.
 
 ```text
-android/
-├── app/                 # Application, DI, navigation, build variants
-├── core/                # 공통 오류·네트워크·저장소
-├── domain/              # 순수 Kotlin 모델·UseCase·Repository interface
-├── data/                # API/Room 구현과 DTO mapper
-├── presentation/        # Compose 화면·ViewModel
-├── design-system/       # TMTN theme·component·접근성
-└── feature/             # auth, onboarding, card, challenge, record, settings
+android/app/src/main/java/kr/tmtn/app/
+├── designsystem/        # v5 토큰 — 색·글자·간격 (하드코딩 금지)
+├── ui/                  # Compose 화면과 ViewModel (auth, onboarding, card, mission, tabs, nav)
+├── domain/ml/           # 모델 3종 교체 지점
+└── data/
 ```
+
+아직 고르지 않은 것 — 네트워크 클라이언트(Retrofit/Ktor), DI(Hilt/Koin), 로컬 저장(Room)은 ADR 0001에서 의도적으로 미뤘습니다. 지금은 각각 없음·수동 `AppContainer`·SharedPreferences입니다. 섞어 쓰기 전에 별도 ADR로 하나만 고릅니다.
 
 주요 규칙:
 

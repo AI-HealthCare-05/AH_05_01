@@ -137,7 +137,7 @@ fun IndexCard(state: ModelResult<TmtnIndexResult>, onDetail: () -> Unit) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("${r.score}", style = TmtnText.Display, color = TmtnColor.OnSurface)
                     Spacer(Modifier.width(10.dp))
-                    StatusBadge(BadgeState.Rest, r.band.label)
+                    StatusBadge(BadgeState.Info, r.band.label)
                 }
                 MeterBar(
                     progress = r.score / 100f,

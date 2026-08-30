@@ -29,8 +29,10 @@ fun RecordScreen(today: TodayViewModel) {
                         Row {
                             Text(TmtnDate.label(r.date), style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
                             Spacer(Modifier.weight(1f))
+                            // 둘 다 이미 완료된 기록이다. 측정 "방식" 이지 상태가 아니므로
+                            // 진행중(주황)·완료(먹색) 칩을 쓰지 않는다. 구분은 글자가 한다.
                             StatusBadge(
-                                if (r.measuredByModel) BadgeState.Running else BadgeState.Done,
+                                BadgeState.Info,
                                 if (r.measuredByModel) "자동 측정" else "직접 확인",
                             )
                         }

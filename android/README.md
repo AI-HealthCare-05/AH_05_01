@@ -34,6 +34,25 @@ Jetpack Compose 앱. **Android Studio 로 이 `android/` 폴더를 연다.** 저
 
 센서를 못 쓰는 기기에서는 모델형 카드도 "직접 체크로 진행하기" 로 내려간다.
 
+## 디자인 시스템 (v5, 2026-08-30)
+
+토큰은 `app/src/main/java/kr/tmtn/app/designsystem/` 세 파일에만 있다.
+`docs/design-v5/designsystem/` 의 핸드오프 원본과 바이트 단위로 같다.
+
+| 파일 | 무엇 |
+|---|---|
+| `TmtnColor.kt` | 순백 바탕 + 먹색. 재료 5색·`Shadow`·`OnSurfaceFaint` 포함 |
+| `TmtnType.kt` | 7단계 (Display 40 / Headline 32 / Title 24 / BodyLarge 19 / Body 16 / Label·Caption 14) |
+| `TmtnDimens.kt` | `TmtnSpace` `TmtnRadius` `TmtnTarget` `TmtnCalendar` `TmtnLayout` |
+
+깨면 안 되는 것 세 가지:
+
+- 색은 `TmtnColor.*`, 글자는 `TmtnText.*` 로만. **하드코딩 금지.**
+- **주황 `#FF7A1A` 은 "오늘"에만.** 완료·실천·주 버튼은 먹색 `#16181C` 다.
+- **Display 는 화면당 하나만.** 글자 크기는 만성질환 사용자 기준이라 임의로 줄이지 않는다.
+
+자세한 규칙은 저장소 루트 [`CLAUDE.md`](../CLAUDE.md) 에 있다.
+
 ## 모델 3개를 넣는 곳
 
 `app/src/main/java/kr/tmtn/app/domain/ml/` 하나만 보면 된다.
