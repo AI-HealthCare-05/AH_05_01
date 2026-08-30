@@ -151,7 +151,12 @@ private fun ExerciseStep(p: UserProfile, set: (UserProfile) -> Unit) {
     /* ── 근력운동 ─────────────────────────────────── */
     SectionRow("근력운동", "주 횟수")
     Hint("팔굽혀펴기 · 스쿼트 · 기구 운동 등")
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    // 칩 6개는 390dp 한 줄에 안 들어간다. Row 로 두면 마지막 두 개가
+    // 찌그러지고 잘려 나가므로 FlowRow 로 접는다. (2026-08-30 실기기에서 확인)
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         listOf(0 to "안 함", 1 to "주 1회", 2 to "주 2회", 3 to "주 3회", 4 to "주 4회", 5 to "주 5회+")
             .forEach { (n, label) ->
                 PickChip(label, p.strengthDaysWeek == n) { set(p.copy(strengthDaysWeek = n)) }
@@ -240,11 +245,14 @@ private fun PickChip(label: String, selected: Boolean, onClick: () -> Unit) {
         onClick = onClick,
         label = { Text(label, style = TmtnText.Caption) },
         shape = TmtnShape.Chip,
+        // 고른 것은 먹색으로 꽉 채운다. v5 에서 Surface 와 SecondaryContainer 가
+        // 똑같은 #F7F4EE 라, 예전처럼 두면 골라도 표가 나지 않는다.
+        // 주황은 "오늘" 전용이므로 여기 쓰지 않는다.
         colors = FilterChipDefaults.filterChipColors(
             containerColor = TmtnColor.Surface,
             labelColor = TmtnColor.OnSurfaceVariant,
-            selectedContainerColor = TmtnColor.SecondaryContainer,
-            selectedLabelColor = TmtnColor.OnSurface,
+            selectedContainerColor = TmtnColor.Primary,
+            selectedLabelColor = TmtnColor.OnPrimary,
         ),
     )
 }
@@ -256,13 +264,22 @@ private fun IntensityCard(title: String, hint: String, selected: Boolean, onClic
         Modifier
             .fillMaxWidth()
             .clip(TmtnShape.SmallCard)
-            .background(if (selected) TmtnColor.SecondaryContainer else TmtnColor.Surface)
+            // 칩과 같은 이유로 먹색 채움. SecondaryContainer 로는 표가 나지 않는다.
+            .background(if (selected) TmtnColor.Primary else TmtnColor.Surface)
             .clickable(onClick = onClick)
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(title, style = TmtnText.Label, color = TmtnColor.OnSurface)
-        Text(hint, style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
+        Text(
+            title,
+            style = TmtnText.Label,
+            color = if (selected) TmtnColor.OnPrimary else TmtnColor.OnSurface,
+        )
+        Text(
+            hint,
+            style = TmtnText.Caption,
+            color = if (selected) TmtnColor.OnPrimary else TmtnColor.OnSurfaceVariant,
+        )
     }
 }
 
