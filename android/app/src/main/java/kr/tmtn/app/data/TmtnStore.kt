@@ -151,6 +151,20 @@ class TmtnStore(context: Context) {
 
     fun isDoneToday(date: String): Boolean = records().any { it.date == date }
 
+    /* ------------------------------------------------------ 대체 미션 */
+
+    /**
+     * 미션 바꾸기는 **하루에 한 번**이다.
+     * 마음에 드는 카드가 나올 때까지 돌리면 "고른다" 는 뜻이 없어진다.
+     *
+     * TODO(서버): 쉼과 마찬가지로 서버가 세야 기기를 바꿔도 맞는다.
+     */
+    fun swappedOn(date: String): Boolean = prefs.getBoolean("swap_$date", false)
+
+    fun markSwapped(date: String) {
+        prefs.edit().putBoolean("swap_$date", true).apply()
+    }
+
     /* ---------------------------------------------------------- 쉼 */
 
     /**

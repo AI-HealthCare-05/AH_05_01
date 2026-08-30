@@ -36,6 +36,8 @@ fun CardFrontScreen(today: TodayViewModel, nav: NavHostController) {
     }
     val done = today.isDoneToday()
     var showHardToday by remember { mutableStateOf(false) }
+    // B12 · 대체 미션을 받은 직후에만 띄우는 알림
+    var swapped by remember { mutableStateOf(false) }
 
     // 오늘 못 하겠다고 그냥 나가면 그 날은 **미완료**로 남는다.
     // 쉼은 직접 골라야만 기록되므로, 여기서 고를 기회를 준다.
@@ -43,6 +45,11 @@ fun CardFrontScreen(today: TodayViewModel, nav: NavHostController) {
     if (showHardToday) {
         HardTodayDialog(
             restLeft = today.restLeftThisWeek(),
+            canSwap = today.canSwapToday(),
+            onSwap = {
+                swapped = today.swapMission()
+                showHardToday = false
+            },
             onRest = {
                 today.markRestToday()
                 showHardToday = false
@@ -90,6 +97,15 @@ fun CardFrontScreen(today: TodayViewModel, nav: NavHostController) {
                 Text(
                     "${card.mission.axis.accessibleText()} · ${card.mission.area}",
                     style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                )
+            }
+
+            // B12 · 대체 미션 적용 완료
+            if (swapped) {
+                NoteBox(
+                    tone = NoteTone.Notice,
+                    title = "다른 행동으로 바꿨어요",
+                    body = "쌓을 재료는 그대로예요. 바꾸기는 하루에 한 번만 할 수 있어요.",
                 )
             }
 
@@ -144,6 +160,8 @@ private fun EmptyPicked(nav: NavHostController) {
 @Composable
 private fun HardTodayDialog(
     restLeft: Int,
+    canSwap: Boolean,
+    onSwap: () -> Unit,
     onRest: () -> Unit,
     onJustLeave: () -> Unit,
     onDismiss: () -> Unit,
@@ -152,31 +170,38 @@ private fun HardTodayDialog(
         onDismissRequest = onDismiss,
         containerColor = TmtnColor.Background,
         shape = TmtnShape.Sheet,
-        title = { Text("오늘은 쉬어갈까요?", style = TmtnText.Title, color = TmtnColor.OnSurface) },
+        title = { Text("오늘은 어떻게 할까요?", style = TmtnText.Title, color = TmtnColor.OnSurface) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (restLeft > 0) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // 쉼보다 바꾸기를 먼저 권한다. 오늘 하루를 살릴 수 있는 쪽이 먼저다.
+                if (canSwap) {
+                    TmtnTonalButton("다른 행동으로 바꾸기", onClick = onSwap)
                     Text(
-                        "쉼으로 표시하면 연속 기록이 끊기지 않아요.",
-                        style = TmtnText.Body, color = TmtnColor.OnSurface,
-                    )
-                    Text(
-                        "이번 주에 ${restLeft}번 쉴 수 있어요.",
+                        "같은 재료를 쌓는 다른 행동을 드려요. 하루에 한 번만 바꿀 수 있어요.",
                         style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
                     )
                 } else {
                     Text(
-                        "이번 주 쉼을 다 썼어요. 그냥 나가면 오늘은 기록이 비어요.",
-                        style = TmtnText.Body, color = TmtnColor.OnSurface,
+                        "오늘은 이미 한 번 바꿨어요.",
+                        style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                    )
+                }
+
+                if (restLeft > 0) {
+                    TmtnOutlinedButton("오늘은 쉬어가기", onClick = onRest)
+                    Text(
+                        "쉼으로 표시하면 연속 기록이 끊기지 않아요. 이번 주에 ${restLeft}번 남았어요.",
+                        style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        "이번 주 쉼은 다 썼어요. 그냥 나가면 오늘은 기록이 비어요.",
+                        style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
                     )
                 }
             }
         },
-        confirmButton = {
-            if (restLeft > 0) {
-                TmtnQuietButton("오늘은 쉬어가기", fillWidth = false, onClick = onRest)
-            }
-        },
+        confirmButton = { },
         dismissButton = {
             TmtnQuietButton("그냥 나가기", fillWidth = false, onClick = onJustLeave)
         },

@@ -52,4 +52,24 @@ object DailyCardDraw {
         val m = catalog.byId[missionId] ?: return null
         return MissionCard(m, targetNumber, place)
     }
+
+    /**
+     * 대체 미션 한 장. (B11)
+     *
+     * **같은 축을 지킨다** — 오늘 쌓기로 한 재료는 그대로 두고 행동만 바꾼다.
+     * 축까지 바뀌면 "물길이 필요한 날" 이라는 그날의 성격이 없어지고,
+     * 마음에 드는 카드가 나올 때까지 돌리는 뽑기가 된다.
+     *
+     * 안전 태그가 붙은 미션은 되도록 내주지 않는다 —
+     * 지금 하기 어렵다고 한 사람에게 더 센 것을 권할 이유가 없다.
+     */
+    fun alternative(catalog: MissionCatalog, current: MissionCard, date: String): MissionCard? {
+        val rnd = Random("$date|swap|${current.mission.id}".hashCode().toLong())
+        val pool = catalog.byAxis(current.mission.axis)
+            .filter { it.id != current.mission.id }
+        val safe = pool.filter { it.safetyTag.isEmpty() }
+        val chosen = if (safe.isNotEmpty()) safe else pool
+        if (chosen.isEmpty()) return null
+        return chosen[rnd.nextInt(chosen.size)].toCard(rnd)
+    }
 }

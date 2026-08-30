@@ -113,6 +113,30 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
 
     fun isDoneToday(): Boolean = records.any { it.date == dateKey }
 
+    /* ------------------------------------------------------ 대체 미션 */
+
+    /** 오늘 이미 한 번 바꿨나 */
+    var swappedToday by mutableStateOf(container.store.swappedOn(TmtnDate.todayKey()))
+        private set
+
+    /** 아직 바꿀 수 있나. 이미 끝냈거나 한 번 썼으면 못 바꾼다. */
+    fun canSwapToday(): Boolean = !swappedToday && !isDoneToday() && picked != null
+
+    /**
+     * 오늘 카드를 같은 축의 다른 미션으로 바꾼다. **하루 한 번.**
+     * 바꿀 후보가 없으면 아무 일도 하지 않고 false 를 준다.
+     */
+    fun swapMission(): Boolean {
+        if (!canSwapToday()) return false
+        val current = picked ?: return false
+        val alt = DailyCardDraw.alternative(container.catalog, current, dateKey) ?: return false
+        container.store.savePick(dateKey, alt.id, alt.targetNumber, alt.place)
+        container.store.markSwapped(dateKey)
+        picked = alt
+        swappedToday = true
+        return true
+    }
+
     /* ------------------------------------------------------------ 쉼 */
 
     /** 오늘을 쉼으로 표시했나 */
