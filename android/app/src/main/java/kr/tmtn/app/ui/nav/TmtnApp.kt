@@ -27,10 +27,22 @@ import kr.tmtn.app.ui.tabs.DamScreen
 import kr.tmtn.app.ui.tabs.MyPageScreen
 import kr.tmtn.app.ui.tabs.RecordScreen
 import kr.tmtn.app.ui.tabs.ReferenceScreen
+import kr.tmtn.app.ui.state.AccessibilityScreen
+import kr.tmtn.app.ui.state.ServerMaintenanceScreen
+import kr.tmtn.app.ui.state.SessionExpiredScreen
+import kr.tmtn.app.ui.state.UpdateRequiredScreen
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 
 @Composable
 fun TmtnApp(today: TodayViewModel) {
     val nav = rememberNavController()
+    val ctx = LocalContext.current
 
     val start = when {
         !today.isLoggedIn -> Route.LOGIN
@@ -74,9 +86,11 @@ fun TmtnApp(today: TodayViewModel) {
             composable(Route.DAM) { DamScreen(today) }
             composable(Route.REFERENCE) { ReferenceScreen(today) }
             composable(Route.MY) {
-                MyPageScreen(today, onLoggedOut = {
-                    nav.navigate(Route.LOGIN) { popUpTo(0) }
-                })
+                MyPageScreen(
+                    today,
+                    onLoggedOut = { nav.navigate(Route.LOGIN) { popUpTo(0) } },
+                    onOpen = { nav.navigate(it) },
+                )
             }
 
             composable(Route.CARD_PICK) { CardPickScreen(today, nav) }
@@ -85,6 +99,19 @@ fun TmtnApp(today: TodayViewModel) {
             composable(Route.MISSION_SELF) { SelfMissionScreen(today, nav) }
             composable(Route.MISSION_MODEL) { ModelMissionScreen(today, nav) }
             composable(Route.COMPLETE) { MissionCompleteScreen(today, nav) }
+
+            /* ── H · 상태·복구·접근성 ─────────────────────── */
+            composable(Route.ACCESSIBILITY) {
+                AccessibilityScreen(
+                    onOpenSystemSettings = { openDisplaySettings(ctx) },
+                    onBack = { nav.popBackStack() },
+                )
+            }
+            composable(Route.SERVER_MAINTENANCE) { ServerMaintenanceScreen() }
+            composable(Route.UPDATE_REQUIRED) { UpdateRequiredScreen(onOpenStore = { openStore(ctx) }) }
+            composable(Route.SESSION_EXPIRED) {
+                SessionExpiredScreen(onLogin = { nav.navigate(Route.LOGIN) { popUpTo(0) } })
+            }
         }
     }
 }
@@ -113,6 +140,38 @@ private fun TmtnBottomBar(nav: NavHostController, current: String?) {
                     unselectedIconColor = TmtnColor.OnSurfaceVariant,
                     unselectedTextColor = TmtnColor.OnSurfaceVariant,
                 ),
+            )
+        }
+    }
+}
+
+/* ---------------------------------------------------------- 바깥으로 */
+
+/**
+ * 기기의 글자 크기 설정으로 보낸다. (H05)
+ * 앱 안에서 따로 조절하지 않고 기기 설정을 그대로 따르기 때문이다.
+ */
+private fun openDisplaySettings(ctx: Context) {
+    runCatching {
+        ctx.startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }.onFailure {
+        // 설정 화면이 없는 기기도 있다. 앱이 죽는 것보다 아무 일도 안 일어나는 편이 낫다.
+    }
+}
+
+/** 스토어의 이 앱 페이지를 연다. (H04) 스토어가 없으면 웹으로 떨어진다. */
+private fun openStore(ctx: Context) {
+    val pkg = ctx.packageName.removeSuffix(".debug")
+    try {
+        ctx.startActivity(
+            Intent(Intent.ACTION_VIEW, "market://details?id=$pkg".toUri())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    } catch (e: ActivityNotFoundException) {
+        runCatching {
+            ctx.startActivity(
+                Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=$pkg".toUri())
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         }
     }

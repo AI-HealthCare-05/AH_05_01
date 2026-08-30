@@ -19,6 +19,13 @@ object Route {
     const val MISSION_SELF = "mission_self"
     const val MISSION_MODEL = "mission_model"
     const val COMPLETE = "complete"
+
+    /* 상태·복구 화면 (H). 서버가 붙으면 실제 상황에서 띄운다.
+       지금은 내 정보 → 접근성 에서만 들어갈 수 있다. */
+    const val ACCESSIBILITY = "accessibility"
+    const val SERVER_MAINTENANCE = "server_maintenance"
+    const val UPDATE_REQUIRED = "update_required"
+    const val SESSION_EXPIRED = "session_expired"
 }
 
 /**

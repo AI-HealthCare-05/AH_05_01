@@ -83,12 +83,16 @@ fun OnboardingScreen(initial: UserProfile, onDone: (UserProfile) -> Unit) {
 private fun BasicStep(p: UserProfile, set: (UserProfile) -> Unit) {
     Text("시작하기 전에\n몇 가지만 알려 주세요", style = TmtnText.Headline, color = TmtnColor.OnSurface)
 
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.weight(1f)) {
+    // 글자를 키우면 한쪽만 두 줄이 되어 높이가 어긋난다. 둘을 같은 높이로 묶는다.
+    Row(
+        Modifier.height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.weight(1f).fillMaxHeight()) {
             Field("이름", p.name, KeyboardType.Text, "김홍주") { set(p.copy(name = it)) }
         }
-        Box(Modifier.weight(1f)) {
-            Field("닉네임 (선택)", p.nickname, KeyboardType.Text, "홍주") { set(p.copy(nickname = it)) }
+        Box(Modifier.weight(1f).fillMaxHeight()) {
+            Field("닉네임", p.nickname, KeyboardType.Text, "홍주") { set(p.copy(nickname = it)) }
         }
     }
     Hint("닉네임을 비우면 이름을 그대로 씁니다. 화면에는 '${p.displayName}' 로 보여요.")

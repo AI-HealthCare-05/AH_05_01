@@ -304,7 +304,7 @@ fun ReferenceScreen(today: TodayViewModel) {
 /* ---------------------------------------------------------- 내 정보 탭 */
 
 @Composable
-fun MyPageScreen(today: TodayViewModel, onLoggedOut: () -> Unit) {
+fun MyPageScreen(today: TodayViewModel, onLoggedOut: () -> Unit, onOpen: (String) -> Unit) {
     val p = today.profile
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         TmtnTopBar("내 정보")
@@ -321,7 +321,22 @@ fun MyPageScreen(today: TodayViewModel, onLoggedOut: () -> Unit) {
                 StatRow("유산소 · 고강도", p.aerobicVigorousMinWeek?.let { "주 ${it}분" } ?: "입력 안 함")
             }
 
+            TmtnOutlinedButton("접근성") { onOpen(kr.tmtn.app.ui.nav.Route.ACCESSIBILITY) }
+
             // [DEMO] 데모 단계 전용. 서버가 붙으면 지운다.
+            // 상태 화면(H)은 실제로 그 상황이 되어야 뜨는 것이라, 데모에서는
+            // 여기서 직접 열어 확인한다. 서버가 붙으면 이 묶음을 통째로 지운다.
+            TmtnCardBox {
+                Text("상태 화면 미리보기", style = TmtnText.Label, color = TmtnColor.OnSurface)
+                Text(
+                    "서버가 붙기 전까지 직접 열어 보는 통로예요.",
+                    style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
+                )
+                TmtnQuietButton("서버 점검 화면") { onOpen(kr.tmtn.app.ui.nav.Route.SERVER_MAINTENANCE) }
+                TmtnQuietButton("업데이트 필요 화면") { onOpen(kr.tmtn.app.ui.nav.Route.UPDATE_REQUIRED) }
+                TmtnQuietButton("세션 만료 화면") { onOpen(kr.tmtn.app.ui.nav.Route.SESSION_EXPIRED) }
+            }
+
             TmtnOutlinedButton("데모 데이터 초기화") { today.resetDemo() }
             TmtnQuietButton("로그아웃") {
                 today.logout()
