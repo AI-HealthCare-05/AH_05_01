@@ -34,6 +34,12 @@ fun CardPickScreen(today: TodayViewModel, nav: NavHostController) {
     var confirming by remember { mutableStateOf(false) }
     val cards = today.cards
 
+    // B09 · 덱을 못 불러왔을 때. 빈 화면을 그냥 두면 사용자는 앱이 멈춘 줄 안다.
+    if (cards.isEmpty()) {
+        DeckUnavailable(today, nav)
+        return
+    }
+
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     ) {
@@ -83,8 +89,11 @@ fun CardPickScreen(today: TodayViewModel, nav: NavHostController) {
             shape = TmtnShape.Card,
             title = { Text("이 카드로 확정할까요?", style = TmtnText.Title, color = TmtnColor.OnSurface) },
             text = {
+                // 확정 뒤에도 행동은 하루 한 번 바꿀 수 있다(B11).
+                // "바꿀 수 없다" 고만 적어 두면 사실과 달라진다.
                 Text(
-                    "확정하면 오늘은 카드를 바꿀 수 없습니다. 고르지 않은 두 장은 공개되지 않습니다.",
+                    "고르지 않은 두 장은 공개되지 않아요. " +
+                        "카드는 오늘 하루 이걸로 두되, 행동이 버거우면 한 번은 바꿀 수 있어요.",
                     style = TmtnText.Body, color = TmtnColor.OnSurfaceVariant,
                 )
             },
@@ -125,7 +134,9 @@ private fun CardBack(index: Int, selected: Boolean, modifier: Modifier, onClick:
             Modifier
                 .size(22.dp)
                 .clip(CircleShape)
-                .background(if (selected) TmtnColor.Reward else TmtnColor.Surface),
+                // 고른 카드는 이미 먹색 채움과 굵은 테두리로 드러난다.
+                // 여기에 주황까지 얹을 이유가 없다 — 주황은 "오늘" 에만 쓴다.
+                .background(if (selected) TmtnColor.OnPrimary else TmtnColor.Surface),
         )
         Text(
             "심볼",
@@ -137,6 +148,27 @@ private fun CardBack(index: Int, selected: Boolean, modifier: Modifier, onClick:
             "뒷면",
             style = TmtnText.Label,
             color = if (selected) TmtnColor.OnPrimary else TmtnColor.OnSurface,
+        )
+    }
+}
+
+/**
+ * B09 · 카드 덱 오류.
+ *
+ * 카드를 못 불러오면 오늘 할 수 있는 게 없다. 다시 시도할 길을 주고,
+ * 그래도 안 되면 다른 곳으로 갈 수 있게 둔다 — 이 화면에 가두지 않는다.
+ */
+@Composable
+private fun DeckUnavailable(today: TodayViewModel, nav: NavHostController) {
+    Column(Modifier.fillMaxSize()) {
+        TmtnTopBar("오늘의 카드", onBack = { nav.popBackStack() })
+        TmtnMessageView(
+            title = "카드를 불러오지 못했어요",
+            body = "잠깐 뒤에 다시 눌러 주세요.",
+            primaryLabel = "다시 불러오기",
+            onPrimary = { today.refresh() },
+            secondaryLabel = "홈으로",
+            onSecondary = { nav.navigate(Route.HOME) { popUpTo(Route.HOME) } },
         )
     }
 }
