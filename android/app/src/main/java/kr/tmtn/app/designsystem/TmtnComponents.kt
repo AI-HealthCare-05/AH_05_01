@@ -1,6 +1,7 @@
 package kr.tmtn.app.designsystem
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
+import kr.tmtn.app.R
 
 /**
  * 점선 테두리. 달력의 "미완료" 와 같은 뜻으로 쓴다 — **아직 아닌 것 · 빠진 것**.
@@ -349,7 +352,7 @@ fun RewardChip(name: String, hint: String, count: Int = 1) {
         Modifier.clip(TmtnShape.SmallCard).background(TmtnColor.MaterialContainer).padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(TmtnIcons.Leaf, contentDescription = null, tint = materialColor(name), modifier = Modifier.size(20.dp))
+        MaterialIcon(name, size = 28.dp)
         Spacer(Modifier.width(10.dp))
         Column {
             Text("$name ${count}개", style = TmtnText.Label, color = TmtnColor.OnSurface)
@@ -392,6 +395,19 @@ fun ImageSlot(tag: String, title: String, desc: String, height: Dp = 150.dp) {
  * 나뭇가지가 주황인 것은 그 재료의 색이지 "오늘" 을 뜻하는 게 아니다.
  * 다만 그래서 재료색은 **재료를 가리킬 때만** 쓴다. 버튼이나 강조에 끌어 쓰지 않는다.
  */
+/**
+ * 재료 5종의 그림. 이름으로 고른다.
+ * 아직 이름이 안 맞는 재료가 오면 그림 없이 색만 쓴다 — 엉뚱한 그림을 보여 주지 않는다.
+ */
+fun materialDrawable(rewardName: String): Int? = when {
+    rewardName.contains("나뭇가지") -> R.drawable.material_branch
+    rewardName.contains("받침돌") -> R.drawable.material_stone
+    rewardName.contains("물길") -> R.drawable.material_water
+    rewardName.contains("다짐흙") -> R.drawable.material_earth
+    rewardName.contains("새잎") -> R.drawable.material_leaf
+    else -> null
+}
+
 fun materialColor(rewardName: String): Color = when {
     rewardName.contains("나뭇가지") -> TmtnColor.MaterialBranch
     rewardName.contains("받침돌") -> TmtnColor.MaterialStone
@@ -399,4 +415,29 @@ fun materialColor(rewardName: String): Color = when {
     rewardName.contains("다짐흙") -> TmtnColor.MaterialEarth
     rewardName.contains("새잎") -> TmtnColor.MaterialLeaf
     else -> TmtnColor.OnSurfaceVariant
+}
+
+/**
+ * 재료 그림 한 개.
+ *
+ * 그림이 아직 없는 재료는 **선으로 그린 아이콘 + 재료색**으로 떨어진다.
+ * 그림 파일이 하나 빠졌다고 화면이 비지 않게 한다.
+ */
+@Composable
+fun MaterialIcon(rewardName: String, size: Dp = 28.dp, modifier: Modifier = Modifier) {
+    val res = materialDrawable(rewardName)
+    if (res != null) {
+        Image(
+            painter = painterResource(res),
+            contentDescription = null,   // 옆에 재료 이름이 글자로 있다
+            modifier = modifier.size(size),
+        )
+    } else {
+        Icon(
+            TmtnIcons.Leaf,
+            contentDescription = null,
+            tint = materialColor(rewardName),
+            modifier = modifier.size(size),
+        )
+    }
 }
