@@ -14,6 +14,9 @@ import kr.tmtn.app.domain.ml.TmtnIndexInput
 import kr.tmtn.app.domain.ml.TmtnIndexResult
 import kr.tmtn.app.domain.ml.WaistEstimate
 import kr.tmtn.app.domain.model.DailyRecord
+import kr.tmtn.app.domain.model.DamMaterial
+import kr.tmtn.app.domain.model.DamStage
+import kr.tmtn.app.domain.model.DamStages
 import kr.tmtn.app.domain.model.DayStatus
 import kr.tmtn.app.domain.model.REST_PER_WEEK
 import kr.tmtn.app.domain.model.MissionCard
@@ -222,8 +225,124 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
         refresh()
     }
 
-    /** 재료를 몇 개 모았는지 (댐 탭에서 쓴다) */
-    fun materialCounts(): Map<String, Int> = records.groupingBy { it.rewardName }.eachCount()
+    /* ------------------------------- 댐 · 재료 (G01 · G02 · G05 · G06) */
+
+    /** 지금까지 모은 재료 수. **완료 기록 하나가 재료 하나다.** */
+    fun collectedTotal(): Int = records.size
+
+    /**
+     * 지금 댐이 몇 단계인지. 문턱값은 피그마 G03 기준 (5 · 15 · 35 · 70 · 120).
+     * 댐 탭(G01)·주간 리포트(D02)·축하(G07) 가 **모두 이 값을 써야** 숫자가 어긋나지 않는다.
+     */
+    fun damStage(): DamStage = DamStages.of(collectedTotal())
+
+    /** G02 재료 도감 — 5종을 **0개인 것까지 전부** 정해진 순서로 준다 */
+    fun materialSummary(): List<MaterialCount> {
+        val counted = records.mapNotNull { DamMaterial.from(it.rewardName) }
+            .groupingBy { it }.eachCount()
+        return DamMaterial.displayOrder.map { MaterialCount(it, counted[it] ?: 0) }
+    }
+
+    /** G05 재료별 상세 — 그 재료를 받은 기록을 최근 것부터 [limit] 개까지 */
+    fun materialDetail(material: DamMaterial, limit: Int = 5): MaterialDetail {
+        val mine = records
+            .filter { DamMaterial.from(it.rewardName) == material }
+            .sortedByDescending { it.date }
+        return MaterialDetail(
+            material = material,
+            count = mine.size,
+            logs = mine.take(limit).map {
+                MaterialLog(
+                    title = it.title,
+                    whenLabel = "${TmtnDate.label(it.date)} ${it.completedAtLabel}".trim(),
+                    record = it,
+                )
+            },
+            totalLogs = mine.size,
+        )
+    }
+
+    /** G06 카드첩 — 모은 카드 전부(최근 것부터). [filter] 를 주면 그 재료만 */
+    fun collectedCards(filter: DamMaterial? = null): List<CollectedCard> =
+        records.sortedByDescending { it.date }
+            .map { CollectedCard(it, DamMaterial.from(it.rewardName), TmtnDate.label(it.date)) }
+            .filter { filter == null || it.material == filter }
+
+    /* -------------------------------------------- 주간 리포트 (D02) */
+
+    /**
+     * 한 주치 요약. [weekOffset] 0 이 이번 주, -1 이 지난주다.
+     * D02 의 "지난 리포트 ›" 는 이 값을 하나씩 줄여 부르면 된다.
+     *
+     * 주는 **월요일에 시작한다** — 홈의 주간 점, 기록 달력과 같은 경계다.
+     */
+    fun weekReport(weekOffset: Int = 0): WeekReport {
+        val days = TmtnDate.weekOf(weekOffset)
+        val cells = days.map { d ->
+            WeekDayCell(
+                dateKey = d,
+                dayOfMonth = TmtnDate.dayOf(d),
+                weekdayShort = TmtnDate.weekdayShort(d),
+                status = statusOf(d),
+                isToday = d == dateKey,
+            )
+        }
+        // 오늘은 아직 할 수 있으므로 "남은 날" 에 넣지 않는다.
+        val remaining = days.count { TmtnDate.isFuture(it) }
+
+        val weekRecords = records.filter { it.date in days }
+        val counted = weekRecords.mapNotNull { DamMaterial.from(it.rewardName) }
+            .groupingBy { it }.eachCount()
+
+        val done = cells.count { it.status == DayStatus.DONE }
+        val rest = cells.count { it.status == DayStatus.REST }
+
+        return WeekReport(
+            weekOffset = weekOffset,
+            weekStartKey = days.first(),
+            rangeLabel = TmtnDate.rangeLabel(days.first(), days.last()),
+            days = cells,
+            doneCount = done,
+            restCount = rest,
+            missedCount = cells.count { it.status == DayStatus.MISSED },
+            remainingCount = remaining,
+            materials = DamMaterial.displayOrder.mapNotNull { m ->
+                counted[m]?.let { MaterialCount(m, it) }
+            },
+            materialsThisWeek = weekRecords.size,
+            collectedTotal = collectedTotal(),
+            dam = damStage(),
+            beaverLine = beaverLine(done, rest, remaining, weekOffset == 0),
+            isThisWeek = weekOffset == 0,
+        )
+    }
+
+    /**
+     * 비버 한마디.
+     *
+     * TODO(기획): 문구는 임시다. D02 시안의 말투("한 번 쉬고 두 번 해냈어.")를 흉내 낸 것이니
+     *  최종 문구는 기획에서 확정해 주세요. **쉼을 탓하는 말은 쓰지 않는다** 는 원칙만 지키면 된다.
+     */
+    private fun beaverLine(done: Int, rest: Int, remaining: Int, isThisWeek: Boolean): String {
+        val counts = listOf("", "한", "두", "세", "네", "다섯", "여섯", "일곱")
+        val spans = listOf("", "하루", "이틀", "사흘", "나흘", "닷새", "엿새", "이레")
+        fun c(v: Int) = counts.getOrElse(v) { "$v" }
+
+        val head = when {
+            done == 0 && rest == 0 && isThisWeek -> "이번 주는 이제 시작이야."
+            done == 0 && rest == 0 -> "이 주에는 기록이 없어."
+            done == 0 -> "${c(rest)} 번 쉬어 갔어. 그것도 괜찮아."
+            rest == 0 -> "${c(done)} 번 해냈어."
+            else -> "${c(rest)} 번 쉬고 ${c(done)} 번 해냈어."
+        }
+        val span = spans.getOrElse(remaining) { "${remaining}일" }
+        val tail = when {
+            !isThisWeek -> ""
+            remaining > 0 -> "\n아직 $span 남았으니 천천히 가."
+            else -> "\n한 주 잘 마쳤어."
+        }
+        return head + tail
+    }
 
     /**
      * 모델 ① → 모델 ③ 순서로 다시 계산한다.

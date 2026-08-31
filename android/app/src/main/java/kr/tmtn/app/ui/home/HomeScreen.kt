@@ -225,15 +225,24 @@ private fun WeekDot(status: DayStatus, isToday: Boolean) {
 
 @Composable
 private fun DamSummaryCard(today: TodayViewModel, onOpen: () -> Unit) {
-    val total = today.records.size
-    val stage = total / 5 + 1
-    val toNext = 5 - (total % 5)
+    // 단계 계산은 DamStages 한 곳에서만 한다.
+    // 여기서 따로 세면 홈과 댐 탭이 서로 다른 단계를 말하게 된다.
+    // (예전에는 "5개마다 한 단계" 로 세어, 기록 20개일 때 홈은 5단계·댐 탭은 2단계였다.)
+    val dam = today.damStage()
+
+    // 아직 첫 단계에 못 닿았으면 "0단계" 라고 말하지 않는다 —
+    // 시작도 전에 실패한 기분이 든다.
+    val summary = when {
+        dam.label == null -> "첫 단계까지 ${dam.toNext ?: 0}개"
+        dam.toNext == null -> "${dam.label} · 다 모았어요"
+        else -> "${dam.label} · 다음까지 ${dam.toNext}개"
+    }
 
     TmtnCardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("댐", style = TmtnText.Label, color = TmtnColor.OnSurface)
-                Text("${stage}단계 · 다음까지 ${toNext}개", style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
+                Text(summary, style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
             }
             TmtnQuietButton("보러 가기", fillWidth = false, onClick = onOpen)
         }

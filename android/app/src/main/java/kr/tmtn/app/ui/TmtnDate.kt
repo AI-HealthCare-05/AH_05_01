@@ -46,6 +46,30 @@ object TmtnDate {
     }
 
     /**
+     * 몇 주 전/후의 월~일 7일. `weekOffset = 0` 이면 이번 주, `-1` 이면 지난주.
+     * 주간 리포트(D02)의 "지난 리포트 ›" 가 이 값을 하나씩 줄여 부른다.
+     */
+    fun weekOf(weekOffset: Int): List<String> {
+        val mon = weekStart(LocalDate.now()).plusWeeks(weekOffset.toLong())
+        return (0..6).map { mon.plusDays(it.toLong()).toString() }
+    }
+
+    /** `8. 30.` — 연도를 빼고 짧게. 주 범위의 끝 날짜에 쓴다 */
+    fun shortLabel(key: String): String = runCatching {
+        val d = LocalDate.parse(key)
+        "${d.monthValue}. ${d.dayOfMonth}."
+    }.getOrDefault(key)
+
+    /** `2026. 8. 24. ~ 8. 30.` */
+    fun rangeLabel(startKey: String, endKey: String): String =
+        "${label(startKey)} ~ ${shortLabel(endKey)}"
+
+    /** 그 날의 요일 한 글자 (`월`) */
+    fun weekdayShort(key: String): String = runCatching {
+        weekdayHeaders[LocalDate.parse(key).dayOfWeek.value - 1]
+    }.getOrDefault("")
+
+    /**
      * 월간 달력 격자. 앞뒤로 빈 칸을 두지 않고 **이전·다음 달 날짜로 채운다.**
      * 6주 × 7일 = 42칸 고정이라 달을 넘겨도 표 높이가 흔들리지 않는다.
      */

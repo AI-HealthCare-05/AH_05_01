@@ -224,8 +224,9 @@ private fun RecordRow(r: kr.tmtn.app.domain.model.DailyRecord) {
 
 @Composable
 fun DamScreen(today: TodayViewModel) {
-    val counts = today.materialCounts()
-    val total = today.records.size
+    // 단계 계산은 ViewModel 이 한다 — 주간 리포트(D02)·축하(G07) 와 숫자가 어긋나면 안 된다.
+    val dam = today.damStage()
+    val materials = today.materialSummary()
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         TmtnTopBar("댐")
@@ -239,17 +240,27 @@ fun DamScreen(today: TodayViewModel) {
             )
 
             TmtnCardBox {
-                Text("지금까지 모은 재료 ${total}개", style = TmtnText.Title, color = TmtnColor.OnSurface)
-                Text("${total / 5 + 1}단계 · 다음 단계까지 ${5 - (total % 5)}개", style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
-                MeterBar((total % 5) / 5f)
+                Text("지금까지 모은 재료 ${dam.collected}개", style = TmtnText.Title, color = TmtnColor.OnSurface)
+                Text(
+                    when {
+                        dam.label == null -> "첫 단계까지 재료 ${dam.toNext}개"
+                        dam.toNext == null -> "${dam.label} · 마지막 단계까지 왔어요"
+                        else -> "${dam.label} · 다음 단계까지 재료 ${dam.toNext}개"
+                    },
+                    style = TmtnText.Caption,
+                    color = TmtnColor.OnSurfaceVariant,
+                )
+                MeterBar(dam.progress)
             }
 
-            if (counts.isEmpty()) {
+            if (materials.all { it.count == 0 }) {
                 NoteBox(body = "미션을 하나 끝낼 때마다 재료가 하나씩 쌓여요.")
             } else {
                 TmtnCardBox {
-                    Text("재료", style = TmtnText.Label, color = TmtnColor.OnSurface)
-                    counts.forEach { (name, n) -> StatRow(name, "${n}개") }
+                    Text("모은 재료", style = TmtnText.Label, color = TmtnColor.OnSurface)
+                    materials.forEach {
+                        StatRow("${it.material.displayName} · ${it.material.area}", "${it.count}개")
+                    }
                 }
             }
 
