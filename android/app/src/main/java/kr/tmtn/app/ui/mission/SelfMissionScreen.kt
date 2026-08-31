@@ -36,20 +36,37 @@ fun SelfMissionScreen(today: TodayViewModel, nav: NavHostController) {
     val card = today.picked ?: run { nav.popBackStack(); return }
     var showAbort by remember { mutableStateOf(false) }
 
-    // C19 · 진행 중이던 것을 버리는 일이라 한 번 묻는다.
-    if (showAbort) {
-        AbortConfirmDialog(
-            onContinue = { showAbort = false },
-            onAbort = { showAbort = false; nav.popBackStack() },
-        )
-    }
-
     // 모델형 카드인데 이 화면으로 왔다면 = 센서를 못 쓰거나 사용자가 직접 체크를 골랐다는 뜻.
     val manual = card.type.isModelMeasured
     val vm: MissionRunViewModel = viewModel(
         key = "self_${card.id}",
-        factory = viewModelFactory { initializer { MissionRunViewModel(card, forceManual = manual) } },
+        factory = viewModelFactory {
+            initializer {
+                // 저장소를 넘겨야 화면을 벗어나 있는 동안에도 시간이 흐른다.
+                MissionRunViewModel(
+                    card = card,
+                    forceManual = manual,
+                    store = today.store,
+                    dateKey = today.dateKey,
+                )
+            }
+        },
     )
+
+    // C19 · 진행 중이던 것을 버리는 일이라 한 번 묻는다.
+    // vm 뒤에 두어야 한다 — 중단할 때 시계를 멈춰야 하기 때문이다.
+    if (showAbort) {
+        AbortConfirmDialog(
+            onContinue = { showAbort = false },
+            onAbort = {
+                showAbort = false
+                // 시계를 멈추되 지금까지 쌓인 시간은 남긴다.
+                // 마음이 바뀌어 돌아오면 이어서 할 수 있다.
+                vm.pause()
+                nav.popBackStack()
+            },
+        )
+    }
 
     LaunchedEffect(vm.phase) {
         if (vm.phase == RunPhase.Done) {
@@ -58,6 +75,8 @@ fun SelfMissionScreen(today: TodayViewModel, nav: NavHostController) {
                 measuredByModel = false,
                 fromPlaceholder = false,
             )
+            // 기록을 남긴 뒤에 지운다. 남겨 두면 내일 같은 카드에서 어제 시간이 이어져 보인다.
+            vm.discardTimer()
             nav.navigate(Route.COMPLETE) { popUpTo(Route.HOME) }
         }
     }

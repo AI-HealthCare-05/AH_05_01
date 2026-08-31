@@ -170,6 +170,42 @@ class TmtnStore(context: Context) {
             .apply()
     }
 
+    /* -------------------------------------------------- 미션 타이머 (C02~C04) */
+
+    /**
+     * 진행 중인 타이머. **초를 세지 않고 "언제 시작했는지" 를 적어 둔다.**
+     *
+     * 1초마다 세는 방식은 화면을 벗어나거나 폰이 잠들면 멈춘다.
+     * 20분짜리 미션을 하려고 20분 내내 앱을 켜 두고 있으라고 할 수는 없다.
+     * 시작 시각만 적어 두면 돌아와서 빼기만 하면 되고, 앱이 죽었다 살아나도 값이 남는다.
+     *
+     * [startedAt] 이 0 이면 지금은 멈춰 있다는 뜻이다.
+     * [accumulated] 는 멈추기 전까지 쌓인 초.
+     */
+    data class TimerState(val startedAt: Long, val accumulated: Int) {
+        val isRunning: Boolean get() = startedAt > 0L
+    }
+
+    fun timerStateOf(key: String): TimerState = TimerState(
+        startedAt = prefs.getLong("run_started_$key", 0L),
+        accumulated = prefs.getInt("run_acc_$key", 0),
+    )
+
+    fun saveTimerState(key: String, state: TimerState) {
+        prefs.edit()
+            .putLong("run_started_$key", state.startedAt)
+            .putInt("run_acc_$key", state.accumulated)
+            .apply()
+    }
+
+    /** 미션을 끝냈거나 접었을 때. 남겨 두면 다음 미션이 이어서 세는 것처럼 보인다. */
+    fun clearTimer(key: String) {
+        prefs.edit()
+            .remove("run_started_$key")
+            .remove("run_acc_$key")
+            .apply()
+    }
+
     /* ------------------------------------------------------ 대체 미션 */
 
     /**

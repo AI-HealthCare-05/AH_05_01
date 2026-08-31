@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import kr.tmtn.app.data.AppContainer
 import kr.tmtn.app.data.DailyCardDraw
+import kr.tmtn.app.data.TmtnStore
 import kr.tmtn.app.domain.ml.ModelRegistry
 import kr.tmtn.app.domain.ml.ModelResult
 import kr.tmtn.app.domain.ml.TmtnIndexInput
@@ -56,6 +57,12 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
 
 
     val isLoggedIn: Boolean get() = container.store.isLoggedIn
+
+    /**
+     * 미션 실행 화면이 타이머를 기기에 적어 두려면 저장소가 필요하다.
+     * 서버가 붙으면 이 통로 대신 API 를 쓰게 되므로 여기만 고치면 된다.
+     */
+    val store: TmtnStore get() = container.store
     val needsOnboarding: Boolean get() = !profile.isComplete
 
     init { refresh() }
