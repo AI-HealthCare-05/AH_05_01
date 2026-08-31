@@ -10,7 +10,14 @@ object TmtnShape {
     val SmallCard = RoundedCornerShape(12.dp)
     val Card = RoundedCornerShape(16.dp)
     val TodayCard = RoundedCornerShape(24.dp)
+    /** 바텀시트 — 화면 아래에 붙으므로 **위만** 둥글다. */
     val Sheet = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+
+    /**
+     * 다이얼로그 — 화면 한가운데 떠 있으므로 **네 귀가 모두** 둥글다.
+     * 여기에 [Sheet] 를 쓰면 아래 두 귀가 각져서 어색하다.
+     */
+    val Dialog = RoundedCornerShape(24.dp)
     val Button = RoundedCornerShape(14.dp)
     val Chip = RoundedCornerShape(percent = 50)
 }

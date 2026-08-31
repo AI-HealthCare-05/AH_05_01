@@ -123,7 +123,7 @@ fun ExitConfirmDialog(onStay: () -> Unit, onExit: () -> Unit) {
     AlertDialog(
         onDismissRequest = onStay,
         containerColor = TmtnColor.Background,
-        shape = TmtnShape.Sheet,
+        shape = TmtnShape.Dialog,
         title = { Text("앱을 닫을까요?", style = TmtnText.Title, color = TmtnColor.OnSurface) },
         text = {
             Text(

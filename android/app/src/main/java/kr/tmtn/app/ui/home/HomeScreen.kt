@@ -147,7 +147,7 @@ private fun RestConfirmDialog(left: Int, onDismiss: () -> Unit, onConfirm: () ->
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = TmtnColor.Background,
-        shape = TmtnShape.Sheet,
+        shape = TmtnShape.Dialog,
         title = { Text("오늘은 쉬어갈까요?", style = TmtnText.Title, color = TmtnColor.OnSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

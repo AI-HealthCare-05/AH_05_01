@@ -19,7 +19,7 @@ fun AbortConfirmDialog(onContinue: () -> Unit, onAbort: () -> Unit) {
     AlertDialog(
         onDismissRequest = onContinue,
         containerColor = TmtnColor.Background,
-        shape = TmtnShape.Sheet,
+        shape = TmtnShape.Dialog,
         title = { Text("그만둘까요?", style = TmtnText.Title, color = TmtnColor.OnSurface) },
         text = {
             Text(

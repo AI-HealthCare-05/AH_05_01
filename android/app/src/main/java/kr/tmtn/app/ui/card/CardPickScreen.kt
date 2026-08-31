@@ -141,8 +141,18 @@ private fun CardBack(index: Int, selected: Boolean, modifier: Modifier, onClick:
         if (selected) {
             // 고른 카드에만 얇은 먹색 막을 덮어 나머지와 갈라 준다.
             Box(Modifier.fillMaxSize().background(TmtnColor.Scrim.copy(alpha = 0.28f)))
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("고름", style = TmtnText.Label, color = TmtnColor.OnPrimary)
+            // 배지는 **위 왼쪽 귀**에 둔다. 카드 뒷면 그림 한가운데에 이미
+            // TMTN 표식이 있어서, 가운데에 두면 두 글자가 겹쳐 둘 다 안 읽힌다.
+            Box(Modifier.fillMaxSize().padding(8.dp), contentAlignment = Alignment.TopStart) {
+                Text(
+                    "고름",
+                    style = TmtnText.Label,
+                    color = TmtnColor.OnPrimary,
+                    modifier = Modifier
+                        .clip(TmtnShape.Chip)
+                        .background(TmtnColor.Primary)
+                        .padding(horizontal = 10.dp, vertical = 3.dp),
+                )
             }
         }
     }

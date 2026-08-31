@@ -68,37 +68,8 @@ fun CardFrontScreen(today: TodayViewModel, nav: NavHostController) {
 
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-            TmtnCardBox(shape = TmtnShape.TodayCard, padding = 20.dp) {
-                Row {
-                    Text("오늘의 카드", style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
-                    Spacer(Modifier.weight(1f))
-                    Text(TmtnDate.label(today.dateKey), style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
-                }
-
-                Text(card.mission.fortune, style = TmtnText.Title, color = TmtnColor.OnSurface)
-
-                HorizontalRule()
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(TmtnIcons.Walk, contentDescription = null, tint = TmtnColor.OnSurfaceVariant, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("오늘의 행동", style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
-                        Text(card.title, style = TmtnText.Label, color = TmtnColor.OnSurface)
-                    }
-                }
-
-                Text("오늘의 한 줄", style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant)
-                Text(card.oneLine, style = TmtnText.Body, color = TmtnColor.OnSurface)
-
-                Spacer(Modifier.height(4.dp))
-                RewardChip(card.mission.rewardName, card.mission.rewardHint)
-
-                Text(
-                    "${card.mission.axis.accessibleText()} · ${card.mission.area}",
-                    style = TmtnText.Caption, color = TmtnColor.OnSurfaceVariant,
-                )
-            }
+            // 브랜드 시안 04 틈 노트. 카드 자체는 별도 파일에서 그린다.
+            FortuneCardFront(card, today.dateKey)
 
             // B12 · 대체 미션 적용 완료
             if (swapped) {
@@ -169,7 +140,7 @@ private fun HardTodayDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = TmtnColor.Background,
-        shape = TmtnShape.Sheet,
+        shape = TmtnShape.Dialog,
         title = { Text("오늘은 어떻게 할까요?", style = TmtnText.Title, color = TmtnColor.OnSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
