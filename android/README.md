@@ -3,6 +3,9 @@
 Jetpack Compose 앱. **Android Studio 로 이 `android/` 폴더를 연다.** 저장소 루트를 열면 안 된다.
 (루트에는 Python `app/` 이 있어서 Android `app` 모듈과 이름이 겹친다.)
 
+> **처음 넘겨받았다면 [`docs/ANDROID_인수인계.md`](../docs/ANDROID_인수인계.md) 부터 읽으세요.**
+> 어디까지 됐고 다음에 뭘 해야 하는지, 코드만 봐서는 안 보이는 함정이 정리돼 있습니다.
+
 ## 5분 만에 APK 만들기
 
 1. Android Studio → **Open** → 이 `android` 폴더 선택
