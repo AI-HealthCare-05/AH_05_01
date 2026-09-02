@@ -1,12 +1,13 @@
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any
 
 from pydantic import EmailStr
 
 from app.core import config
-from app.models.users import Gender, User
+from app.models.users import User
 
-ALLOWED_UPDATE_FIELDS = ["name", "phone_number", "gender", "birthday"]
+# v2: birthday -> birth_year/birth_month, name/gender/phone_number 전부 온보딩 후반부에 채워짐
+ALLOWED_UPDATE_FIELDS = ["name", "nickname", "phone_number", "gender", "birth_year", "birth_month"]
 UPDATED_AT_FIELD = "updated_at"
 
 
@@ -20,28 +21,11 @@ class UserRepository:
     async def get_user(self, user_id: int) -> User | None:
         return await self._model.get_or_none(id=user_id)
 
-    async def create_user(
-        self,
-        email: str | EmailStr,
-        hashed_password: str,
-        name: str,
-        phone_number: str,
-        gender: Gender,
-        birthday: date,
-        *,
-        is_active: bool = True,
-        is_admin: bool = False,
-    ) -> User:
-        return await self._model.create(
-            email=email,
-            hashed_password=hashed_password,
-            name=name,
-            phone_number=phone_number,
-            gender=gender,
-            birthday=birthday,
-            is_active=is_active,
-            is_admin=is_admin,
-        )
+    async def create_user_minimal(self, email: str | EmailStr, hashed_password: str) -> User:
+        """v2: 이메일 인증 완료 직후 생성되는 계정. 이 시점엔 이메일+비밀번호뿐이고
+        나머지(이름/성별/생년월일 등)는 온보딩 후속 단계(PATCH /users/me)에서 채워짐."""
+
+        return await self._model.create(email=email, hashed_password=hashed_password)
 
     async def get_user_by_email(self, email: str) -> User | None:
         return await self._model.get_or_none(email=email)

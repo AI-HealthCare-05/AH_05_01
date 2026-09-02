@@ -1,0 +1,241 @@
+from calendar import monthrange
+from collections import Counter
+from datetime import date, timedelta
+
+from fastapi import HTTPException, status
+
+from app.dtos.companion import MATERIAL_INFO
+from app.dtos.records import (
+    CalendarDayItem,
+    DayDetailResponse,
+    MemoUpdateRequest,
+    MonthlyCalendarResponse,
+    RestDayRequest,
+    StreakResponse,
+    WeeklyMaterialItem,
+    WeeklyReportResponse,
+)
+from app.models.challenges import ChallengeEvent
+from app.models.users import User
+from app.repositories.record_repository import RecordRepository
+
+MAX_REST_DAYS_PER_WEEK = 2
+
+
+def _week_boundaries(d: date) -> tuple[date, date]:
+    """월요일 시작 기준 그 주의 (월요일, 일요일)."""
+
+    monday = d - timedelta(days=d.weekday())
+    sunday = monday + timedelta(days=6)
+    return monday, sunday
+
+
+def _time_slot_from_hour(hour: int) -> str:
+    if 5 <= hour < 11:
+        return "아침"
+    if 11 <= hour < 17:
+        return "점심 뒤"
+    if 17 <= hour < 22:
+        return "저녁"
+    return "밤"
+
+
+class RecordService:
+    def __init__(self):
+        self.repo = RecordRepository()
+
+    async def _build_status_map(self, user_id, start: date, end: date) -> dict[date, tuple[str, object]]:
+        """날짜 -> (status, card_set) 매핑. card_set은 상세 조회 시 재사용하려고 같이 반환."""
+
+        card_sets = await self.repo.get_card_sets_in_range(user_id, start, end)
+        notes = await self.repo.get_notes_in_range(user_id, start, end)
+        card_set_by_date = {cs.service_date: cs for cs in card_sets}
+
+        status_map: dict[date, tuple[str, object]] = {}
+        current = start
+        while current <= end:
+            note = notes.get(current)
+            card_set = card_set_by_date.get(current)
+
+            if note and note.is_rest_day:
+                status_map[current] = ("REST", card_set)
+            elif card_set and card_set.selection and card_set.selection.challenge:
+                challenge_state = card_set.selection.challenge.state
+                status_map[current] = ("COMPLETED" if challenge_state == "COMPLETED" else "INCOMPLETE", card_set)
+            else:
+                status_map[current] = ("INCOMPLETE", card_set)
+
+            current += timedelta(days=1)
+        return status_map
+
+    async def get_monthly_calendar(self, user: User, year: int, month: int) -> MonthlyCalendarResponse:
+        _, last_day = monthrange(year, month)
+        start = date(year, month, 1)
+        end = date(year, month, last_day)
+        today = date.today()
+        if end > today:
+            end = today  # 미래 날짜는 아예 표시 안 함 (완료 여부를 알 수 없으니까)
+
+        if start > today:
+            return MonthlyCalendarResponse(year=year, month=month, days=[], completed_count=0, rest_count=0)
+
+        status_map = await self._build_status_map(user.id, start, end)
+        days = [CalendarDayItem(date=d, status=s) for d, (s, _) in sorted(status_map.items())]
+        completed_count = sum(1 for _, (s, _) in status_map.items() if s == "COMPLETED")
+        rest_count = sum(1 for _, (s, _) in status_map.items() if s == "REST")
+
+        return MonthlyCalendarResponse(
+            year=year, month=month, days=days, completed_count=completed_count, rest_count=rest_count
+        )
+
+    async def get_weekly_report(self, user: User) -> WeeklyReportResponse:
+        today = date.today()
+        start = today - timedelta(days=6)
+
+        status_map = await self._build_status_map(user.id, start, today)
+        days = [CalendarDayItem(date=d, status=s) for d, (s, _) in sorted(status_map.items())]
+        completed_count = sum(1 for _, (s, _) in status_map.items() if s == "COMPLETED")
+
+        # 이번 주 완료된 챌린지들의 오행 집계 + 완료 시간대 집계
+        element_counter: Counter = Counter()
+        hour_counter: Counter = Counter()
+
+        for _, (day_status, card_set) in status_map.items():
+            if day_status != "COMPLETED" or card_set is None:
+                continue
+            selection = card_set.selection
+            if selection is None or selection.challenge is None:
+                continue
+            challenge = selection.challenge
+            five_element = (challenge.mission_snapshot or {}).get("five_element")
+            if five_element:
+                element_counter[five_element] += 1
+
+            complete_event = (
+                await ChallengeEvent.filter(challenge_id=challenge.id, event_type="COMPLETE")
+                .order_by("-server_at")
+                .first()
+            )
+            if complete_event:
+                hour_counter[_time_slot_from_hour((complete_event.occurred_at or complete_event.server_at).hour)] += 1
+
+        materials = [
+            WeeklyMaterialItem(element=element, material_name=MATERIAL_INFO[element]["material_name"], count=count)
+            for element, count in element_counter.items()
+        ]
+        best_time_slot = hour_counter.most_common(1)[0][0] if hour_counter else None
+
+        return WeeklyReportResponse(
+            start_date=start,
+            end_date=today,
+            days=days,
+            completed_count=completed_count,
+            total_days=7,
+            best_time_slot=best_time_slot,
+            materials_this_week=materials,
+        )
+
+    async def get_day_detail(self, user: User, target_date: date) -> DayDetailResponse:
+        status_map = await self._build_status_map(user.id, target_date, target_date)
+        day_status, card_set = status_map[target_date]
+
+        note = await self.repo.get_or_create_note(user.id, target_date)
+
+        response = DayDetailResponse(date=target_date, status=day_status, memo=note.memo)
+
+        if card_set and card_set.selection and card_set.selection.challenge:
+            challenge = card_set.selection.challenge
+            template = card_set.selection.card_option.mission_template_version
+            response.mission_title = template.title
+            response.exec_type = challenge.exec_type
+            response.duration_seconds = challenge.accumulated_duration_seconds or None
+            response.count_achieved = challenge.accumulated_count or None
+            response.element = (challenge.mission_snapshot or {}).get("five_element")
+            if response.element:
+                response.material_name = MATERIAL_INFO.get(response.element, {}).get("material_name")
+
+            if day_status == "COMPLETED":
+                complete_event = (
+                    await ChallengeEvent.filter(challenge_id=challenge.id, event_type="COMPLETE")
+                    .order_by("-server_at")
+                    .first()
+                )
+                if complete_event:
+                    response.completed_at = (complete_event.occurred_at or complete_event.server_at).isoformat()
+
+        return response
+
+    async def update_memo(self, user: User, target_date: date, request: MemoUpdateRequest) -> DayDetailResponse:
+        note = await self.repo.get_or_create_note(user.id, target_date)
+        note.memo = request.memo
+        await note.save(update_fields=["memo", "updated_at"])
+        return await self.get_day_detail(user, target_date)
+
+    async def mark_rest_day(self, user: User, request: RestDayRequest) -> StreakResponse:
+        target_date = request.service_date
+        today = date.today()
+        if target_date > today:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="미래 날짜는 쉼으로 표시할 수 없습니다.")
+
+        monday, sunday = _week_boundaries(target_date)
+        existing_note = await self.repo.get_or_create_note(user.id, target_date)
+
+        if not existing_note.is_rest_day:
+            rest_count_this_week = await self.repo.count_rest_days_in_range(user.id, monday, sunday)
+            if rest_count_this_week >= MAX_REST_DAYS_PER_WEEK:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"이번 주에 이미 쉼을 {MAX_REST_DAYS_PER_WEEK}번 사용했습니다.",
+                )
+
+        existing_note.is_rest_day = True
+        await existing_note.save(update_fields=["is_rest_day", "updated_at"])
+
+        return await self.get_streak(user)
+
+    async def get_streak(self, user: User) -> StreakResponse:
+        today = date.today()
+        earliest = await self.repo.get_earliest_card_set_date(user.id)
+
+        if earliest is None:
+            monday, sunday = _week_boundaries(today)
+            return StreakResponse(
+                current_streak=0, longest_streak=0, rest_days_used_this_week=0,
+                rest_days_remaining_this_week=MAX_REST_DAYS_PER_WEEK,
+            )
+
+        status_map = await self._build_status_map(user.id, earliest, today)
+
+        # 오늘부터 거슬러 올라가며 현재 스트릭 계산 (COMPLETED/REST면 계속, INCOMPLETE면 중단)
+        current_streak = 0
+        d = today
+        while d >= earliest:
+            day_status, _ = status_map[d]
+            if day_status in ("COMPLETED", "REST"):
+                current_streak += 1
+                d -= timedelta(days=1)
+            else:
+                break
+
+        # 과거 전체를 순방향으로 훑으며 최장 기록 계산
+        longest_streak = 0
+        running = 0
+        d = earliest
+        while d <= today:
+            day_status, _ = status_map[d]
+            if day_status in ("COMPLETED", "REST"):
+                running += 1
+                longest_streak = max(longest_streak, running)
+            else:
+                running = 0
+            d += timedelta(days=1)
+
+        monday, sunday = _week_boundaries(today)
+        rest_used = await self.repo.count_rest_days_in_range(user.id, monday, sunday)
+
+        return StreakResponse(
+            current_streak=current_streak,
+            longest_streak=longest_streak,
+            rest_days_used_this_week=rest_used,
+            rest_days_remaining_this_week=max(MAX_REST_DAYS_PER_WEEK - rest_used, 0),
+        )

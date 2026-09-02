@@ -1,0 +1,96 @@
+import asyncio
+import hashlib
+import random
+import string
+from datetime import UTC, datetime, timedelta
+
+from fastapi.exceptions import HTTPException
+from starlette import status
+
+from app.core import config
+from app.core.config import Env
+from app.core.email.sender import EmailSendError, send_verification_email
+from app.repositories.email_verification_repository import EmailVerificationRepository
+
+CODE_LENGTH = 6
+CODE_EXPIRE_MINUTES = 10
+MAX_ATTEMPTS = 5
+
+
+def _hash_code(code: str) -> str:
+    # 비밀번호가 아니라 10분짜리 1회용 코드라 bcrypt는 과함. sha256로 충분.
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def _generate_code() -> str:
+    return "".join(random.choices(string.digits, k=CODE_LENGTH))
+
+
+def _smtp_configured() -> bool:
+    return bool(config.SMTP_USERNAME and config.SMTP_APP_PASSWORD)
+
+
+class EmailVerificationService:
+    """A03(이메일 회원가입) -> A04(인증번호 입력) 화면 흐름 대응.
+
+    Gmail SMTP 발송 연동됨. .env에 SMTP_USERNAME·SMTP_APP_PASSWORD가 채워져 있으면
+    실제로 이메일을 보내고, 안 채워져 있으면(로컬 개발 초기 등) 예전처럼 dev_only_code로만
+    동작함 — 이메일 서버 설정 없이도 계속 개발할 수 있게 하기 위함.
+    """
+
+    def __init__(self):
+        self.repo = EmailVerificationRepository()
+
+    async def request_code(self, email: str) -> dict:
+        email_normalized = email.strip().lower()
+        code = _generate_code()
+        expires_at = datetime.now(UTC) + timedelta(minutes=CODE_EXPIRE_MINUTES)
+
+        await self.repo.create(
+            email_normalized=email_normalized, code_hash=_hash_code(code), expires_at=expires_at
+        )
+
+        email_sent = False
+        if _smtp_configured():
+            try:
+                # smtplib는 동기 라이브러리라 to_thread로 감싸서 이벤트 루프를 막지 않게 함
+                await asyncio.to_thread(send_verification_email, email_normalized, code)
+                email_sent = True
+            except EmailSendError as exc:
+                if config.ENV == Env.PROD:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.",
+                    ) from exc
+                # 개발 환경이면 발송 실패해도 dev_only_code로 계속 테스트 가능하게 그냥 넘어감
+
+        result = {
+            "message": "인증번호를 이메일로 보냈습니다." if email_sent else "인증번호를 생성했습니다.",
+            "expires_in_seconds": CODE_EXPIRE_MINUTES * 60,
+        }
+        # ⚠️ SMTP 미설정이거나 발송 실패 시에만 노출. 운영에서 SMTP 정상 동작하면 이 값 자체가 안 나감.
+        if config.ENV != Env.PROD or not email_sent:
+            result["dev_only_code"] = code
+        return result
+
+    async def verify_code(self, email: str, code: str) -> None:
+        """검증만 하고 verified_at은 여기서 안 찍음 — 실제 계정 생성 성공까지 확인한 뒤
+        confirm_and_consume()에서 최종 소비 처리."""
+
+        email_normalized = email.strip().lower()
+        request = await self.repo.get_latest_unverified(email_normalized)
+
+        if request is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="인증 요청을 찾을 수 없습니다.")
+        if request.expires_at < datetime.now(UTC):
+            raise HTTPException(status_code=status.HTTP_410_GONE, detail="인증번호가 만료되었습니다.")
+        if request.attempt_count >= MAX_ATTEMPTS:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="시도 횟수를 초과했습니다. 다시 요청해주세요."
+            )
+
+        if request.code_hash != _hash_code(code):
+            await self.repo.increment_attempt(request)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="인증번호가 올바르지 않습니다.")
+
+        await self.repo.mark_verified(request)

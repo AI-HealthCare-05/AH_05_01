@@ -5,29 +5,21 @@ from fastapi.responses import JSONResponse as Response
 
 from app.core import config
 from app.core.config import Env
-from app.dtos.auth import LoginRequest, LoginResponse, SignUpRequest, TokenRefreshResponse
+from app.dtos.auth import (
+    EmailVerificationConfirmRequest,
+    EmailVerificationRequestRequest,
+    LoginRequest,
+    LoginResponse,
+    TokenRefreshResponse,
+)
 from app.services.auth import AuthService
+from app.services.email_verification import EmailVerificationService
 from app.services.jwt import JwtService
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
-async def signup(
-    request: SignUpRequest,
-    auth_service: Annotated[AuthService, Depends(AuthService)],
-) -> Response:
-    await auth_service.signup(request)
-    return Response(content={"detail": "회원가입이 성공적으로 완료되었습니다."}, status_code=status.HTTP_201_CREATED)
-
-
-@auth_router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
-async def login(
-    request: LoginRequest,
-    auth_service: Annotated[AuthService, Depends(AuthService)],
-) -> Response:
-    user = await auth_service.authenticate(request)
-    tokens = await auth_service.login(user)
+def _issue_login_response(tokens: dict) -> Response:
     resp = Response(
         content=LoginResponse(access_token=str(tokens["access_token"])).model_dump(), status_code=status.HTTP_200_OK
     )
@@ -40,6 +32,46 @@ async def login(
         expires=tokens["access_token"].payload["exp"],
     )
     return resp
+
+
+@auth_router.post("/email-verification/request", status_code=status.HTTP_200_OK)
+async def request_email_verification(
+    request: EmailVerificationRequestRequest,
+    auth_service: Annotated[AuthService, Depends(AuthService)],
+    email_verification_service: Annotated[EmailVerificationService, Depends(EmailVerificationService)],
+) -> Response:
+    """A03: 이메일 입력 후 인증번호 요청. (아직 계정은 안 만들어짐)"""
+
+    await auth_service.check_email_exists(str(request.email))
+    result = await email_verification_service.request_code(str(request.email))
+    return Response(content=result, status_code=status.HTTP_200_OK)
+
+
+@auth_router.post("/email-verification/confirm", status_code=status.HTTP_201_CREATED)
+async def confirm_email_verification(
+    request: EmailVerificationConfirmRequest,
+    auth_service: Annotated[AuthService, Depends(AuthService)],
+) -> Response:
+    """A04: 인증번호 6자리 확인 -> 계정 생성 + 자동 로그인.
+    (이름/성별/생년월일 등은 아직 없음, 다음 온보딩 단계에서 PATCH /users/me로 채움)"""
+
+    user = await auth_service.signup_after_email_verification(
+        email=str(request.email), code=request.code, password=request.password
+    )
+    tokens = await auth_service.login(user)
+    resp = _issue_login_response(tokens)
+    resp.status_code = status.HTTP_201_CREATED
+    return resp
+
+
+@auth_router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+async def login(
+    request: LoginRequest,
+    auth_service: Annotated[AuthService, Depends(AuthService)],
+) -> Response:
+    user = await auth_service.authenticate(request)
+    tokens = await auth_service.login(user)
+    return _issue_login_response(tokens)
 
 
 @auth_router.get("/token/refresh", response_model=TokenRefreshResponse, status_code=status.HTTP_200_OK)

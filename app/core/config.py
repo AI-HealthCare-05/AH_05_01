@@ -36,3 +36,11 @@ class Config(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 14 * 24 * 60
     JWT_LEEWAY: int = 5
+
+    # Gmail SMTP (이메일 인증번호 발송용). .env에 실제 값 채우기 전까진 빈 문자열이라
+    # EmailVerificationService가 자동으로 "발송 안 함, dev_only_code로 대체" 모드로 동작함.
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""  # 발신용 Gmail 주소
+    SMTP_APP_PASSWORD: str = ""  # 구글 계정 > 보안 > 앱 비밀번호에서 생성한 16자리 (일반 비밀번호 아님)
+    SMTP_FROM_NAME: str = "틈튼 TMTN"
