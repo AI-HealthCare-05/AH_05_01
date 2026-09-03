@@ -46,6 +46,7 @@ import com.tmtn.app.ui.nav.PlaceholderTabScreen
 import com.tmtn.app.ui.onboarding.OnboardingFlow
 import com.tmtn.app.ui.profile.ProfileFlow
 import com.tmtn.app.ui.record.RecordFlow
+import com.tmtn.app.ui.reference.ReferenceFlow
 import com.tmtn.app.ui.theme.TMTNv1Theme
 
 /** 앱의 최상위 화면 흐름. 각 단계는 Navigation Compose 없이 상태값으로만 전환함. */
@@ -137,6 +138,11 @@ class MainActivity : ComponentActivity() {
                                     )
                                     MainTab.RECORD -> RecordFlow(
                                         onGoPickCard = { currentTab = MainTab.HOME },
+                                    )
+                                    MainTab.REFERENCE -> ReferenceFlow(
+                                        onGoPickCard = { currentTab = MainTab.HOME },
+                                        onOpenMyInfo = { currentTab = MainTab.MY },
+                                        onImmersiveChange = { isImmersive = it },
                                     )
                                     MainTab.DAM -> DamFlow()
                                     MainTab.MY -> ProfileFlow(
