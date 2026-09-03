@@ -1,8 +1,21 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+}
+// ⚠️ 2026-09-02 리뷰 반영: TEST_ACCOUNT_PASSWORD가 ApiClient.kt에 평문으로 박혀 있어서
+// git 히스토리에 이미 노출됐음(서버 쪽 실제 비밀번호는 별도로 교체 필요). 앞으로는 커밋되는
+// 소스에 안 남게, local.properties(.gitignore에 이미 있음)에서 읽어서 BuildConfig로 주입.
+// local.properties에 아래 두 줄이 없으면 빈 문자열로 채워지고, ApiClient.loginWithTestAccount()가
+// 그 경우 그냥 실패 처리함 (필수 아님 - 온보딩 건너뛰고 테스트하고 싶을 때만 쓰는 편의 기능).
+//   TEST_ACCOUNT_EMAIL=test@tmtn.com
+//   TEST_ACCOUNT_PASSWORD=실제비밀번호
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
@@ -17,6 +30,15 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String", "TEST_ACCOUNT_EMAIL",
+            "\"${localProperties.getProperty("TEST_ACCOUNT_EMAIL", "")}\"",
+        )
+        buildConfigField(
+            "String", "TEST_ACCOUNT_PASSWORD",
+            "\"${localProperties.getProperty("TEST_ACCOUNT_PASSWORD", "")}\"",
+        )
     }
 
     buildTypes {
@@ -30,6 +52,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

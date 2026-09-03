@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateOf
 import com.tmtn.app.network.ApiClient
 import com.tmtn.app.network.model.CardRevealResponse
 import com.tmtn.app.network.model.CompleteChallengeRequestBody
+import com.tmtn.app.network.model.MaterialItem
 import com.tmtn.app.network.model.MemoUpdateRequest
 import com.tmtn.app.network.model.RestDayRequest
 import com.tmtn.app.ui.onboarding.parseErrorMessage
@@ -20,8 +21,7 @@ enum class CardHomeStep {
     ALTERNATIVE_REQUEST,  // B11
     ALTERNATIVE_APPLIED,  // B12
     NOTIFICATION_INBOX,   // B13/B15
-    REST_DAY_SHEET,   // B16 (홈 화면 위에 뜨는 바텀시트지만, 화면 전체로 단순화)
-    REST_DAY_DONE,    // B17
+    REST_DAY_DONE,    // B17 (지금은 도달 경로 없음 - confirmRestDay가 HOME으로 바로 보냄)
     CHALLENGE_CHECK,          // C01 (체크형)
     CHALLENGE_CHECK_CONFIRM,  // C01b (신규) - "완료하기" 누른 뒤 실제 완료 처리 전 자가진단 확인
     CHALLENGE_TIMER_START,    // C02 (타이머형 · 시작 전)
@@ -69,12 +69,17 @@ class CardHomeState {
     var companionStage = mutableStateOf(0)
     var companionMaterialsNeeded = mutableStateOf<Int?>(null)
     var companionNextStageLabel = mutableStateOf<String?>(null)
+    // 홈 화면 "댐" 요약 행의 오른쪽 빈 공간에 재료 개수를 보여주기 위한 값 (RecentSummaryListCard 참고).
+    var companionMaterials = mutableStateOf<List<MaterialItem>>(emptyList())
 
     // B16/B17: 쉬어가기
     var restDaysUsedThisWeek = mutableStateOf(0)
     var restDaysRemainingThisWeek = mutableStateOf(2)
     var currentStreak = mutableStateOf(0)
     var isTodayRestDay = mutableStateOf(false)
+    // B16: "오늘 쉬어가기" 시트를 지금 화면 위에 띄울지 - 더 이상 별도 step이 아니라
+    // D그룹 DayDetailSheet와 같은 오버레이 방식(RestDaySheetScreen 오버레이 참고).
+    var showRestDaySheet = mutableStateOf(false)
 
     // C그룹: 챌린지 진행 (타이머형)
     var timerElapsedSeconds = mutableStateOf(0)
@@ -168,6 +173,7 @@ class CardHomeState {
             companionStage.value = body.current_stage
             companionMaterialsNeeded.value = body.materials_needed_for_next
             companionNextStageLabel.value = body.stages.firstOrNull { !it.completed }?.label
+            companionMaterials.value = body.materials
         }
     }
 
@@ -249,7 +255,7 @@ class CardHomeState {
             restDaysRemainingThisWeek.value = streak.rest_days_remaining_this_week
             currentStreak.value = streak.current_streak
         }
-        step.value = CardHomeStep.REST_DAY_SHEET
+        showRestDaySheet.value = true
     }
 
     // B16 -> B17: "오늘 쉬어가기" 확정 - 실제 서버 호출 (기록 캘린더 API 재사용)
@@ -266,6 +272,7 @@ class CardHomeState {
             restDaysRemainingThisWeek.value = streak.rest_days_remaining_this_week
             currentStreak.value = streak.current_streak
             isTodayRestDay.value = true
+            showRestDaySheet.value = false
             // ⚠️ 예전엔 여기서 REST_DAY_DONE(별도 화면)으로 보냈는데, 그 화면엔 마스코트
             // 카드만 있고 틈튼지수 요약·최근7일·댐 정보가 다 빠져있어서 "홈이 통째로 사라진
             // 것처럼" 보인다는 피드백을 받음. 이제 홈으로 바로 보내고, 홈 안의 마스코트
@@ -278,7 +285,10 @@ class CardHomeState {
     }
 
     fun closeRestDaySheet() {
-        step.value = CardHomeStep.HOME
+        // ⚠️ 예전엔 여기서도 step.value = CardHomeStep.HOME으로 보내서, RevealScreen이나
+        // CheckChallengeScreen에서 열었어도 "닫기"만 누르면 무조건 홈으로 튕겼음. 이제
+        // 오버레이라 그냥 닫기만 하면 원래 보고 있던 화면이 자연스럽게 그대로 보임.
+        showRestDaySheet.value = false
     }
 
     // ===== C그룹: 챌린지 진행 (타이머형) =====

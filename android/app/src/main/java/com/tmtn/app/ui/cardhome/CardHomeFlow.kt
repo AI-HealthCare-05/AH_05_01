@@ -52,7 +52,6 @@ private fun previousStepFor(step: CardHomeStep): CardHomeStep? = when (step) {
     CardHomeStep.ALTERNATIVE_REQUEST -> CardHomeStep.REASON_DETAIL
     CardHomeStep.ALTERNATIVE_APPLIED -> CardHomeStep.REVEALED
     CardHomeStep.NOTIFICATION_INBOX -> CardHomeStep.HOME
-    CardHomeStep.REST_DAY_SHEET -> CardHomeStep.HOME
     CardHomeStep.REST_DAY_DONE -> CardHomeStep.HOME
     CardHomeStep.CHALLENGE_CHECK -> CardHomeStep.REVEALED
     CardHomeStep.CHALLENGE_CHECK_CONFIRM -> CardHomeStep.CHALLENGE_CHECK
@@ -104,6 +103,9 @@ fun CardHomeFlow(
         CardHomeStep.SENSOR_INTRO, CardHomeStep.SENSOR_MEASURING,
         CardHomeStep.SENSOR_PERMISSION_FALLBACK, CardHomeStep.SENSOR_RESULT,
         CardHomeStep.STAGE_UP,
+        // REST_DAY_DONE은 지금 코드상 도달할 일이 없는 화면이지만(HOME으로 즉시 대체됨),
+        // 혹시 나중에 되살릴 경우를 대비해 그대로 몰입 처리해둠.
+        CardHomeStep.REST_DAY_DONE,
     )
     LaunchedEffect(state.step.value) {
         onImmersiveChange(state.step.value in immersiveSteps)
@@ -171,7 +173,6 @@ fun CardHomeFlow(
             CardHomeStep.NOTIFICATION_INBOX -> NotificationInboxScreen(
                 onBack = { state.step.value = CardHomeStep.HOME },
             )
-            CardHomeStep.REST_DAY_SHEET -> RestDaySheetScreen(state, scope)
             CardHomeStep.REST_DAY_DONE -> RestDayDoneScreen(state, scope)
             CardHomeStep.CHALLENGE_CHECK -> CheckChallengeScreen(state, scope)
             CardHomeStep.CHALLENGE_CHECK_CONFIRM -> CheckCompleteConfirmScreen(state, scope)
@@ -194,6 +195,15 @@ fun CardHomeFlow(
             CardHomeStep.SENSOR_MEASURING -> SensorMeasuringScreen(state, onStopSensorTracking)
             CardHomeStep.SENSOR_PERMISSION_FALLBACK -> SensorPermissionFallbackScreen(state, onOpenSettings)
             CardHomeStep.SENSOR_RESULT -> SensorResultScreen(state, scope)
+        }
+
+        // ⚠️ B16(오늘 쉬어가기)은 진짜 바텀시트여야 함 — "화면"으로 취급해서 REST_DAY_SHEET라는
+        // 별도 step으로 만들었더니, 지금 보고 있던 화면을 통째로 갈아치워버려서 "새 창처럼"
+        // 보이고, "닫기"를 눌러도 원래 있던 화면이 아니라 무조건 홈으로 튕겼음. D그룹의
+        // DayDetailSheet(RecordFlow.kt)와 같은 방식으로, 지금 화면 위에 반투명 스크림 +
+        // 오버레이로 띄워서 "닫기"를 누르면 그냥 사라지고 원래 화면이 그대로 보이게 함.
+        if (state.showRestDaySheet.value) {
+            RestDaySheetScreen(state, scope)
         }
 
         state.errorMessage.value?.let { message ->

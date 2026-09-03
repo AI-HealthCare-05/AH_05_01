@@ -2,6 +2,7 @@ package com.tmtn.app.ui.cardhome
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,14 +10,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
@@ -25,28 +34,56 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /** Figma B16 · 홈 · 쉬어가기 확인 (바텀시트 - 화면 전체로 단순화해서 구현) */
 @Composable
 fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
     val colors = LocalTmtnColors.current
+    // ⚠️ 손잡이 막대만 있고 실제 드래그 동작이 없어서 "눌러도 안 움직인다"는 피드백을 받음.
+    // 손잡이 영역에서 아래로 끌면 시트가 같이 내려가고, 일정 거리 넘으면 닫히게 함.
+    // 드래그 감지 영역을 손잡이 쪽으로만 한정해서, 아래 버튼들 클릭에는 영향 없게 함.
+    var dragOffsetPx by remember { mutableFloatStateOf(0f) }
+    val dismissThresholdPx = with(LocalDensity.current) { 96.dp.toPx() }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // 지금 보고 있던 화면 위에 얹히는 오버레이라는 걸 보여주는 반투명 스크림.
+        // D그룹 DayDetailSheet와 같은 처리.
+        Box(modifier = Modifier.fillMaxSize().background(colors.onSurface.copy(alpha = 0.32f)))
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
+                .offset { IntOffset(0, dragOffsetPx.roundToInt()) }
                 .background(colors.surface, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .width(36.dp)
-                    .height(4.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .background(colors.outline, RoundedCornerShape(2.dp)),
-            )
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragEnd = {
+                                if (dragOffsetPx > dismissThresholdPx) state.closeRestDaySheet()
+                                dragOffsetPx = 0f
+                            },
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                dragOffsetPx = (dragOffsetPx + dragAmount).coerceAtLeast(0f)
+                            },
+                        )
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(36.dp)
+                        .height(4.dp)
+                        .background(colors.outline, RoundedCornerShape(2.dp)),
+                )
+            }
             Text("오늘은 쉬어갈까요?", style = TmtnType.title, color = colors.onSurface)
             Text("2026. 8. 27. 목요일", style = TmtnType.bodyLarge, color = colors.onSurface)
 

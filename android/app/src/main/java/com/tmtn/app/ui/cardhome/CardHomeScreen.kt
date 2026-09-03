@@ -259,6 +259,7 @@ private fun RecentSummaryListCard(state: CardHomeState) {
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
         Row(
             modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
@@ -274,6 +275,19 @@ private fun RecentSummaryListCard(state: CardHomeState) {
                     },
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
+            }
+            // ⚠️ 이 행 오른쪽에 빈 공간이 있길래, 오행별 재료 개수를 여기 보여주기로 함.
+            // "댐" 탭(G01)에서 이미 쓰는 companion.materials를 홈에서도 재사용 - 새 API 없음.
+            if (state.companionMaterials.value.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MATERIAL_NAMES.keys.forEach { element ->
+                        val count = state.companionMaterials.value.firstOrNull { it.element == element }?.count ?: 0
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            MaterialIcon(element = element, size = 18.dp)
+                            Text("$count", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                        }
+                    }
+                }
             }
         }
     }
