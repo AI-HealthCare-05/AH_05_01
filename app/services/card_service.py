@@ -23,10 +23,17 @@ class CardService:
 
         card_set = await self.card_repo.get_set_by_date(user.id, service_date)
         if card_set is None:
-            async with in_transaction():
-                templates = await self.mission_repo.pick_weighted_three(user.id)
-                card_set = await self.card_repo.create_set_with_options(user.id, service_date, templates)
-            # 방금 만든 세트를 관계까지 다시 로드
+            try:
+                async with in_transaction():
+                    templates = await self.mission_repo.pick_weighted_three(user.id)
+                    card_set = await self.card_repo.create_set_with_options(user.id, service_date, templates)
+            except IntegrityError:
+                # ⚠️ 2026-09-03 리뷰 반영: daily_card_sets에 unique_together(user, service_date)가
+                # 걸려있는데, 동시에 두 요청이 들어오면 뒤 요청이 이 제약 위반으로 500이 났음.
+                # select_option()에는 이미 같은 패턴의 방어가 있었는데(uq_winner_per_set) 여기만
+                # 빠져 있었음. 뒤 요청은 에러 대신, 먼저 커밋된 세트를 그냥 다시 읽어서 정상 응답.
+                card_set = await self.card_repo.get_set_by_date(user.id, service_date)
+            # 방금 만든(또는 경합에서 진 뒤 다시 읽은) 세트를 관계까지 다시 로드
             card_set = await self.card_repo.get_set_by_date(user.id, service_date)
 
         return await self._build_window_response(card_set)
@@ -43,14 +50,10 @@ class CardService:
         try:
             async with in_transaction():
                 selection = await self.card_repo.create_selection(card_set.id, option.id)
-                challenge = await self.challenge_repo.create_from_selection(
-                    selection, option.mission_template_version
-                )
+                challenge = await self.challenge_repo.create_from_selection(selection, option.mission_template_version)
         except IntegrityError as exc:
             # uq_winner_per_set 위반 — 이미 다른 옵션이 확정된 상태 (동시 확정 경합)
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail="이미 확정된 카드가 있습니다."
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 확정된 카드가 있습니다.") from exc
 
         template = option.mission_template_version
         return self._build_reveal_response(challenge, template)
@@ -66,8 +69,7 @@ class CardService:
         line_text = None
         if template.line_text_template:
             line_text = (
-                template.line_text_template
-                .replace("{place}", lucky_location or "")
+                template.line_text_template.replace("{place}", lucky_location or "")
                 .replace("{num}", str(template.target_value))
                 .replace("{unit}", template.unit)
             )
@@ -108,9 +110,7 @@ class CardService:
         options = sorted(card_set.options, key=lambda o: o.option_index)
         selection = getattr(card_set, "selection", None)
 
-        note = await DailyRecordNote.get_or_none(
-            user_id=card_set.user_id, service_date=card_set.service_date
-        )
+        note = await DailyRecordNote.get_or_none(user_id=card_set.user_id, service_date=card_set.service_date)
         is_rest_day = note.is_rest_day if note else False
 
         if selection is None:

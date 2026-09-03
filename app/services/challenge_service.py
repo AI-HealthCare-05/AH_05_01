@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from tortoise.exceptions import IntegrityError, OperationalError
 from tortoise.transactions import in_transaction
 
+from app.core.logger import default_logger
 from app.dtos.challenges import ChallengeProgressResponse, CompleteChallengeResponse
 from app.models.challenges import ChallengeEventType, ChallengeState
 from app.models.users import User
@@ -146,7 +147,7 @@ class ChallengeService:
         challenge = await self._get_owned_challenge(user, challenge_id)
 
         # 이미 같은 idempotency_key로 처리된 요청이면, 새로 만들지 않고 기존 결과를 그대로 반환
-        existing_event = await self.challenge_repo.get_event_by_idempotency_key(idempotency_key)
+        existing_event = await self.challenge_repo.get_event_by_idempotency_key(idempotency_key, user_id=user.id)
         if existing_event is not None:
             if existing_event.challenge_id != challenge.id:
                 raise HTTPException(
@@ -162,7 +163,9 @@ class ChallengeService:
             )
 
         five_element = challenge.mission_snapshot.get("five_element", "WOOD")
-        final_duration = _effective_duration_seconds(challenge)  # 완료 순간까지 흐른 진짜 시간(ACTIVE 상태였으면 계산해서 확정)
+        final_duration = _effective_duration_seconds(
+            challenge
+        )  # 완료 순간까지 흐른 진짜 시간(ACTIVE 상태였으면 계산해서 확정)
 
         # ⚠️ 2026-09-02: 상태 전환(READY→COMPLETED)과 보상 지급(이벤트·포인트·재료)을
         # 예전엔 서로 다른 트랜잭션으로 나눠서 처리했음. 그래서 상태 전환은 이미 커밋됐는데
@@ -200,23 +203,36 @@ class ChallengeService:
                 await self.companion_repo.increment_element(user.id, five_element)
         except HTTPException:
             raise
-        except (IntegrityError, OperationalError) as exc:
-            # 극히 드문 경합: 거의 동시에 들어온 두 요청 중 하나가 먼저 커밋한 경우.
-            # 데드락(OperationalError)이든 UNIQUE 충돌(IntegrityError)이든 여기서 같이 잡아서
-            # "오류코드 500" 대신 실제 처리 결과를 그대로 돌려줌 — 안 잡으면 사용자는
-            # 완료가 됐는지 안 됐는지조차 알 수 없는 상태로 남게 됨.
-            existing_event = await self.challenge_repo.get_event_by_idempotency_key(idempotency_key)
-            if existing_event:
-                return await self._build_complete_response(challenge, existing_event)
-            refreshed = await self.challenge_repo.get_by_id(challenge.id)
-            if refreshed is not None and refreshed.state == ChallengeState.COMPLETED:
-                return CompleteChallengeResponse(
-                    challenge=ChallengeProgressResponse.model_validate(refreshed),
-                    points_awarded=BASE_POINTS_PER_COMPLETION,
-                    five_element=five_element,
-                )
+        except IntegrityError as exc:
+            # 정상적인 경합: 거의 동시에 들어온 두 요청 중 하나가 먼저 커밋한 경우
+            # (idempotency_key UNIQUE 충돌 등).
+            response = await self._recover_from_completion_race(challenge, idempotency_key, user.id, five_element)
+            if response is not None:
+                return response
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="중복 요청입니다.") from exc
+        except OperationalError as exc:
+            # ⚠️ 2026-09-03 리뷰 반영: IntegrityError(정상적인 동시 요청 경합)와
+            # OperationalError(스키마 깨짐·DB 장애 등)는 성격이 완전히 다른데 같이 잡고
+            # 있었음. 실제로 2026-09-02에 겪었던 사고(마이그레이션 12번 미적용으로
+            # "Unknown column" 발생)가 여기 OperationalError로 걸려서, 위 IntegrityError용
+            # 처리를 그대로 타고 "중복 요청입니다" 409로 뭉개져 로그에 아무것도 안 남았음.
+            # 이제 별도로 잡아서 실제 예외를 로그에 남기고, 사용자에게는 "중복"이 아니라
+            # 진짜 서버 오류라고 정확히 알림.
+            default_logger.exception(
+                "challenge complete failed (OperationalError): challenge_id=%s user_id=%s",
+                challenge.id,
+                user.id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="처리 중 오류가 발생했습니다."
+            ) from exc
 
+        # ⚠️ 2026-09-03: 함수를 분리하면서(_recover_from_completion_race) 실수로 이 성공
+        # 경로의 return 자체가 통째로 빠졌던 버그. try 블록이 예외 없이 끝나면(=완료 처리가
+        # 실제로 다 성공하면) 여기 도달해야 하는데, 이게 없어서 트랜잭션은 커밋됐는데(챌린지
+        # COMPLETED, 포인트·재료 지급 전부 반영) 응답을 못 만들어서 500이 났음. 그 뒤 재시도가
+        # "이미 완료되었거나 완료할 수 없는 상태"로 나온 건 실제로 이미 완료돼 있었기 때문임
+        # (완료 자체는 최초 시도에서 이미 성공했었음 — 데이터 유실은 없음).
         refreshed = await self.challenge_repo.get_by_id(challenge.id)
         return CompleteChallengeResponse(
             challenge=ChallengeProgressResponse.model_validate(refreshed),
@@ -224,9 +240,29 @@ class ChallengeService:
             five_element=five_element,
         )
 
-    async def skip(
-        self, user: User, challenge_id, reason: str | None, occurred_at=None
-    ) -> ChallengeProgressResponse:
+    async def _recover_from_completion_race(
+        self, challenge, idempotency_key: str, user_id, five_element: str
+    ) -> CompleteChallengeResponse | None:
+        """⚠️ 2026-09-03 리뷰 반영: complete()의 IntegrityError 처리를 분리 — ruff C901
+        (complete()가 너무 복잡하다는 경고) 해소 겸, 실제 완료 결과가 이미 있는지 확인하는
+        로직을 재사용 가능하게 뺌. "오류코드 500" 대신 실제 처리 결과를 그대로 돌려줌 —
+        안 잡으면 사용자는 완료가 됐는지 안 됐는지조차 알 수 없는 상태로 남게 됨. 결과를
+        못 찾으면 None을 돌려주고, 호출부가 409로 처리함.
+        """
+
+        existing_event = await self.challenge_repo.get_event_by_idempotency_key(idempotency_key, user_id=user_id)
+        if existing_event:
+            return await self._build_complete_response(challenge, existing_event)
+        refreshed = await self.challenge_repo.get_by_id(challenge.id)
+        if refreshed is not None and refreshed.state == ChallengeState.COMPLETED:
+            return CompleteChallengeResponse(
+                challenge=ChallengeProgressResponse.model_validate(refreshed),
+                points_awarded=BASE_POINTS_PER_COMPLETION,
+                five_element=five_element,
+            )
+        return None
+
+    async def skip(self, user: User, challenge_id, reason: str | None, occurred_at=None) -> ChallengeProgressResponse:
         challenge = await self._get_owned_challenge(user, challenge_id)
 
         transitioned = await self.challenge_repo.try_transition(

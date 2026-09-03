@@ -57,6 +57,14 @@ class AuthService:
         if await self.user_repo.exists_by_email(email):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용중인 이메일입니다.")
 
+    async def email_exists(self, email: str | EmailStr) -> bool:
+        """⚠️ 2026-09-03 리뷰 반영: check_email_exists()는 존재하면 바로 409를 던져서
+        가입 여부를 그대로 드러냄(이메일 열거 취약점). request_email_verification처럼
+        "가입 여부와 무관하게 항상 같은 응답"을 만들어야 하는 곳에서는 이 non-raising
+        버전을 써서 호출 쪽에서 분기 처리함."""
+
+        return await self.user_repo.exists_by_email(email)
+
     async def check_phone_number_exists(self, phone_number: str) -> None:
         if await self.user_repo.exists_by_phone_number(phone_number):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용중인 휴대폰 번호입니다.")

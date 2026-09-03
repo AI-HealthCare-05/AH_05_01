@@ -9,7 +9,7 @@ from starlette import status
 
 from app.core import config
 from app.core.config import Env
-from app.core.email.sender import EmailSendError, send_verification_email
+from app.core.email.sender import EmailSendError, send_already_registered_email, send_verification_email
 from app.repositories.email_verification_repository import EmailVerificationRepository
 
 CODE_LENGTH = 6
@@ -84,6 +84,31 @@ class EmailVerificationService:
             result["dev_only_code"] = code
         return result
 
+    async def notify_already_registered(self, email: str) -> dict:
+        """⚠️ 2026-09-03 리뷰 반영: request_email_verification에서 "이미 가입된 이메일"을
+        즉시 409로 알려주면, 공격자가 이메일 주소를 넣어보며 "이 사람이 이 앱(만성질환
+        관리 앱)을 쓰는지" 알아낼 수 있음(가입 여부 자체가 민감정보). 이 경우 인증번호
+        코드는 만들지 않고 안내 메일만 보내되, request_code()와 응답 모양(키)은 최대한
+        똑같이 맞춰서 신규 가입 요청과 구분이 안 되게 함.
+        """
+
+        email_normalized = email.strip().lower()
+        email_sent = False
+        if _smtp_configured():
+            try:
+                await asyncio.to_thread(send_already_registered_email, email_normalized)
+                email_sent = True
+            except EmailSendError:
+                # 이미 가입된 계정 안내 메일 발송 실패는 사용자에게 알릴 수 없음(그러면
+                # "가입된 계정이 있다"는 게 드러남) - 그냥 조용히 넘어감. 운영 모니터링은
+                # 로그 레벨에서 별도로 봐야 함.
+                pass
+
+        return {
+            "message": "인증번호를 이메일로 보냈습니다." if email_sent else "인증번호를 생성했습니다.",
+            "expires_in_seconds": CODE_EXPIRE_MINUTES * 60,
+        }
+
     async def verify_code(self, email: str, code: str) -> None:
         """검증만 하고 verified_at은 여기서 안 찍음 — 실제 계정 생성 성공까지 확인한 뒤
         confirm_and_consume()에서 최종 소비 처리."""
@@ -100,7 +125,9 @@ class EmailVerificationService:
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="시도 횟수를 초과했습니다. 다시 요청해주세요."
             )
 
-        if request.code_hash != _hash_code(code):
+        if not secrets.compare_digest(request.code_hash, _hash_code(code)):
+            # ⚠️ 2026-09-03 리뷰 반영(P3): 단순 != 비교는 타이밍 공격에 노출될 수 있음.
+            # secrets.compare_digest로 상수 시간 비교.
             await self.repo.increment_attempt(request)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="인증번호가 올바르지 않습니다.")
 

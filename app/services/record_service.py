@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 from fastapi import HTTPException, status
 
+from app.core.time_utils import service_today
 from app.dtos.companion import MATERIAL_INFO
 from app.dtos.records import (
     CalendarDayItem,
@@ -72,7 +73,7 @@ class RecordService:
         _, last_day = monthrange(year, month)
         start = date(year, month, 1)
         end = date(year, month, last_day)
-        today = date.today()
+        today = service_today()
         if end > today:
             end = today  # 미래 날짜는 아예 표시 안 함 (완료 여부를 알 수 없으니까)
 
@@ -89,7 +90,7 @@ class RecordService:
         )
 
     async def get_weekly_report(self, user: User) -> WeeklyReportResponse:
-        today = date.today()
+        today = service_today()
         start = today - timedelta(days=6)
 
         status_map = await self._build_status_map(user.id, start, today)
@@ -173,11 +174,31 @@ class RecordService:
 
     async def mark_rest_day(self, user: User, request: RestDayRequest) -> StreakResponse:
         target_date = request.service_date
-        today = date.today()
+        today = service_today()
         if target_date > today:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="미래 날짜는 쉼으로 표시할 수 없습니다.")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="미래 날짜는 쉼으로 표시할 수 없습니다."
+            )
 
         monday, sunday = _week_boundaries(target_date)
+
+        # ⚠️ 2026-09-03 리뷰 반영: 챌린지 상태 확인 없이 note.is_rest_day만 True로 바꿔서,
+        # 이미 완료(COMPLETED)한 날에 쉼을 찍으면 _build_status_map이 note.is_rest_day를
+        # 먼저 보기 때문에(위 61번째 줄) 캘린더에서 완료가 사라지고 REST로 보였음. 재료·
+        # 포인트는 이미 지급된 상태인데 화면만 쉼으로 바뀌는 모순이라, 이미 완료된 날은
+        # 막음. (안드로이드 CardHomeState.kt의 openRestDaySheet()에 같은 취지의 방어가
+        # 있었는데, 기기를 바꿔도 맞으려면 서버에도 있어야 함.)
+        target_card_set = await self.repo.get_card_set_by_date(user.id, target_date)
+        if (
+            target_card_set
+            and target_card_set.selection
+            and target_card_set.selection.challenge
+            and target_card_set.selection.challenge.state == "COMPLETED"
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="이미 완료한 날은 쉼으로 표시할 수 없습니다."
+            )
+
         existing_note = await self.repo.get_or_create_note(user.id, target_date)
 
         if not existing_note.is_rest_day:
@@ -194,21 +215,28 @@ class RecordService:
         return await self.get_streak(user)
 
     async def get_streak(self, user: User) -> StreakResponse:
-        today = date.today()
+        today = service_today()
         earliest = await self.repo.get_earliest_card_set_date(user.id)
 
         if earliest is None:
             monday, sunday = _week_boundaries(today)
             return StreakResponse(
-                current_streak=0, longest_streak=0, rest_days_used_this_week=0,
+                current_streak=0,
+                longest_streak=0,
+                rest_days_used_this_week=0,
                 rest_days_remaining_this_week=MAX_REST_DAYS_PER_WEEK,
             )
 
         status_map = await self._build_status_map(user.id, earliest, today)
 
-        # 오늘부터 거슬러 올라가며 현재 스트릭 계산 (COMPLETED/REST면 계속, INCOMPLETE면 중단)
+        # ⚠️ 2026-09-03 리뷰 반영: 오늘부터 거슬러 올라가는데, 아침에 아직 카드를 안 뽑은
+        # 시점의 "오늘"은 INCOMPLETE라 첫 바퀴에서 바로 끊겨서 30일 연속이던 사람도 매일
+        # 아침 "0일"로 보이는 문제가 있었음. CLAUDE.md 기준 "아무것도 안 하고 지나간 날은
+        # 미완료"인데, 오늘은 아직 지나가지 않았으므로 오늘이 미완료면 어제부터 세기 시작함.
         current_streak = 0
         d = today
+        if status_map[today][0] not in ("COMPLETED", "REST"):
+            d = today - timedelta(days=1)
         while d >= earliest:
             day_status, _ = status_map[d]
             if day_status in ("COMPLETED", "REST"):
