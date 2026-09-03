@@ -3,23 +3,17 @@ from starlette import status
 from tortoise.contrib.test import TestCase
 
 from app.main import app
+from app.tests.helpers import signup_via_email_verification
 
 
 class TestLoginAPI(TestCase):
     async def test_login_success(self):
-        # 먼저 사용자 등록
-        signup_data = {
-            "email": "login_test@example.com",
-            "password": "Password123!",
-            "name": "로그인테스터",
-            "gender": "FEMALE",
-            "birth_date": "1995-05-05",
-            "phone_number": "01011112222",
-        }
-        login_data = {"email": "login_test@example.com", "password": "Password123!"}
+        email = "login_test@example.com"
+        password = "Password123!"
+        login_data = {"email": email, "password": password}
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            await client.post("/api/v1/auth/signup", json=signup_data)
+            await signup_via_email_verification(client, email, password)
 
             # 로그인 시도
             response = await client.post("/api/v1/auth/login", json=login_data)

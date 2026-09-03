@@ -1,6 +1,6 @@
 import asyncio
 import hashlib
-import random
+import secrets
 import string
 from datetime import UTC, datetime, timedelta
 
@@ -23,7 +23,9 @@ def _hash_code(code: str) -> str:
 
 
 def _generate_code() -> str:
-    return "".join(random.choices(string.digits, k=CODE_LENGTH))
+    # ⚠️ 2026-09-02 리뷰 반영: random은 예측 가능한 PRNG라 인증번호처럼 보안이 필요한
+    # 값에는 부적합함. secrets(CSPRNG)로 교체.
+    return "".join(secrets.choice(string.digits) for _ in range(CODE_LENGTH))
 
 
 def _smtp_configured() -> bool:
@@ -46,9 +48,7 @@ class EmailVerificationService:
         code = _generate_code()
         expires_at = datetime.now(UTC) + timedelta(minutes=CODE_EXPIRE_MINUTES)
 
-        await self.repo.create(
-            email_normalized=email_normalized, code_hash=_hash_code(code), expires_at=expires_at
-        )
+        await self.repo.create(email_normalized=email_normalized, code_hash=_hash_code(code), expires_at=expires_at)
 
         email_sent = False
         if _smtp_configured():
@@ -63,13 +63,24 @@ class EmailVerificationService:
                         detail="이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.",
                     ) from exc
                 # 개발 환경이면 발송 실패해도 dev_only_code로 계속 테스트 가능하게 그냥 넘어감
+        elif config.ENV == Env.PROD:
+            # ⚠️ 2026-09-02 리뷰 반영: 예전엔 여기서 그냥 넘어가서, PROD인데 SMTP 환경변수를
+            # 안 채워도(배포 설정 실수) 조용히 dev_only_code가 응답에 그대로 노출됐음(아래
+            # "if config.ENV != Env.PROD" 조건이 실수로 "or not email_sent"까지 포함해서
+            # PROD+미발송 케이스를 걸러내지 못했던 버그). 이제는 배포 설정 오류를 응답에 인증
+            # 번호를 흘리는 대신 500으로 즉시 실패시켜서 운영에서 바로 알아채게 함.
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="이메일 발송 설정이 되어 있지 않습니다.",
+            )
 
         result = {
             "message": "인증번호를 이메일로 보냈습니다." if email_sent else "인증번호를 생성했습니다.",
             "expires_in_seconds": CODE_EXPIRE_MINUTES * 60,
         }
-        # ⚠️ SMTP 미설정이거나 발송 실패 시에만 노출. 운영에서 SMTP 정상 동작하면 이 값 자체가 안 나감.
-        if config.ENV != Env.PROD or not email_sent:
+        # ⚠️ PROD에서는 이제 절대 노출 안 함 (위에서 PROD+SMTP미설정은 이미 500으로 막았고,
+        # PROD+SMTP설정+발송실패는 위에서 이미 502로 막아서 여기까지 오지 않음).
+        if config.ENV != Env.PROD:
             result["dev_only_code"] = code
         return result
 
