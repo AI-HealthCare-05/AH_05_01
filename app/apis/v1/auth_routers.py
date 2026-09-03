@@ -40,10 +40,18 @@ async def request_email_verification(
     auth_service: Annotated[AuthService, Depends(AuthService)],
     email_verification_service: Annotated[EmailVerificationService, Depends(EmailVerificationService)],
 ) -> Response:
-    """A03: 이메일 입력 후 인증번호 요청. (아직 계정은 안 만들어짐)"""
+    """A03: 이메일 입력 후 인증번호 요청. (아직 계정은 안 만들어짐)
 
-    await auth_service.check_email_exists(str(request.email))
-    result = await email_verification_service.request_code(str(request.email))
+    ⚠️ 2026-09-03 리뷰 반영: 이미 가입된 이메일이면 예전엔 즉시 409를 돌려줘서, 공격자가
+    이메일 주소를 넣어보며 "이 사람이 이 앱을 쓰는지" 알아낼 수 있었음(만성질환 관리
+    앱이라 가입 여부 자체가 민감정보). 이제 가입 여부와 무관하게 항상 같은 200을 주고,
+    이미 가입된 주소면 인증번호 대신 "이미 가입된 계정입니다" 안내 메일만 보냄.
+    """
+
+    if await auth_service.email_exists(str(request.email)):
+        result = await email_verification_service.notify_already_registered(str(request.email))
+    else:
+        result = await email_verification_service.request_code(str(request.email))
     return Response(content=result, status_code=status.HTTP_200_OK)
 
 

@@ -7,9 +7,7 @@ class CompanionRepository:
         self._model = CompanionState
 
     async def get_or_create(self, user_id) -> CompanionState:
-        state, _ = await self._model.get_or_create(
-            user_id=user_id, defaults={"five_element_completion_counts": {}}
-        )
+        state, _ = await self._model.get_or_create(user_id=user_id, defaults={"five_element_completion_counts": {}})
         return state
 
     def _calculate_stage(self, total_materials: int) -> int:
@@ -26,9 +24,16 @@ class CompanionRepository:
         이 함수는 point_ledger 생성이 성공한 뒤에만 호출해야 중복 증가가 안 생김.
 
         ⚠️ 2026-09-01 추가: 재료가 늘어난 김에 "이번에 새 단계에 도달했는지"도 같이 확인해서,
-        도달했으면 CompanionStageLog에 기록해 둠(G07 화면이 나중에 이걸 읽어서 축하 보여줌)."""
+        도달했으면 CompanionStageLog에 기록해 둠(G07 화면이 나중에 이걸 읽어서 축하 보여줌).
 
-        state = await self.get_or_create(user_id)
+        ⚠️ 2026-09-03 리뷰 반영: 읽고-고쳐-쓰기(read counts -> +1 -> save)라 두 트랜잭션이
+        거의 동시에 같은 값을 읽으면 증가분 하나가 사라질 수 있었음. select_for_update()로
+        행 잠금을 걸어서 막음 — 호출부(challenge_service.complete())가 이미 in_transaction()
+        안에서 이 함수를 부르고 있어서 바로 적용 가능함.
+        """
+
+        await self.get_or_create(user_id)  # 첫 완료라 행이 아직 없으면 먼저 만들어둠(PK가 user_id라 중복 생성은 막힘)
+        state = await self._model.select_for_update().get(user_id=user_id)
         counts = state.five_element_completion_counts or {}
         counts[element] = counts.get(element, 0) + 1
         state.five_element_completion_counts = counts

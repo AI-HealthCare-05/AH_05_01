@@ -37,6 +37,38 @@ def _build_verification_message(to_email: str, code: str) -> MIMEMultipart:
     return message
 
 
+def send_already_registered_email(to_email: str) -> None:
+    """⚠️ 2026-09-03 리뷰 반영: 이미 가입된 이메일로 다시 가입 시도가 오면, 인증번호 대신
+    이 안내 메일을 보냄(응답만 봐서는 신규 가입 요청과 구분이 안 되게 하기 위함 -
+    request_email_verification 참고). 동기 함수 — asyncio.to_thread()로 감싸서 호출할 것."""
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "[틈튼] 이미 가입된 이메일입니다"
+    message["From"] = f"{config.SMTP_FROM_NAME} <{config.SMTP_USERNAME}>"
+    message["To"] = to_email
+
+    text_body = "이미 이 이메일로 가입된 틈튼(TMTN) 계정이 있습니다.\n로그인을 시도해 주세요.\n본인이 요청하지 않았다면 이 메일을 무시하셔도 됩니다."
+    html_body = """
+    <div style="font-family: sans-serif; padding: 24px;">
+      <h2 style="color:#0C3B2E;">틈튼(TMTN) 계정 안내</h2>
+      <p>이미 이 이메일로 가입된 계정이 있습니다. 로그인을 시도해 주세요.</p>
+      <p style="color:#666; font-size:13px;">본인이 요청하지 않았다면 이 메일을 무시하셔도 됩니다.</p>
+    </div>
+    """
+    message.attach(MIMEText(text_body, "plain"))
+    message.attach(MIMEText(html_body, "html"))
+
+    try:
+        with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(config.SMTP_USERNAME, config.SMTP_APP_PASSWORD)
+            server.sendmail(config.SMTP_USERNAME, [to_email], message.as_string())
+    except smtplib.SMTPException as exc:
+        raise EmailSendError(f"SMTP 발송 실패: {exc}") from exc
+    except OSError as exc:
+        raise EmailSendError(f"이메일 서버 연결 실패: {exc}") from exc
+
+
 def send_verification_email(to_email: str, code: str) -> None:
     """동기 함수 — 반드시 asyncio.to_thread()로 감싸서 호출할 것."""
 

@@ -1,3 +1,5 @@
+from tortoise.expressions import F
+
 from app.models.challenges import Challenge, ChallengeEvent, ChallengeState, PointLedger
 
 
@@ -44,9 +46,7 @@ class ChallengeRepository:
             target_count=target_count,
         )
 
-    async def try_transition(
-        self, challenge: Challenge, *, from_states: list[str], to_state: str
-    ) -> bool:
+    async def try_transition(self, challenge: Challenge, *, from_states: list[str], to_state: str) -> bool:
         """ERD 문서 §6의 낙관적 잠금 그대로 구현.
         UPDATE ... WHERE id=? AND version=? AND state IN (...) — affected rows 0이면 실패."""
 
@@ -62,10 +62,17 @@ class ChallengeRepository:
 
     async def add_accumulated_duration_and_clear_start(self, challenge_id, extra_seconds: int) -> None:
         """C03 "일시정지" - 이번 구간에서 흐른 시간을 누적값에 더하고, started_at은 비움
-        (PAUSED 동안엔 시간이 안 흐르니까)."""
-        challenge = await self._model.get(id=challenge_id)
+        (PAUSED 동안엔 시간이 안 흐르니까).
+
+        ⚠️ 2026-09-03 리뷰 반영: 예전엔 현재값을 Python에서 읽어서(challenge = await
+        self._model.get(...)) +extra_seconds 계산한 뒤 그 결과를 그대로 UPDATE했음(읽고-
+        고쳐-쓰기). 거의 동시에 두 요청이 들어오면 나중 요청이 먼저 요청의 증가분을 덮어써서
+        시간이 사라질 수 있었음. F() 식으로 DB가 직접 "현재값+extra_seconds"를 한 번에
+        계산하게 바꿔서 중간에 읽은 값을 아예 안 씀 - 레이스 자체가 불가능해짐."""
+
+        extra = max(extra_seconds, 0)
         await self._model.filter(id=challenge_id).update(
-            accumulated_duration_seconds=challenge.accumulated_duration_seconds + max(extra_seconds, 0),
+            accumulated_duration_seconds=F("accumulated_duration_seconds") + extra,
             started_at=None,
         )
 
@@ -73,9 +80,7 @@ class ChallengeRepository:
         """완료(complete) 순간 - 그때까지의 진짜 경과 시간을 그대로 확정 저장."""
         await self._model.filter(id=challenge_id).update(accumulated_duration_seconds=max(final_seconds, 0))
 
-    async def create_event(
-        self, challenge_id, event_type, idempotency_key, version, payload=None, occurred_at=None
-    ):
+    async def create_event(self, challenge_id, event_type, idempotency_key, version, payload=None, occurred_at=None):
         """idempotency_key UNIQUE 위반 시 tortoise.exceptions.IntegrityError가 그대로 올라감.
         호출부(서비스 레이어)에서 잡아서 기존 이벤트를 반환하는 방식으로 처리할 것.
         occurred_at을 안 보내면 None으로 저장 -> 조회 시 server_at으로 대체해서 보여줌."""
@@ -89,10 +94,22 @@ class ChallengeRepository:
             occurred_at=occurred_at,
         )
 
-    async def get_event_by_idempotency_key(self, idempotency_key: str) -> ChallengeEvent | None:
-        return await self._event_model.get_or_none(idempotency_key=idempotency_key).prefetch_related(
-            "point_ledger_entry"
-        )
+    async def get_event_by_idempotency_key(self, idempotency_key: str, user_id=None) -> ChallengeEvent | None:
+        """⚠️ 2026-09-03 리뷰 반영(P2, 부분 조치): idempotency_key가 DB에서 전역 UNIQUE라서,
+        user_id 없이 조회하면 "남이 쓴 키"의 존재 여부까지 그대로 알 수 있었음(다른 사용자
+        challenge_id로 이어지는 이벤트가 조회됨). user_id를 넘기면 그 사용자 소유 챌린지의
+        이벤트만 보이게 좁힘.
+        ⚠️ 다만 이건 "조회만" 좁힌 것이고, DB의 idempotency_key UNIQUE 제약 자체는 여전히
+        전역이라 서로 다른 사용자가 우연히 같은 키를 쓰면 INSERT 자체가 막히는 근본 문제는
+        남아있음(안드로이드가 매번 새 랜덤 UUID를 써서 실제 충돌 확률은 극히 낮지만, 계약상
+        허점임 - 완전한 수정은 user_id 컬럼 추가 + unique_together 마이그레이션이 필요해서
+        별도 확인 후 진행하기로 함).
+        """
+
+        query = self._event_model.filter(idempotency_key=idempotency_key)
+        if user_id is not None:
+            query = query.filter(challenge__selection__card_set__user_id=user_id)
+        return await query.prefetch_related("point_ledger_entry").first()
 
     async def create_point_ledger(self, user_id, source_event_id, delta: int, element: str) -> PointLedger:
         """source_event_id UNIQUE(uq_point_per_event)가 중복 보상을 막아줌."""
