@@ -59,3 +59,41 @@ data class ScoreInputsResponse(
     val cardio_moderate_min: Int?,
     val cardio_vigorous_min: Int?,
 )
+
+data class TuntunComponentScoreV2(
+    val key: String,
+    val label: String,
+    val score: Double?,
+    val available: Boolean,
+    val bandLabel: String?,
+    val guidance: String,
+    val source: String,
+)
+
+data class TuntunScoreV2Response(
+    val tuntunIndex: Double?,
+    val physicalScore: Double?,
+    val diabetesScore: Double?,
+    val hypertensionScore: Double?,
+    val lifestyleScore: Double?,
+    val aerobicScore: Double?,
+    val strengthScore: Double?,
+    val lifestyleAvailableSubcomponentCount: Int,
+    val lifestyleScoreSource: String,
+    val componentScores: List<TuntunComponentScoreV2>,
+    val availableComponentCount: Int,
+    val availableComponents: List<String>,
+    val unavailableComponents: List<String>,
+    val isPartialScore: Boolean,
+    val scoreAvailable: Boolean,
+    val activityWindowStart: String,
+    val activityWindowEnd: String,
+    val recordedDays: Int,
+    val missionIntegrationStatus: String,
+    val scoreContractVersion: String,
+    val modelVersion: String,
+    val calibrationVersion: String?,
+    val notice: String,
+    val olderAdultNotice: String?,
+    val isMock: Boolean,
+)

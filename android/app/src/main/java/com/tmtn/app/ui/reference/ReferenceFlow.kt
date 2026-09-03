@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +32,7 @@ import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
+import kotlin.math.roundToInt
 
 /** E01~E06 "참고"(틈튼지수) 탭 전체를 관리하는 최상위 컴포저블. 다른 탭 흐름과 같은 패턴.
  *
@@ -42,7 +45,13 @@ import com.tmtn.app.ui.theme.TmtnType
  * 어디서도 안 불러서, F그룹(내정보) 작업할 때 연결해야 함.
  */
 @Composable
-fun ReferenceFlow(onGoPickCard: () -> Unit, onOpenMyInfo: () -> Unit, onImmersiveChange: (Boolean) -> Unit) {
+fun ReferenceFlow(
+    onGoPickCard: () -> Unit,
+    onOpenMyInfo: () -> Unit,
+    onOpenHealthInfo: () -> Unit,
+    onOpenExerciseInfo: () -> Unit,
+    onImmersiveChange: (Boolean) -> Unit,
+) {
     val state = remember { ReferenceState() }
     val scope = rememberCoroutineScope()
 
@@ -61,10 +70,10 @@ fun ReferenceFlow(onGoPickCard: () -> Unit, onOpenMyInfo: () -> Unit, onImmersiv
         when (state.step.value) {
             ReferenceStep.LOADING -> LoadingBox()
             ReferenceStep.SUMMARY -> ReferenceSummaryScreen(state)
-            ReferenceStep.INELIGIBLE -> ReferenceIneligibleScreen(state, onGoPickCard)
+            ReferenceStep.INELIGIBLE -> ReferenceIneligibleScreen(state, onOpenMyInfo)
             ReferenceStep.DETAIL -> ReferenceDetailScreen(state)
             ReferenceStep.FACTORS -> ReferenceFactorsScreen(state)
-            ReferenceStep.INPUTS -> ReferenceInputsScreen(state, scope, onOpenMyInfo)
+            ReferenceStep.INPUTS -> ReferenceInputsScreen(state, scope, onOpenHealthInfo, onOpenExerciseInfo)
             ReferenceStep.ABOUT -> ReferenceAboutScreen(state)
         }
     }
@@ -82,6 +91,8 @@ private fun LoadingBox() {
 fun ReferenceSummaryScreen(state: ReferenceState) {
     val colors = LocalTmtnColors.current
     val score = state.score.value ?: return
+    val tuntunIndex = score.tuntunIndex ?: return
+    val displayScore = tuntunIndex.roundToInt()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -89,7 +100,7 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
         )
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(
@@ -101,38 +112,67 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("틈튼지수", style = TmtnType.title, color = colors.onSurface)
-                    Text(
-                        "자세히 >", style = TmtnType.label, color = colors.onSurfaceVariant,
-                        modifier = Modifier.noRippleClickable { state.openDetail() },
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (score.isMock) {
+                            Text(
+                                "Mock", style = TmtnType.caption, color = colors.onSurfaceVariant,
+                                modifier = Modifier.background(colors.disabledContainer, RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
+                        Text(
+                            "자세히 >", style = TmtnType.label, color = colors.onSurfaceVariant,
+                            modifier = Modifier.noRippleClickable { state.openDetail() },
+                        )
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${score.value}", style = TmtnType.display, color = colors.onSurface)
+                    Text("$displayScore", style = TmtnType.display, color = colors.onSurface)
                     Box(
                         modifier = Modifier.background(colors.secondaryContainer, RoundedCornerShape(999.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                     ) {
-                        Text(score.band_label + " 구간", style = TmtnType.caption, color = colors.onSurface)
+                        Text(scoreBandLabel(tuntunIndex) + " 구간", style = TmtnType.caption, color = colors.onSurface)
                     }
                 }
-                ScoreGaugeBar(value = score.value)
+                ScoreGaugeBar(value = displayScore)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("관심", style = TmtnType.caption, color = colors.onSurfaceVariant)
                     Text("보통", style = TmtnType.caption, color = colors.onSurfaceVariant)
                     Text("양호", style = TmtnType.caption, color = colors.onSurfaceVariant)
                 }
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
-                InfoRow("기간", score.period_label)
-                score.change_reason?.let { InfoRow("달라진 이유", it) }
-                InfoRow("데이터 출처", score.data_source)
+                InfoRow("생활습관 기간", "${score.activityWindowStart} ~ ${score.activityWindowEnd}")
+                InfoRow("반영 영역", "${score.availableComponentCount}개 / 4개")
+                if (score.isPartialScore) {
+                    Text(
+                        "입력이 없는 영역은 제외하고 가능한 영역만 같은 비중으로 계산했습니다.",
+                        style = TmtnType.caption,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Text("영역별 점수", style = TmtnType.title, color = colors.onSurface)
+            score.componentScores.forEach { component ->
+                ScoreComponentCard(component)
             }
 
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.disabledContainer, RoundedCornerShape(16.dp)).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text("이 수치는 건강 상태를 진단하지 않습니다.", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                Text("생활 습관을 돌아보는 참고용 지표입니다.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text(score.notice, style = TmtnType.caption, color = colors.onSurfaceVariant)
+                score.olderAdultNotice?.let {
+                    Text(it, style = TmtnType.caption, color = colors.onSurfaceVariant)
+                }
+                if (score.missionIntegrationStatus == "pending_evidence") {
+                    Text(
+                        "미션 수행값의 점수 환산은 검증 기준 확정 후 연결됩니다.",
+                        style = TmtnType.caption,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
             }
 
             TmtnOutlinedButton(
@@ -145,7 +185,7 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
 
 /** Figma E05 · 데이터 부족 · 산출 불가. 하단 내비 있음. */
 @Composable
-fun ReferenceIneligibleScreen(state: ReferenceState, onGoPickCard: () -> Unit) {
+fun ReferenceIneligibleScreen(state: ReferenceState, onOpenMyInfo: () -> Unit) {
     val colors = LocalTmtnColors.current
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -156,29 +196,65 @@ fun ReferenceIneligibleScreen(state: ReferenceState, onGoPickCard: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("아직 지수를 낼 수 없어요", style = TmtnType.headline, color = colors.onSurface)
+            Text("계산할 수 있는 영역이 없어요", style = TmtnType.headline, color = colors.onSurface)
             Text(
-                "행동 기록이 아직 모자랍니다. 최근 7일 중 ${state.eligibleRequiredDaysLabel.value} 이상 기록되면 지수를 낼 수 있어요.",
+                "신체정보나 운동습관을 입력하면 계산 가능한 영역부터 보여드릴게요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                InfoRow("최근 7일 기록", state.eligibleRecordedDaysLabel.value)
-                InfoRow("필요한 기록", state.eligibleRequiredDaysLabel.value)
+                InfoRow("현재 계산 가능", "0개 / 4개")
+                InfoRow("필요한 정보", state.eligibleRequiredDaysLabel.value)
             }
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.disabledContainer, RoundedCornerShape(16.dp)).padding(16.dp),
             ) {
                 Text(
-                    "몸 정보와 운동량은 이미 받았습니다. 오늘 카드를 하나 완료하면 기록이 하루 늘어나요.",
+                    "입력한 항목만 사용하며, 없는 항목을 0점으로 처리하지 않습니다.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
             }
-            TmtnPrimaryButton(text = "오늘의 카드 고르러 가기", onClick = onGoPickCard)
+            TmtnPrimaryButton(text = "정보 입력하러 가기", onClick = onOpenMyInfo)
         }
     }
+}
+
+@Composable
+private fun ScoreComponentCard(component: com.tmtn.app.network.model.TuntunComponentScoreV2) {
+    val colors = LocalTmtnColors.current
+    Column(
+        modifier = Modifier.fillMaxWidth().background(colors.background, RoundedCornerShape(16.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(component.label, style = TmtnType.bodyLarge, color = colors.onSurface)
+            Text(
+                component.score?.let { "${it.roundToInt()}점" } ?: "계산 안 됨",
+                style = TmtnType.bodyLarge,
+                color = if (component.available) colors.onSurface else colors.onSurfaceVariant,
+            )
+        }
+        component.score?.let { value ->
+            Box(
+                modifier = Modifier.fillMaxWidth().height(8.dp)
+                    .clip(RoundedCornerShape(999.dp)).background(colors.disabledContainer),
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth((value / 100.0).toFloat().coerceIn(0f, 1f)).height(8.dp)
+                        .clip(RoundedCornerShape(999.dp)).background(colors.secondary),
+                )
+            }
+        }
+        Text(component.guidance, style = TmtnType.caption, color = colors.onSurfaceVariant)
+    }
+}
+
+private fun scoreBandLabel(value: Double): String = when {
+    value < 40.0 -> "관심"
+    value < 70.0 -> "보통"
+    else -> "양호"
 }
 
 @Composable

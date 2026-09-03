@@ -2,6 +2,7 @@ package com.tmtn.app.ui.cardhome
 
 import androidx.compose.runtime.mutableStateOf
 import com.tmtn.app.network.ApiClient
+import com.tmtn.app.network.model.CalendarDayItem
 import com.tmtn.app.network.model.CardRevealResponse
 import com.tmtn.app.network.model.CompleteChallengeRequestBody
 import com.tmtn.app.network.model.MaterialItem
@@ -9,6 +10,7 @@ import com.tmtn.app.network.model.MemoUpdateRequest
 import com.tmtn.app.network.model.RestDayRequest
 import com.tmtn.app.ui.onboarding.parseErrorMessage
 import java.util.UUID
+import kotlin.math.roundToInt
 
 enum class CardHomeStep {
     LOADING,       // B08
@@ -71,6 +73,16 @@ class CardHomeState {
     var companionNextStageLabel = mutableStateOf<String?>(null)
     // 홈 화면 "댐" 요약 행의 오른쪽 빈 공간에 재료 개수를 보여주기 위한 값 (RecentSummaryListCard 참고).
     var companionMaterials = mutableStateOf<List<MaterialItem>>(emptyList())
+
+    // ⚠️ 홈 "틈튼지수" 요약 카드 - 예전엔 "68"/"보통 구간" 등이 전부 하드코딩된 예시였음.
+    // /tuntun-score/v2를 그대로 써서(참고 탭과 같은 소스) 실제 값으로 표시함.
+    var tuntunIndexValue = mutableStateOf<Int?>(null)
+    var tuntunIndexBand = mutableStateOf<String?>(null)
+    var tuntunIndexPeriodLabel = mutableStateOf<String?>(null)
+
+    // ⚠️ 홈 "최근 7일" 도트 - 예전엔 listOf(true, true, false, true, true, false, null)로
+    // 항상 똑같은 예시 패턴만 보여줬음. 기록 탭의 주간 리포트 API(최근 7일 실제 상태)를 그대로 씀.
+    var recentWeek = mutableStateOf<List<CalendarDayItem>>(emptyList())
 
     // B16/B17: 쉬어가기
     var restDaysUsedThisWeek = mutableStateOf(0)
@@ -135,6 +147,8 @@ class CardHomeState {
             step.value = CardHomeStep.ERROR
         }
         loadCompanion()
+        loadTuntunIndexSummary()
+        loadRecentWeek()
     }
 
     // B01b: "미션 이어하기" - 이미 확정된 오늘 챌린지의 카드 내용을 다시 불러와서 B06으로.
@@ -174,6 +188,35 @@ class CardHomeState {
             companionMaterialsNeeded.value = body.materials_needed_for_next
             companionNextStageLabel.value = body.stages.firstOrNull { !it.completed }?.label
             companionMaterials.value = body.materials
+        }
+    }
+
+    suspend fun loadTuntunIndexSummary() {
+        runCatching {
+            val response = ApiClient.tuntunScoreApi.getTuntunScoreV2()
+            if (response.isSuccessful) response.body() else null
+        }.getOrNull()?.let { body ->
+            val index = body.tuntunIndex
+            if (body.scoreAvailable && index != null) {
+                tuntunIndexValue.value = index.roundToInt()
+                tuntunIndexBand.value = when {
+                    index < 40.0 -> "관심"
+                    index < 70.0 -> "보통"
+                    else -> "양호"
+                }
+                tuntunIndexPeriodLabel.value = "${body.activityWindowStart} ~ ${body.activityWindowEnd}"
+            } else {
+                tuntunIndexValue.value = null
+            }
+        }
+    }
+
+    suspend fun loadRecentWeek() {
+        runCatching {
+            val response = ApiClient.recordApi.getWeeklyReport()
+            if (response.isSuccessful) response.body() else null
+        }.getOrNull()?.let { body ->
+            recentWeek.value = body.days
         }
     }
 

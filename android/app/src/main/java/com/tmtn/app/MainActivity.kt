@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +46,7 @@ import com.tmtn.app.ui.nav.MainTab
 import com.tmtn.app.ui.nav.PlaceholderTabScreen
 import com.tmtn.app.ui.onboarding.OnboardingFlow
 import com.tmtn.app.ui.profile.ProfileFlow
+import com.tmtn.app.ui.profile.ProfileScreenKey
 import com.tmtn.app.ui.record.RecordFlow
 import com.tmtn.app.ui.reference.ReferenceFlow
 import com.tmtn.app.ui.theme.TMTNv1Theme
@@ -92,6 +94,11 @@ class MainActivity : ComponentActivity() {
                     // H07(세션 만료)에서 "로그인하기" 눌러서 넘어온 경우 - 온보딩 처음(A01)이
                     // 아니라 A05(로그인)부터 시작해야 함.
                     var enterOnboardingAtLogin by remember { mutableStateOf(false) }
+                    // ⚠️ 참고 탭 "계산에 쓰인 값"에서 몸 정보/운동 정보 행을 눌렀을 때, 내 정보
+                    // 탭으로 전환하면서 그 항목 편집 화면으로 바로 들어가게 하기 위한 값.
+                    // 소비하고 나면 다시 HOME으로 되돌려서, 하단 탭에서 직접 "내 정보"를 눌렀을
+                    // 때는 원래대로 홈부터 보이게 함.
+                    var profileTargetScreen by remember { mutableStateOf(ProfileScreenKey.HOME) }
 
                     // H07: 어느 화면에서든 401(토큰 만료)이 감지되면 SessionManager가 신호를
                     // 켜고, 여기서 그걸 구독해서 세션만료 화면으로 강제 전환함.
@@ -142,18 +149,46 @@ class MainActivity : ComponentActivity() {
                                     MainTab.REFERENCE -> ReferenceFlow(
                                         onGoPickCard = { currentTab = MainTab.HOME },
                                         onOpenMyInfo = { currentTab = MainTab.MY },
+                                        onOpenHealthInfo = {
+                                            profileTargetScreen = ProfileScreenKey.HEALTH
+                                            currentTab = MainTab.MY
+                                        },
+                                        onOpenExerciseInfo = {
+                                            profileTargetScreen = ProfileScreenKey.EXERCISE
+                                            currentTab = MainTab.MY
+                                        },
                                         onImmersiveChange = { isImmersive = it },
                                     )
                                     MainTab.DAM -> DamFlow()
-                                    MainTab.MY -> ProfileFlow(
-                                        onOpenDam = { currentTab = MainTab.DAM },
-                                        onOpenSettings = { openAppSettings() },
-                                        onLoggedOut = { screen = AppScreen.ONBOARDING },
-                                        // TODO: A10(생활패턴 시간 선택)은 온보딩 흐름 안에서만 동작해서,
-                                        // 내 정보 탭에서 재사용하려면 별도로 빼내는 작업이 필요함. 지금은 미연결.
-                                        onEditWakeSleep = { },
-                                        onSaveCsv = { fileName, content -> saveCsvToDownloads(fileName, content) },
-                                    )
+                                    MainTab.MY -> {
+                                        // ⚠️ profileTargetScreen을 여기서 매번 그대로 읽으면, 아래
+                                        // LaunchedEffect가 HOME으로 되돌리는 순간 재구성이 일어나서
+                                        // initialScreen/onBackToOrigin이 전부 HOME 기준으로 다시
+                                        // 계산돼버림(뒤로가기 대상이 사라짐). remember(currentTab)로
+                                        // 이 탭에 들어온 시점의 값만 한 번 고정해서 씀.
+                                        val targetScreen = remember(currentTab) { profileTargetScreen }
+                                        ProfileFlow(
+                                            initialScreen = targetScreen,
+                                            onOpenDam = { currentTab = MainTab.DAM },
+                                            onOpenSettings = { openAppSettings() },
+                                            onLoggedOut = { screen = AppScreen.ONBOARDING },
+                                            // TODO: A10(생활패턴 시간 선택)은 온보딩 흐름 안에서만 동작해서,
+                                            // 내 정보 탭에서 재사용하려면 별도로 빼내는 작업이 필요함. 지금은 미연결.
+                                            onEditWakeSleep = { },
+                                            onSaveCsv = { fileName, content -> saveCsvToDownloads(fileName, content) },
+                                            // ⚠️ 참고 탭에서 몸정보/운동정보로 딥링크해서 들어온 경우에만
+                                            // 뒤로가기가 참고 탭으로 돌아가게 함(하단 탭에서 직접 들어왔으면 null).
+                                            onBackToOrigin = if (targetScreen != ProfileScreenKey.HOME) {
+                                                { currentTab = MainTab.REFERENCE }
+                                            } else {
+                                                null
+                                            },
+                                        )
+                                        // ⚠️ ProfileFlow가 initialScreen을 remember{}로 한 번만 읽고 나면,
+                                        // 이후엔 이 값을 다시 HOME으로 되돌려둬서 하단 탭에서 직접
+                                        // "내 정보"를 다시 눌렀을 때 항상 홈부터 보이게 함.
+                                        LaunchedEffect(Unit) { profileTargetScreen = ProfileScreenKey.HOME }
+                                    }
                                     else -> PlaceholderTabScreen(currentTab)
                                 }
                             }

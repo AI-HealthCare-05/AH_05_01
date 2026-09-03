@@ -57,7 +57,7 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope) {
         Text("2026. 8. 27. 목요일", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
         MascotCard(state, isSelected, scope)
-        TmtnIndexSummaryCard()
+        TmtnIndexSummaryCard(state)
         RecentSummaryListCard(state)
     }
 }
@@ -186,13 +186,15 @@ private fun StatusBadge(text: String) {
 
 /**
  * Figma "틈튼지수 요약" 카드.
- * ⚠️ 틈튼지수 계산 로직/API가 아직 없어서, 지금은 Figma 예시값(68, 보통 구간)을 그대로
- * 표시하는 자리만 만들어둠. 실제 계산 API 생기면 이 함수에 파라미터로 실제 값을 받아서
- * 교체할 것.
+ * ⚠️ 예전엔 "68"/"보통 구간"/날짜가 전부 하드코딩된 예시값이었음. /tuntun-score/v2를
+ * 그대로 써서(참고 탭 CardHomeState.loadTuntunIndexSummary() 참고) 실제 값으로 표시함.
+ * 아직 계산할 수 없는 상태(신체정보·운동습관 미입력 등)면 "68" 대신 안내 문구를 보여줌.
  */
 @Composable
-private fun TmtnIndexSummaryCard() {
+private fun TmtnIndexSummaryCard(state: CardHomeState) {
     val colors = LocalTmtnColors.current
+    val value = state.tuntunIndexValue.value
+    val band = state.tuntunIndexBand.value
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -207,42 +209,58 @@ private fun TmtnIndexSummaryCard() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("틈튼지수", style = TmtnType.label, color = colors.onSurface)
-            Text("자세히 ›", style = TmtnType.caption, color = colors.onSurfaceVariant) // TODO: E02로 이동
+            Text("자세히 ›", style = TmtnType.caption, color = colors.onSurfaceVariant) // TODO: 참고 탭으로 이동(탭 전환 콜백 필요)
         }
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("68", style = TmtnType.display, color = colors.onSurface)
-            Box(
-                modifier = Modifier
-                    .background(colors.surface, RoundedCornerShape(999.dp))
-                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(999.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            ) {
-                Text("보통 구간", style = TmtnType.caption, color = colors.onSurface)
+        if (value == null || band == null) {
+            Text(
+                "아직 계산할 수 없어요 · 신체정보나 운동습관을 입력해 보세요",
+                style = TmtnType.body, color = colors.onSurfaceVariant,
+            )
+        } else {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("$value", style = TmtnType.display, color = colors.onSurface)
+                Box(
+                    modifier = Modifier
+                        .background(colors.surface, RoundedCornerShape(999.dp))
+                        .border(1.dp, colors.outlineVariant, RoundedCornerShape(999.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text("$band 구간", style = TmtnType.caption, color = colors.onSurface)
+                }
             }
+            // 0~100 구간 막대(관심/보통/양호 3분할) - 실제 구간만 강조색으로 표시
+            Row(modifier = Modifier.fillMaxWidth().height(10.dp)) {
+                listOf("관심", "보통", "양호").forEachIndexed { index, label ->
+                    Box(
+                        modifier = Modifier.weight(1f).height(10.dp)
+                            .background(
+                                if (label == band) colors.secondary else colors.disabledContainer,
+                                RoundedCornerShape(4.dp),
+                            ),
+                    )
+                    if (index < 2) Spacer(modifier = Modifier.width(2.dp))
+                }
+            }
+            Text(
+                "${state.tuntunIndexPeriodLabel.value ?: ""} · 비진단용 참고 정보",
+                style = TmtnType.caption, color = colors.onSurfaceVariant,
+            )
         }
-        // 0~100 구간 막대(관심/보통/양호 3분할)
-        Row(modifier = Modifier.fillMaxWidth().height(10.dp)) {
-            Box(modifier = Modifier.weight(1f).height(10.dp).background(colors.disabledContainer, RoundedCornerShape(4.dp)))
-            Spacer(modifier = Modifier.width(2.dp))
-            Box(modifier = Modifier.weight(1f).height(10.dp).background(colors.secondary, RoundedCornerShape(4.dp)))
-            Spacer(modifier = Modifier.width(2.dp))
-            Box(modifier = Modifier.weight(1f).height(10.dp).background(colors.onSurface, RoundedCornerShape(4.dp)))
-        }
-        Text(
-            "2026. 8. 20. ~ 8. 27. · 비진단용 참고 정보",
-            style = TmtnType.caption, color = colors.onSurfaceVariant,
-        )
     }
 }
 
 /**
  * Figma "최근 7일" + "댐" 목록 카드.
- * ⚠️ "최근 7일" 점 7개는 아직 전용 요약 API가 없어서 예시 표시만 함(기록 캘린더 주간 API로
- * 나중에 교체 가능). "댐"은 실제 GET /companion 데이터를 그대로 씀.
+ * ⚠️ 예전엔 "최근 7일" 점 7개가 listOf(true, true, false, true, true, false, null) 하드코딩
+ * 예시 패턴으로 항상 똑같이 표시됐음. 기록 탭과 같은 주간 리포트 API(CardHomeState.
+ * loadRecentWeek() 참고)를 그대로 써서 실제 최근 7일 상태로 표시함. "댐"은 실제 GET
+ * /companion 데이터를 그대로 씀.
  */
 @Composable
 private fun RecentSummaryListCard(state: CardHomeState) {
     val colors = LocalTmtnColors.current
+    val recentWeek = state.recentWeek.value
+    val completedCount = recentWeek.count { it.status == "COMPLETED" }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -256,13 +274,11 @@ private fun RecentSummaryListCard(state: CardHomeState) {
         ) {
             Column {
                 Text("최근 7일", style = TmtnType.label, color = colors.onSurface)
-                Text("이번 주 5일 실천했어요", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text("이번 주 ${completedCount}일 실천했어요", style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                // 예시 패턴(완료/완료/미완료/완료/완료/미완료/오늘) - 실제 데이터로 교체 예정
-                listOf(true, true, false, true, true, false, null).forEach { done ->
-                    DayDot(done)
-                }
+                val today = java.time.LocalDate.now().toString()
+                recentWeek.forEach { day -> DayDot(status = day.status, isToday = day.date == today) }
             }
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
@@ -303,19 +319,22 @@ private fun RecentSummaryListCard(state: CardHomeState) {
 }
 
 @Composable
-private fun DayDot(done: Boolean?) {
+private fun DayDot(status: String, isToday: Boolean) {
     val colors = LocalTmtnColors.current
     Box(
         modifier = Modifier
             .size(10.dp)
+            // ⚠️ 예전엔 done==null(=예시 데이터의 마지막 자리)일 때만 "오늘" 링이 보였는데,
+            // 이제 실제 데이터는 최근 7일이 전부 실제 상태(COMPLETED/INCOMPLETE/REST)를 가져서
+            // null인 경우가 없음. MonthlyCalendarScreen.kt와 같은 방식으로 "오늘"을 상태와
+            // 무관하게 바깥 링으로 항상 같이 표시함.
+            .then(if (isToday) Modifier.border(2.dp, colors.secondary, CircleShape).padding(2.dp) else Modifier)
             .then(
-                if (done == true) {
-                    Modifier.background(colors.onSurface, CircleShape)
-                } else if (done == false) {
-                    Modifier.border(1.5.dp, colors.outline, CircleShape)
-                } else {
-                    Modifier.border(2.dp, colors.secondary, CircleShape) // 오늘
-                }
+                when (status) {
+                    "COMPLETED" -> Modifier.background(colors.onSurface, CircleShape)
+                    "REST" -> Modifier.background(colors.disabledContainer, CircleShape).border(1.dp, colors.onSurface, CircleShape)
+                    else -> Modifier.border(1.5.dp, colors.outline, CircleShape) // INCOMPLETE
+                },
             ),
     )
 }

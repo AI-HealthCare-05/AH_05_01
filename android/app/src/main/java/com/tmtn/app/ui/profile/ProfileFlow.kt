@@ -45,9 +45,17 @@ fun ProfileFlow(
     onLoggedOut: () -> Unit,
     onEditWakeSleep: () -> Unit,
     onSaveCsv: (fileName: String, content: String) -> Unit,
+    // ⚠️ 참고(틈튼지수) 탭의 "계산에 쓰인 값"에서 몸 정보/운동 정보 행을 눌렀을 때,
+    // "내 정보" 홈이 아니라 그 항목 편집 화면으로 바로 들어가게 하기 위한 진입점.
+    // 기본값 HOME이라 하단 탭에서 직접 "내 정보"를 눌렀을 때는 원래대로 홈부터 보여줌.
+    initialScreen: ProfileScreenKey = ProfileScreenKey.HOME,
+    // ⚠️ initialScreen이 HOME이 아닐 때(=다른 탭에서 딥링크로 들어온 경우), 그 화면에서
+    // 뒤로가기를 누르면 "내 정보" 홈이 아니라 원래 있던 탭(참고)으로 돌아가야 함.
+    // null이면(=하단 탭에서 직접 진입) 평소처럼 previousScreenFor()로 동작.
+    onBackToOrigin: (() -> Unit)? = null,
 ) {
     val colors = LocalTmtnColors.current
-    val state = remember { ProfileState() }
+    val state = remember { ProfileState().apply { screen.value = initialScreen } }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -55,8 +63,15 @@ fun ProfileFlow(
     }
 
     val previousScreen = previousScreenFor(state.screen.value)
-    BackHandler(enabled = previousScreen != null) {
-        previousScreen?.let { state.screen.value = it }
+    // 딥링크로 들어온 화면에 아직 그대로 있을 때만 "원래 탭으로 돌아가기"를 씀 - Profile
+    // 안에서 다른 화면으로 이미 이동했다면 평소처럼 Profile 안의 이전 화면으로 돌아감.
+    val isAtDeepLinkEntry = state.screen.value == initialScreen && initialScreen != ProfileScreenKey.HOME
+    BackHandler(enabled = previousScreen != null || (isAtDeepLinkEntry && onBackToOrigin != null)) {
+        if (isAtDeepLinkEntry && onBackToOrigin != null) {
+            onBackToOrigin()
+        } else {
+            previousScreen?.let { state.screen.value = it }
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

@@ -9,7 +9,9 @@
 """
 
 from datetime import date, timedelta
+from math import isfinite
 
+from app.core.time_utils import service_today
 from app.dtos.tuntun_score import (
     ScoreBandRange,
     ScoreBands,
@@ -17,7 +19,9 @@ from app.dtos.tuntun_score import (
     ScoreInputsResponse,
     TmtnScoreFactor,
     TmtnScoreResponse,
+    TuntunComponentScoreV2,
     TuntunScoreOrEligibilityResponse,
+    TuntunScoreV2Response,
 )
 from app.models.users import User
 from app.repositories.exercise_habit_repository import ExerciseHabitRepository
@@ -29,6 +33,26 @@ LOOKBACK_DAYS = 7
 
 MODEL_VERSION = "국민건강영양조사 기반 참고 모델 v1.2"
 CALIBRATION_VERSION = "보정 v1.0"
+V2_MOCK_MODEL_VERSION = "mock-ui-integration-v0.1"
+V2_SCORE_CONTRACT_VERSION = "v0.2-empirical-cdf-owner-approved"
+V2_NOTICE = (
+    "튼튼지수는 입력 정보와 통계 모델을 바탕으로 산출한 생활습관 개선 참고용 보정 점수이며, "
+    "의료진의 진단이나 치료를 대신하지 않습니다. 현재 화면의 건강영역 점수는 연동 확인용 Mock 값입니다."
+)
+V2_OLDER_ADULT_NOTICE = "65세 이상에서는 모델의 예측 불확실성이 상대적으로 클 수 있어 참고용으로 활용해 주세요."
+
+_V2_MOCK_HEALTH_SCORES = {
+    "physical": 74.0,
+    "diabetes": 78.0,
+    "hypertension": 76.0,
+}
+
+_V2_COMPONENT_META = {
+    "physical": ("신체", "허리둘레 위험을 낮추는 방향으로 체중과 활동 습관을 꾸준히 관리해 보세요."),
+    "diabetes": ("당뇨", "규칙적인 활동과 균형 잡힌 식사를 이어가며 생활습관을 관리해 보세요."),
+    "hypertension": ("고혈압", "걷기 등 꾸준한 활동과 나트륨 섭취 관리를 실천해 보세요."),
+    "lifestyle": ("생활습관", "유산소 운동 시간과 주간 근력운동 일수를 조금씩 늘려 보세요."),
+}
 
 _STRENGTH_INTENSITY_LABEL = {"LIGHT": "가볍게", "MODERATE": "적당히", "HARD": "힘들게"}
 _SEX_LABEL = {"MALE": "남성", "FEMALE": "여성"}
@@ -46,6 +70,45 @@ def _band_label(value: int) -> str:
     if value < 70:
         return "보통"
     return "양호"
+
+
+def _band_label_float(value: float | None) -> str | None:
+    return _band_label(round(value)) if value is not None else None
+
+
+def _positive_finite_number(value: object) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if isfinite(number) and number > 0 else None
+
+
+def _nonnegative_finite_number(value: object) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if isfinite(number) and number >= 0 else None
+
+
+def _mean(values: list[float]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
+def _component_v2(key: str, score: float | None, source: str) -> TuntunComponentScoreV2:
+    label, guidance = _V2_COMPONENT_META[key]
+    if score is None:
+        guidance = "계산에 필요한 입력이 부족해 이번 종합점수에서는 제외했습니다."
+    return TuntunComponentScoreV2(
+        key=key,
+        label=label,
+        score=score,
+        available=score is not None,
+        bandLabel=_band_label_float(score),
+        guidance=guidance,
+        source=source,
+    )
 
 
 class TuntunScoreService:
@@ -68,7 +131,7 @@ class TuntunScoreService:
         return recorded
 
     async def get_score(self, user: User) -> TuntunScoreOrEligibilityResponse:
-        today = date.today()
+        today = service_today()  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정
         recorded_days = await self._count_recorded_days(user.id, today)
 
         if recorded_days < REQUIRED_RECORDED_DAYS:
@@ -86,6 +149,103 @@ class TuntunScoreService:
 
         score = await self._calculate_mock_score(user, today)
         return TuntunScoreOrEligibilityResponse(eligible=True, score=score)
+
+    async def get_score_v2(self, user: User) -> TuntunScoreV2Response:
+        """4영역 UI 연결을 검증하기 위한 deterministic Mock 응답을 만든다.
+
+        건강영역 3개는 production 모델이 없으므로 값을 추론하지 않고 고정 Mock 점수를
+        사용한다. 단, 실제 모델의 최소 입력인 연령·성별·키·몸무게가 모두 있을 때만
+        available로 표시한다. 생활습관은 승인된 설문 산식만 적용하며 미션 수행값은
+        환산·coverage 정책이 승인되기 전까지 점수에 더하지 않는다.
+        """
+
+        today = service_today()  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정
+        start = today - timedelta(days=LOOKBACK_DAYS - 1)
+        recorded_days = await self._count_recorded_days(user.id, today)
+        health = await self.health_repo.get_latest(user.id)
+        habit = await self.exercise_repo.get_latest(user.id)
+
+        input_values = (health.input_values or {}) if health else {}
+        has_health_inputs = all(
+            (
+                user.birth_year is not None,
+                user.birth_month is not None,
+                user.gender is not None,
+                _positive_finite_number(input_values.get("height_cm")) is not None,
+                _positive_finite_number(input_values.get("weight_kg")) is not None,
+            )
+        )
+
+        physical_score = _V2_MOCK_HEALTH_SCORES["physical"] if has_health_inputs else None
+        diabetes_score = _V2_MOCK_HEALTH_SCORES["diabetes"] if has_health_inputs else None
+        hypertension_score = _V2_MOCK_HEALTH_SCORES["hypertension"] if has_health_inputs else None
+
+        aerobic_score = None
+        strength_score = None
+        if habit is not None:
+            moderate = _nonnegative_finite_number(habit.aerobic_moderate_minutes)
+            vigorous = _nonnegative_finite_number(habit.aerobic_high_minutes)
+            if moderate is not None and vigorous is not None:
+                moderate_equivalent_minutes = moderate + (2.0 * vigorous)
+                aerobic_score = min(100.0, moderate_equivalent_minutes / 150.0 * 100.0)
+
+            strength_days = _nonnegative_finite_number(habit.strength_weekly_count)
+            if strength_days is not None and strength_days <= 7.0:
+                strength_score = min(100.0, strength_days / 2.0 * 100.0)
+
+        lifestyle_subscores = [score for score in (aerobic_score, strength_score) if score is not None]
+        lifestyle_score = _mean(lifestyle_subscores)
+
+        raw_scores = {
+            "physical": physical_score,
+            "diabetes": diabetes_score,
+            "hypertension": hypertension_score,
+            "lifestyle": lifestyle_score,
+        }
+        available_components = [key for key, score in raw_scores.items() if score is not None]
+        unavailable_components = [key for key, score in raw_scores.items() if score is None]
+        tuntun_index = _mean([score for score in raw_scores.values() if score is not None])
+        components = [
+            _component_v2(
+                key,
+                score,
+                "questionnaire"
+                if key == "lifestyle" and score is not None
+                else ("mock_health_input" if score is not None else "unavailable"),
+            )
+            for key, score in raw_scores.items()
+        ]
+
+        current_year = today.year - (1 if user.birth_month and today.month < user.birth_month else 0)
+        age = current_year - user.birth_year if user.birth_year is not None else None
+
+        return TuntunScoreV2Response(
+            tuntunIndex=tuntun_index,
+            physicalScore=physical_score,
+            diabetesScore=diabetes_score,
+            hypertensionScore=hypertension_score,
+            lifestyleScore=lifestyle_score,
+            aerobicScore=aerobic_score,
+            strengthScore=strength_score,
+            lifestyleAvailableSubcomponentCount=len(lifestyle_subscores),
+            lifestyleScoreSource="questionnaire" if lifestyle_score is not None else "unavailable",
+            componentScores=components,
+            availableComponentCount=len(available_components),
+            availableComponents=available_components,
+            unavailableComponents=unavailable_components,
+            isPartialScore=0 < len(available_components) < 4,
+            scoreAvailable=tuntun_index is not None,
+            activityWindowStart=start.isoformat(),
+            activityWindowEnd=today.isoformat(),
+            recordedDays=recorded_days,
+            missionIntegrationStatus="pending_evidence",
+            scoreContractVersion=V2_SCORE_CONTRACT_VERSION,
+            modelVersion=V2_MOCK_MODEL_VERSION,
+            calibrationVersion=None,
+            notice=V2_NOTICE,
+            olderAdultNotice=V2_OLDER_ADULT_NOTICE if age is not None and age >= 65 else None,
+            isMock=True,
+        )
 
     async def _calculate_mock_score(self, user: User, today: date) -> TmtnScoreResponse:
         """⚠️ MOCK — 실제 예측 모델과 무관한 임시 계산. 최근 7일 완료율 + 운동습관값만

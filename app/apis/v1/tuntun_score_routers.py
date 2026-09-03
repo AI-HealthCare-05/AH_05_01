@@ -3,16 +3,19 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 
 from app.dependencies.security import get_request_user
-from app.dtos.tuntun_score import ScoreInputsResponse, TmtnScoreResponse, TuntunScoreOrEligibilityResponse
+from app.dtos.tuntun_score import (
+    ScoreInputsResponse,
+    TmtnScoreResponse,
+    TuntunScoreOrEligibilityResponse,
+    TuntunScoreV2Response,
+)
 from app.models.users import User
 from app.services.tuntun_score_service import TuntunScoreService
 
 tuntun_score_router = APIRouter(prefix="/tuntun-score", tags=["tuntun-score"])
 
 
-@tuntun_score_router.get(
-    "", response_model=TuntunScoreOrEligibilityResponse, status_code=status.HTTP_200_OK
-)
+@tuntun_score_router.get("", response_model=TuntunScoreOrEligibilityResponse, status_code=status.HTTP_200_OK)
 async def get_tuntun_score(
     user: Annotated[User, Depends(get_request_user)],
     service: Annotated[TuntunScoreService, Depends(TuntunScoreService)],
@@ -21,6 +24,20 @@ async def get_tuntun_score(
     ⚠️ MOCK — 실제 예측 모델 연결 전 뼈대 단계(response.score.is_mock 항상 true)."""
 
     return await service.get_score(user)
+
+
+@tuntun_score_router.get("/v2", response_model=TuntunScoreV2Response, status_code=status.HTTP_200_OK)
+async def get_tuntun_score_v2(
+    user: Annotated[User, Depends(get_request_user)],
+    service: Annotated[TuntunScoreService, Depends(TuntunScoreService)],
+) -> TuntunScoreV2Response:
+    """종합점수와 신체·당뇨·고혈압·생활습관 점수를 함께 제공하는 Mock 연동 API.
+
+    실제 배포 모델의 예측값이나 질환 확률을 제공하지 않는다. ``isMock``은 production
+    모델 패키지가 연결되기 전까지 항상 true다.
+    """
+
+    return await service.get_score_v2(user)
 
 
 @tuntun_score_router.get("/about", response_model=TmtnScoreResponse, status_code=status.HTTP_200_OK)
@@ -32,9 +49,7 @@ async def get_tuntun_score_about(
     return await service.get_score_about()
 
 
-@tuntun_score_router.get(
-    "/inputs", response_model=ScoreInputsResponse, status_code=status.HTTP_200_OK
-)
+@tuntun_score_router.get("/inputs", response_model=ScoreInputsResponse, status_code=status.HTTP_200_OK)
 async def get_tuntun_score_inputs(
     user: Annotated[User, Depends(get_request_user)],
     service: Annotated[TuntunScoreService, Depends(TuntunScoreService)],

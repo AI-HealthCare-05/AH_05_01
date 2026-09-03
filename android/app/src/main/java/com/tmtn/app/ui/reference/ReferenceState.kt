@@ -3,7 +3,7 @@ package com.tmtn.app.ui.reference
 import androidx.compose.runtime.mutableStateOf
 import com.tmtn.app.network.ApiClient
 import com.tmtn.app.network.model.ScoreInputsResponse
-import com.tmtn.app.network.model.TmtnScoreResponse
+import com.tmtn.app.network.model.TuntunScoreV2Response
 
 /** E01~E06 "틈튼지수" 탭 전체 단계.
  * ⚠️ E06(이 지수에 대하여)은 HANDOFF.md 기준 "진입 경로가 없음"(마이/설정 쪽 추정) —
@@ -24,7 +24,7 @@ class ReferenceState {
     private val backStack = mutableListOf(ReferenceStep.LOADING)
     val step = mutableStateOf(backStack.last())
 
-    val score = mutableStateOf<TmtnScoreResponse?>(null)
+    val score = mutableStateOf<TuntunScoreV2Response?>(null)
     val eligibleRecordedDaysLabel = mutableStateOf("")
     val eligibleRequiredDaysLabel = mutableStateOf("")
     val scoreInputs = mutableStateOf<ScoreInputsResponse?>(null)
@@ -45,21 +45,21 @@ class ReferenceState {
         return true
     }
 
-    // E01/E05 진입점: 산출 가능 여부부터 확인
+    // V2는 기록 일수로 전체 점수를 차단하지 않고 계산 가능한 영역만 재가중한다.
     suspend fun loadScore() {
         isLoading.value = true
         errorMessage.value = null
         runCatching {
-            val response = ApiClient.tuntunScoreApi.getTuntunScore()
+            val response = ApiClient.tuntunScoreApi.getTuntunScoreV2()
             if (!response.isSuccessful) error("틈튼지수를 불러오지 못했어요.")
             response.body()!!
         }.onSuccess { result ->
-            if (result.eligible && result.score != null) {
-                score.value = result.score
+            if (result.scoreAvailable && result.tuntunIndex != null) {
+                score.value = result
                 replaceRoot(ReferenceStep.SUMMARY)
             } else {
-                eligibleRecordedDaysLabel.value = result.eligibility?.recorded_days_label ?: ""
-                eligibleRequiredDaysLabel.value = result.eligibility?.required_days_label ?: ""
+                eligibleRecordedDaysLabel.value = result.recordedDays.toString()
+                eligibleRequiredDaysLabel.value = "신체정보 또는 운동습관"
                 replaceRoot(ReferenceStep.INELIGIBLE)
             }
         }.onFailure { e ->

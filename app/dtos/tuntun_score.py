@@ -8,7 +8,9 @@ tuntun_score_service.py에 전부 MOCK으로 표시돼 있고, ML팀의 실제 �
 (HANDOFF.md 정책 — 항목별 기여도 %는 노출하지 않고 막대 길이로만 표시).
 """
 
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ScoreBandRange(BaseModel):
@@ -81,3 +83,49 @@ class ScoreInputsResponse(BaseModel):
     cardio_low_min: int | None = None
     cardio_moderate_min: int | None = None
     cardio_vigorous_min: int | None = None  # 0도 정상값 — None(빈 값)과 구분됨
+
+
+class TuntunComponentScoreV2(BaseModel):
+    """앱에 표시하는 4개 영역 점수. 내부 확률·fold·참여자 ID는 포함하지 않는다."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    key: Literal["physical", "diabetes", "hypertension", "lifestyle"]
+    label: str
+    score: float | None
+    available: bool
+    band_label: str | None = Field(alias="bandLabel")
+    guidance: str
+    source: Literal["mock_health_input", "questionnaire", "unavailable"]
+
+
+class TuntunScoreV2Response(BaseModel):
+    """종합점수와 4개 하위점수를 함께 제공하는 앱 통합용 Mock 계약."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    tuntun_index: float | None = Field(alias="tuntunIndex")
+    physical_score: float | None = Field(alias="physicalScore")
+    diabetes_score: float | None = Field(alias="diabetesScore")
+    hypertension_score: float | None = Field(alias="hypertensionScore")
+    lifestyle_score: float | None = Field(alias="lifestyleScore")
+    aerobic_score: float | None = Field(alias="aerobicScore")
+    strength_score: float | None = Field(alias="strengthScore")
+    lifestyle_available_subcomponent_count: int = Field(alias="lifestyleAvailableSubcomponentCount")
+    lifestyle_score_source: Literal["questionnaire", "unavailable"] = Field(alias="lifestyleScoreSource")
+    component_scores: list[TuntunComponentScoreV2] = Field(alias="componentScores")
+    available_component_count: int = Field(alias="availableComponentCount")
+    available_components: list[str] = Field(alias="availableComponents")
+    unavailable_components: list[str] = Field(alias="unavailableComponents")
+    is_partial_score: bool = Field(alias="isPartialScore")
+    score_available: bool = Field(alias="scoreAvailable")
+    activity_window_start: str = Field(alias="activityWindowStart")
+    activity_window_end: str = Field(alias="activityWindowEnd")
+    recorded_days: int = Field(alias="recordedDays")
+    mission_integration_status: Literal["pending_evidence"] = Field(alias="missionIntegrationStatus")
+    score_contract_version: str = Field(alias="scoreContractVersion")
+    model_version: str = Field(alias="modelVersion")
+    calibration_version: str | None = Field(alias="calibrationVersion")
+    notice: str
+    older_adult_notice: str | None = Field(alias="olderAdultNotice")
+    is_mock: bool = Field(alias="isMock")

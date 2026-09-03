@@ -80,6 +80,16 @@ class RecordService:
         if start > today:
             return MonthlyCalendarResponse(year=year, month=month, days=[], completed_count=0, rest_count=0)
 
+        # ⚠️ 리뷰 반영: 미래 날짜는 위에서 이미 걸렀는데, "가입 이전" 날짜는 안 걸러서
+        # 가입한 달의 1일부터 가입일 전날까지가 전부 "미완료"로 잘못 표시되고 있었음.
+        # (그 날은 사용자가 아직 계정도 없었으니 "완료 안 함"이 아니라 "해당 없음"임.)
+        # 가입일 이전 날짜는 시작일을 가입일로 당겨서 아예 안 만듦.
+        signup_date = user.created_at.date()
+        if signup_date > start:
+            start = signup_date
+        if start > end:
+            return MonthlyCalendarResponse(year=year, month=month, days=[], completed_count=0, rest_count=0)
+
         status_map = await self._build_status_map(user.id, start, end)
         days = [CalendarDayItem(date=d, status=s) for d, (s, _) in sorted(status_map.items())]
         completed_count = sum(1 for _, (s, _) in status_map.items() if s == "COMPLETED")
@@ -92,6 +102,11 @@ class RecordService:
     async def get_weekly_report(self, user: User) -> WeeklyReportResponse:
         today = service_today()
         start = today - timedelta(days=6)
+        # ⚠️ 리뷰 반영: 월간 캘린더와 같은 이유 - 가입한 지 7일이 안 된 사용자는 가입 전
+        # 날짜까지 "미완료"로 잡혀서 "이번 주 N일 실천"이 실제보다 적게 나왔음.
+        signup_date = user.created_at.date()
+        if signup_date > start:
+            start = signup_date
 
         status_map = await self._build_status_map(user.id, start, today)
         days = [CalendarDayItem(date=d, status=s) for d, (s, _) in sorted(status_map.items())]

@@ -26,12 +26,19 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /** Figma E02 · 틈튼지수 자세히. 하단 내비 없음(전면 몰입). */
 @Composable
 fun ReferenceDetailScreen(state: ReferenceState) {
     val colors = LocalTmtnColors.current
     val score = state.score.value ?: return
+    val tuntunIndex = score.tuntunIndex ?: return
+    val tuntunBand = when {
+        tuntunIndex < 40.0 -> "관심"
+        tuntunIndex < 70.0 -> "보통"
+        else -> "양호"
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "틈튼지수", onBack = { state.goBack() })
@@ -45,10 +52,10 @@ fun ReferenceDetailScreen(state: ReferenceState) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${score.value}", style = TmtnType.display, color = colors.onSurface)
-                    Text(score.band_label + " 구간", style = TmtnType.title, color = colors.onSurface)
+                    Text("${tuntunIndex.roundToInt()}", style = TmtnType.display, color = colors.onSurface)
+                    Text("$tuntunBand 구간", style = TmtnType.title, color = colors.onSurface)
                 }
-                Text("${score.period_label} 기준", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text("${score.activityWindowStart} ~ ${score.activityWindowEnd} 기준", style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
             Column(
@@ -56,9 +63,9 @@ fun ReferenceDetailScreen(state: ReferenceState) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("구간은 이렇게 나눕니다", style = TmtnType.title, color = colors.onSurface)
-                InfoRow("관심", score.bands.low.range_label)
-                InfoRow("보통", score.bands.mid.range_label)
-                InfoRow("양호", score.bands.high.range_label)
+                InfoRow("관심", "0 ~ 39")
+                InfoRow("보통", "40 ~ 69")
+                InfoRow("양호", "70 ~ 100")
                 Text(
                     "구간이 바뀌어도 몸 상태가 바뀐 것은 아닙니다. 입력한 값과 최근 행동을 다시 계산한 결과입니다.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
@@ -70,10 +77,8 @@ fun ReferenceDetailScreen(state: ReferenceState) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("데이터 출처", style = TmtnType.title, color = colors.onSurface)
-                Text(score.data_source, style = TmtnType.body, color = colors.onSurface)
-                score.last_updated_label?.let {
-                    Text("최근 갱신 $it", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                }
+                Text(score.scoreContractVersion, style = TmtnType.body, color = colors.onSurface)
+                Text(score.modelVersion, style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
             TmtnTextButton(text = "이번 계산에 반영된 항목 보기", onClick = { state.openFactors() })
@@ -101,32 +106,26 @@ fun ReferenceFactorsScreen(state: ReferenceState) {
                 modifier = Modifier.fillMaxWidth().background(colors.background, RoundedCornerShape(20.dp)).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                score.factors.forEach { factor ->
+                score.componentScores.forEach { component ->
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(factor.name, style = TmtnType.bodyLarge, color = colors.onSurface)
+                        Text(component.label, style = TmtnType.bodyLarge, color = colors.onSurface)
                         Box(
                             modifier = Modifier.fillMaxWidth().height(8.dp)
                                 .clip(RoundedCornerShape(999.dp)).background(colors.disabledContainer),
                         ) {
                             Box(
-                                modifier = Modifier.fillMaxWidth(fraction = factor.weight_ratio.toFloat().coerceIn(0.03f, 1f))
+                                modifier = Modifier.fillMaxWidth(fraction = ((component.score ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f))
                                     .height(8.dp)
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(colors.onSurface),
                             )
                         }
-                    }
-                }
-                if (score.excluded_factors.isNotEmpty()) {
-                    score.excluded_factors.forEach { name ->
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(name, style = TmtnType.bodyLarge, color = colors.onSurfaceVariant)
-                            Box(
-                                modifier = Modifier.fillMaxWidth().height(8.dp)
-                                    .clip(RoundedCornerShape(999.dp)).background(colors.disabledContainer),
-                            )
-                            Text("이번엔 값이 없어서 계산에서 뺐어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                        }
+                        Text(
+                            component.score?.let { "${it.roundToInt()}점 · ${component.guidance}" }
+                                ?: "이번엔 값이 없어서 계산에서 뺐어요.",
+                            style = TmtnType.caption,
+                            color = colors.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -136,7 +135,7 @@ fun ReferenceFactorsScreen(state: ReferenceState) {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    "각 항목이 얼마나 반영됐는지는 모델 검증이 끝난 뒤에 보여드릴게요.",
+                    "점수가 낮은 영역의 안내부터 확인해 생활습관 개선 목표를 정해 보세요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
                 Text(
@@ -155,7 +154,12 @@ fun ReferenceFactorsScreen(state: ReferenceState) {
  * 보내는 걸로 뼈대를 잡음(onOpenMyInfo). 지금은 필드별로 정확히 어느 화면인지까지는 못
  * 나누고 "내 정보" 탭으로만 보냄 — F그룹 쪽 세부 화면이 준비되면 필드별 딥링크로 나눌 것. */
 @Composable
-fun ReferenceInputsScreen(state: ReferenceState, scope: CoroutineScope, onOpenMyInfo: () -> Unit) {
+fun ReferenceInputsScreen(
+    state: ReferenceState,
+    scope: CoroutineScope,
+    onOpenHealthInfo: () -> Unit,
+    onOpenExerciseInfo: () -> Unit,
+) {
     val colors = LocalTmtnColors.current
     val inputs = state.scoreInputs.value
 
@@ -182,10 +186,10 @@ fun ReferenceInputsScreen(state: ReferenceState, scope: CoroutineScope, onOpenMy
                 modifier = Modifier.fillMaxWidth().background(colors.background, RoundedCornerShape(16.dp)).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                InputRow("생년월일", inputs.birth_month_label ?: "입력 필요", onOpenMyInfo)
-                InputRow("성별", inputs.sex_label ?: "입력 필요", onOpenMyInfo)
-                InputRow("키", inputs.height_cm?.let { "${it.toInt()} cm" } ?: "입력 필요", onOpenMyInfo)
-                InputRow("몸무게", inputs.weight_kg?.let { "${it.toInt()} kg" } ?: "입력 필요", onOpenMyInfo)
+                InputRow("생년월일", inputs.birth_month_label ?: "입력 필요", onOpenHealthInfo)
+                InputRow("성별", inputs.sex_label ?: "입력 필요", onOpenHealthInfo)
+                InputRow("키", inputs.height_cm?.let { "${it.toInt()} cm" } ?: "입력 필요", onOpenHealthInfo)
+                InputRow("몸무게", inputs.weight_kg?.let { "${it.toInt()} kg" } ?: "입력 필요", onOpenHealthInfo)
             }
 
             Text("일주일 운동량", style = TmtnType.title, color = colors.onSurface)
@@ -193,10 +197,10 @@ fun ReferenceInputsScreen(state: ReferenceState, scope: CoroutineScope, onOpenMy
                 modifier = Modifier.fillMaxWidth().background(colors.background, RoundedCornerShape(16.dp)).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                InputRow("근력운동", inputs.strength_label ?: "입력 필요", onOpenMyInfo)
-                InputRow("유산소 저강도", inputs.cardio_low_min?.let { "${it}분" } ?: "입력 필요", onOpenMyInfo)
-                InputRow("유산소 중강도", inputs.cardio_moderate_min?.let { "${it}분" } ?: "입력 필요", onOpenMyInfo)
-                InputRow("유산소 고강도", inputs.cardio_vigorous_min?.let { "${it}분" } ?: "입력 필요", onOpenMyInfo)
+                InputRow("근력운동", inputs.strength_label ?: "입력 필요", onOpenExerciseInfo)
+                InputRow("유산소 저강도", inputs.cardio_low_min?.let { "${it}분" } ?: "입력 필요", onOpenExerciseInfo)
+                InputRow("유산소 중강도", inputs.cardio_moderate_min?.let { "${it}분" } ?: "입력 필요", onOpenExerciseInfo)
+                InputRow("유산소 고강도", inputs.cardio_vigorous_min?.let { "${it}분" } ?: "입력 필요", onOpenExerciseInfo)
             }
 
             Column(
