@@ -87,7 +87,11 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
             Text(
                 when {
                     isCompleted -> "일러스트 자리 · 뿌듯한 비버"
-                    isSkipped -> "일러스트 자리 · 쉬는 비버"
+                    // ⚠️ 2026-09-03 리뷰 반영: SKIPPED(중단)를 REST(쉼)랑 같은 "쉬는 비버"로
+                    // 보여주고 있었는데, 서버 기준으로 완전히 다른 상태임(아래 문구 수정 참고).
+                    // 그림도 "쉬는" 포즈 대신 다른 포즈로 바꿔야 함 - 지금은 전용 에셋이 없어서
+                    // 자리 표시 문구만 구분해둠(에셋 준비되면 교체).
+                    isSkipped -> "일러스트 자리 · 카드를 내려놓은 비버"
                     // ⚠️ 카드를 실제로 골랐으면(=진짜 뭔가 하기로 함) 그게 "쉼" 표시보다
                     // 우선함. "쉼"은 아직 아무것도 안 골랐을 때만 보여주는 기본 상태.
                     isSelected -> "일러스트 자리 · 응원하는 비버"
@@ -101,7 +105,12 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
         if (isCompleted) {
             StatusBadge(text = "완료")
         } else if (isSkipped) {
-            StatusBadge(text = "쉼")
+            // ⚠️ 2026-09-03 리뷰 반영: SKIPPED(중단)를 REST(쉼)와 같은 "쉼" 뱃지로 보여주고
+            // 있었음. 서버 기준(record_service.py)으로 REST는 연속 기록이 안 끊기고 주 2회
+            // 한도가 차감되지만, SKIPPED는 COMPLETED가 아니라서 그대로 INCOMPLETE로 집계되고
+            // 연속 기록이 끊김. 홈에서는 "쉼"이라 안심시켜놓고 기록 탭 가면 연속 기록이 끊겨
+            // 있는 모순이라, "중단"으로 명확히 구분함.
+            StatusBadge(text = "중단")
         } else if (isSelected) {
             StatusBadge(text = "진행 중")
         } else if (isRestDay) {
@@ -111,7 +120,7 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
         Text(
             when {
                 isCompleted -> "오늘 몫은 다 했어요. 잘했어요!"
-                isSkipped -> "오늘은 쉬어가기로 했어요."
+                isSkipped -> "오늘 카드는 여기서 멈췄어요."
                 isSelected -> "오늘 고른 미션이 기다리고 있어."
                 isRestDay -> "오늘은 쉬어가는 날이에요."
                 else -> "안녕! 오늘 카드 세 장 가져왔어."

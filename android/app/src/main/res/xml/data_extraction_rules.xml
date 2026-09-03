@@ -1,19 +1,21 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   ⚠️ 2026-09-03 리뷰 반영: allowBackup="true" + 이 파일이 빈 템플릿이라, Android 자동 백업이
+   앱 데이터 전체(로그인 토큰, 센서 원본 GPS 좌표 포함)를 사용자 구글 드라이브로 그대로
+   올리고 있었음. 토큰 저장소(tmtn_secure_prefs)와 Room DB(tmtn_local_db - raw_sensor_logs에
+   원본 위경도가 들어있음)를 백업에서 제외함.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="tmtn_secure_prefs.xml" />
+        <exclude domain="database" path="tmtn_local_db" />
+        <exclude domain="database" path="tmtn_local_db-wal" />
+        <exclude domain="database" path="tmtn_local_db-shm" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="tmtn_secure_prefs.xml" />
+        <exclude domain="database" path="tmtn_local_db" />
+        <exclude domain="database" path="tmtn_local_db-wal" />
+        <exclude domain="database" path="tmtn_local_db-shm" />
     </device-transfer>
-    -->
 </data-extraction-rules>

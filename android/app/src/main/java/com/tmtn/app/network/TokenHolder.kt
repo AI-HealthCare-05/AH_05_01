@@ -34,12 +34,26 @@ object TokenHolder {
             )
             memoryToken = prefs?.getString(KEY_ACCESS_TOKEN, null)
         } catch (e: Exception) {
-            // ⚠️ 기기에 따라 "데이터 삭제"를 해도 암호화 키(Keystore)만 남고 저장소 파일이
-            // 깨지는 경우가 있음 — 그러면 복호화가 실패해서 예외가 남. 이때는 안전하게
-            // "로그인 안 한 상태"로 취급하고, 다음 저장부터는 새로 깨끗하게 씀.
-            prefs = context.applicationContext
-                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .also { it.edit().clear().apply() }
+            // ⚠️ 2026-09-02: "저장소 파일이 깨지는 경우" 대응 방향은 맞았는데, 폴백이
+            // 암호화 안 된 일반 SharedPreferences였음 — 그 뒤로 accessToken setter가
+            // 이 평문 저장소에 계속 토큰을 그대로 써서, 한 번 이 경로를 타면 그 기기에서는
+            // 영구히 평문 저장으로 남는 문제가 있었음(2026-09-03 리뷰 반영).
+            // 깨진 파일만 지우고 EncryptedSharedPreferences를 다시 만들어보고, 그것도
+            // 실패하면 prefs=null로 두어 메모리 전용(재로그인 필요)으로 동작시킴 —
+            // 어느 쪽이든 평문 저장은 안 됨.
+            context.applicationContext.deleteSharedPreferences(PREFS_NAME)
+            prefs = runCatching {
+                val masterKey = MasterKey.Builder(context.applicationContext)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                EncryptedSharedPreferences.create(
+                    context.applicationContext,
+                    PREFS_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+                )
+            }.getOrNull()
             memoryToken = null
         }
     }
