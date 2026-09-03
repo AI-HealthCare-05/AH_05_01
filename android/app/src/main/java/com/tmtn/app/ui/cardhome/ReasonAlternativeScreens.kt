@@ -87,7 +87,9 @@ fun ReasonDetailScreen(state: CardHomeState, onBack: () -> Unit, onStartAction: 
             }
             if (isCompleted) {
                 Text(
-                    if (card?.state == "SKIPPED") "오늘은 이미 쉬어가기로 했어요." else "오늘 몫은 이미 완료했어요.",
+                    // ⚠️ 2026-09-03 리뷰 반영: SKIPPED(중단)를 "쉬어가기"로 표현하면 REST와
+                    // 헷갈림(둘은 서버에서 완전히 다른 상태 - CardHomeScreen.kt 참고).
+                    if (card?.state == "SKIPPED") "오늘 카드는 여기서 멈췄어요." else "오늘 몫은 이미 완료했어요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
             } else {

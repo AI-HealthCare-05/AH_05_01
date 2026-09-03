@@ -57,8 +57,16 @@ fun MonthlyCalendarScreen(state: RecordState, scope: CoroutineScope, onGoPickCar
 
         val isEmpty = calendar != null && calendar.completed_count == 0 && calendar.rest_count == 0 &&
             calendar.days.none { it.status == "INCOMPLETE" }
+        // ⚠️ 예전엔 isEmpty면 무조건 EmptyRecordCard(마스코트 안내)로 바꿔치기했는데, 그
+        // 화면엔 ‹ › 이동 버튼이 아예 없음. 그래서 아직 기록이 없는 미래 달(예: 10월)로
+        // 넘어가면 캘린더 자체가 사라지고 되돌아올 방법이 없었음("9월에서 10월로 넘어가니
+        // 달력이 안 뜬다"는 게 이 증상). 지금 보고 있는 달이 실제 이번 달일 때만(=처음
+        // 들어왔을 때) 안내 화면을 보여주고, 다른 달로 이동한 상태에서는 비어있어도 항상
+        // 진짜 캘린더(‹ › 포함)를 그대로 보여줌.
+        val today = LocalDate.now()
+        val isViewingCurrentMonth = state.year.value == today.year && state.month.value == today.monthValue
 
-        if (calendar == null || isEmpty) {
+        if (calendar == null || (isEmpty && isViewingCurrentMonth)) {
             EmptyRecordCard(onGoPickCard)
         } else {
             MonthCalendarCard(state, scope)
@@ -155,7 +163,8 @@ private fun MonthCalendarCard(state: RecordState, scope: CoroutineScope) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LegendDot(colors.onSurface, "실천")
             LegendDot(colors.disabledContainer, "쉼")
-            Text("미완료", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            LegendDot(Color.Transparent, "미완료", outlineColor = colors.outline)
+            LegendDot(Color.Transparent, "오늘", outlineColor = colors.secondary)
         }
         Text(
             "${state.month.value}월 실천 ${calendar.completed_count}일 · 쉼 ${calendar.rest_count}일",
@@ -170,13 +179,16 @@ private fun DayCell(day: Int, status: String?, isToday: Boolean, onClick: () -> 
     Box(
         modifier = Modifier
             .size(34.dp)
+            // ⚠️ "오늘" 표시가 예전엔 when()의 마지막 분기라 그 날에 완료/쉼/미완료 같은
+            // 상태가 하나라도 있으면 전혀 안 보였음(실천+오늘, 쉼+오늘, 미완료+오늘을 구분
+            // 못 함). 오늘 표시를 바깥쪽 링으로 분리해서, 상태와 무관하게 항상 같이 보이게 함.
+            .then(if (isToday) Modifier.border(2.dp, colors.secondary, CircleShape).padding(2.dp) else Modifier)
             .clickable { onClick() }
             .then(
-                when {
-                    status == "COMPLETED" -> Modifier.background(colors.onSurface, CircleShape)
-                    status == "REST" -> Modifier.background(colors.disabledContainer, CircleShape).border(1.5.dp, colors.onSurface, CircleShape)
-                    status == "INCOMPLETE" -> Modifier.border(1.5.dp, colors.outline, CircleShape)
-                    isToday -> Modifier.border(2.dp, colors.secondary, CircleShape)
+                when (status) {
+                    "COMPLETED" -> Modifier.background(colors.onSurface, CircleShape)
+                    "REST" -> Modifier.background(colors.disabledContainer, CircleShape).border(1.5.dp, colors.onSurface, CircleShape)
+                    "INCOMPLETE" -> Modifier.border(1.5.dp, colors.outline, CircleShape)
                     else -> Modifier
                 },
             ),
@@ -190,10 +202,13 @@ private fun DayCell(day: Int, status: String?, isToday: Boolean, onClick: () -> 
 }
 
 @Composable
-private fun LegendDot(color: Color, label: String) {
+private fun LegendDot(color: Color, label: String, outlineColor: Color? = null) {
     val colors = LocalTmtnColors.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        Box(modifier = Modifier.size(12.dp).background(color, RoundedCornerShape(3.dp)))
+        Box(
+            modifier = Modifier.size(12.dp).background(color, RoundedCornerShape(3.dp))
+                .then(if (outlineColor != null) Modifier.border(1.5.dp, outlineColor, RoundedCornerShape(3.dp)) else Modifier),
+        )
         Text(label, style = TmtnType.caption, color = colors.onSurfaceVariant)
     }
 }
