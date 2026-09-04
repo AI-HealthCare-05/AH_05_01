@@ -8,10 +8,13 @@ import com.tmtn.app.network.model.CompleteChallengeRequestBody
 import com.tmtn.app.network.model.MaterialItem
 import com.tmtn.app.network.model.MemoUpdateRequest
 import com.tmtn.app.network.model.RestDayRequest
+import com.tmtn.app.ui.common.currentServiceDateString
 import com.tmtn.app.ui.common.isoDateToKoreanLabel
 import com.tmtn.app.ui.onboarding.parseErrorMessage
 import java.util.UUID
 import kotlin.math.roundToInt
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 enum class CardHomeStep {
     LOADING,       // B08
@@ -80,10 +83,15 @@ class CardHomeState {
     var tuntunIndexValue = mutableStateOf<Int?>(null)
     var tuntunIndexBand = mutableStateOf<String?>(null)
     var tuntunIndexPeriodLabel = mutableStateOf<String?>(null)
+    // ⚠️ PR #12 리뷰(P0) 반영: 홈 카드가 배지 없이 상수 Mock 점수를 그대로 보여주고 있었음.
+    var tuntunIndexIsMock = mutableStateOf(false)
 
     // ⚠️ 홈 "최근 7일" 도트 - 예전엔 listOf(true, true, false, true, true, false, null)로
     // 항상 똑같은 예시 패턴만 보여줬음. 기록 탭의 주간 리포트 API(최근 7일 실제 상태)를 그대로 씀.
     var recentWeek = mutableStateOf<List<CalendarDayItem>>(emptyList())
+
+    // ⚠️ 테스트 전용 - "다음 날로" 눌렀을 때 서버가 지금 인식하는 시뮬레이션 날짜 표시용.
+    var debugSimulatedToday = mutableStateOf<String?>(null)
 
     // B16/B17: 쉬어가기
     var restDaysUsedThisWeek = mutableStateOf(0)
@@ -147,14 +155,19 @@ class CardHomeState {
             errorMessage.value = e.message ?: "오늘의 카드를 가져오지 못했어요."
             step.value = CardHomeStep.ERROR
         }
-        loadCompanion()
-        loadTuntunIndexSummary()
-        loadRecentWeek()
-        // ⚠️ 2026-09-04 QA(P0-4) 반영: currentStreak가 여기서 채워지는 게 아니라 "오늘
-        // 쉬어가기" 바텀시트를 열 때만(openRestDaySheet) 채워지고 있었음. 그래서 홈의
-        // "연속 기록"이 항상 초기값 0으로만 보이고, 기록 탭·내 정보 탭(각자 따로 조회)과
-        // 어긋났음. 홈 로드 시에도 정확한 값을 받아오게 함.
-        loadStreak()
+        // ⚠️ PR #12 리뷰(P1) 반영: 이 4개가 순차 suspend 호출이라 홈 진입이 왕복 5회
+        // 직렬(ngrok 경유면 체감됨)이었음 - 서로 의존관계가 없어서 coroutineScope로
+        // 묶어 동시에 보내면 가장 오래 걸리는 1개 시간만큼만 걸림.
+        coroutineScope {
+            launch { loadCompanion() }
+            launch { loadTuntunIndexSummary() }
+            launch { loadRecentWeek() }
+            // ⚠️ 2026-09-04 QA(P0-4) 반영: currentStreak가 여기서 채워지는 게 아니라 "오늘
+            // 쉬어가기" 바텀시트를 열 때만(openRestDaySheet) 채워지고 있었음. 그래서 홈의
+            // "연속 기록"이 항상 초기값 0으로만 보이고, 기록 탭·내 정보 탭(각자 따로 조회)과
+            // 어긋났음. 홈 로드 시에도 정확한 값을 받아오게 함.
+            launch { loadStreak() }
+        }
     }
 
     suspend fun loadStreak() {
@@ -166,6 +179,26 @@ class CardHomeState {
             restDaysRemainingThisWeek.value = streak.rest_days_remaining_this_week
             currentStreak.value = streak.current_streak
         }
+    }
+
+    // ⚠️ 테스트 전용 - 하루 미션 1개 제한 때문에 미션 10개를 이어서 테스트하려면 실제로
+    // 10일이 걸림. 서버가 인식하는 "오늘"을 하루 앞당겨서, 오늘 카드를 다시 뽑아 바로
+    // 다음 미션으로 이어갈 수 있게 함. 서버(PROD면 404)·클라이언트(디버그 빌드에서만
+    // 버튼 노출) 이중으로 막아둬서 실제 서비스에는 영향 없음.
+    suspend fun advanceDebugDay() {
+        runCatching {
+            val response = ApiClient.debugApi.advanceDay()
+            if (response.isSuccessful) response.body() else null
+        }.getOrNull()?.let { body -> debugSimulatedToday.value = body["simulated_today"]?.toString() }
+        loadToday()
+    }
+
+    suspend fun resetDebugDay() {
+        runCatching {
+            val response = ApiClient.debugApi.resetDay()
+            if (response.isSuccessful) response.body() else null
+        }.getOrNull()?.let { body -> debugSimulatedToday.value = body["simulated_today"]?.toString() }
+        loadToday()
     }
 
     // B01b: "미션 이어하기" - 이미 확정된 오늘 챌린지의 카드 내용을 다시 불러와서 B06으로.
@@ -222,36 +255,55 @@ class CardHomeState {
         }
     }
 
+    // ⚠️ PR #12 리뷰(P1) 반영: 예전엔 실패해도 그냥 아무 일 없이 넘어가서, 이미 다 입력한
+    // 사용자가 오프라인이면 "아직 계산할 수 없어요 · 입력해 보세요"라고 잘못 안내됐음.
+    // 네트워크 실패와 "진짜로 입력이 없어서 계산 불가"를 구분하기 위한 플래그.
+    var tuntunIndexLoadFailed = mutableStateOf(false)
+
     suspend fun loadTuntunIndexSummary() {
-        runCatching {
+        tuntunIndexLoadFailed.value = false
+        val body = runCatching {
             val response = ApiClient.tuntunScoreApi.getTuntunScoreV2()
             if (response.isSuccessful) response.body() else null
-        }.getOrNull()?.let { body ->
-            val index = body.tuntunIndex
-            if (body.scoreAvailable && index != null) {
-                tuntunIndexValue.value = index.roundToInt()
-                tuntunIndexBand.value = when {
-                    index < 40.0 -> "관심"
-                    index < 70.0 -> "보통"
-                    else -> "양호"
-                }
-                // ⚠️ QA 반영: activityWindowStart/End가 ISO("2026-08-29") 그대로 나가서
-                // 홈 화면 다른 날짜(점 포맷)와 표기가 어긋나 보였음 - 통일된 포맷으로 변환.
-                tuntunIndexPeriodLabel.value =
-                    "${isoDateToKoreanLabel(body.activityWindowStart)} ~ ${isoDateToKoreanLabel(body.activityWindowEnd)}"
-            } else {
-                tuntunIndexValue.value = null
+        }.getOrNull()
+        if (body == null) {
+            tuntunIndexLoadFailed.value = true
+            return
+        }
+        val index = body.tuntunIndex
+        if (body.scoreAvailable && index != null) {
+            tuntunIndexValue.value = index.roundToInt()
+            tuntunIndexBand.value = when {
+                index < 40.0 -> "관심"
+                index < 70.0 -> "보통"
+                else -> "양호"
             }
+            tuntunIndexIsMock.value = body.isMock
+            // ⚠️ QA 반영: activityWindowStart/End가 ISO("2026-08-29") 그대로 나가서
+            // 홈 화면 다른 날짜(점 포맷)와 표기가 어긋나 보였음 - 통일된 포맷으로 변환.
+            tuntunIndexPeriodLabel.value =
+                "${isoDateToKoreanLabel(body.activityWindowStart)} ~ ${isoDateToKoreanLabel(body.activityWindowEnd)}"
+        } else {
+            tuntunIndexValue.value = null
         }
     }
 
+    // ⚠️ PR #12 리뷰(P1) 반영: 실패하면 recentWeek가 빈 리스트로 남아서 "이번 주 0일
+    // 실천했어요"가 뜸 - 5일 실천한 사람에게 0일이라고 잘못 말하게 됨. 실패했을 때는
+    // 이전 값을 그대로 유지하고, 실패 여부만 별도로 표시함.
+    var recentWeekLoadFailed = mutableStateOf(false)
+
     suspend fun loadRecentWeek() {
-        runCatching {
+        val body = runCatching {
             val response = ApiClient.recordApi.getWeeklyReport()
             if (response.isSuccessful) response.body() else null
-        }.getOrNull()?.let { body ->
-            recentWeek.value = body.days
+        }.getOrNull()
+        if (body == null) {
+            recentWeekLoadFailed.value = true
+            return
         }
+        recentWeekLoadFailed.value = false
+        recentWeek.value = body.days
     }
 
     // B03 -> B04: 카드 한 장을 "가운데로" 고름 (아직 서버에 확정 안 함)
@@ -332,7 +384,7 @@ class CardHomeState {
     suspend fun confirmRestDay() {
         isLoading.value = true
         errorMessage.value = null
-        val today = java.time.LocalDate.now().toString() // "YYYY-MM-DD"
+        val today = currentServiceDateString() // ⚠️ 서버 날짜 기준(테스트 시뮬레이션 반영) - "YYYY-MM-DD"
         runCatching {
             val response = ApiClient.cardHomeApi.markRestDay(RestDayRequest(service_date = today))
             if (!response.isSuccessful) error(parseErrorMessage(response))
@@ -457,7 +509,7 @@ class CardHomeState {
     // C20: 한 줄 회고 저장 (기록 캘린더의 메모 API 재사용) - 저장/건너뛰기 둘 다 결국 완료 화면으로
     suspend fun submitRetrospect(memo: String?) {
         if (!memo.isNullOrBlank()) {
-            val today = java.time.LocalDate.now().toString()
+            val today = currentServiceDateString() // ⚠️ 서버 날짜 기준(테스트 시뮬레이션 반영)
             runCatching {
                 ApiClient.cardHomeApi.updateDayMemo(today, MemoUpdateRequest(memo = memo))
             }.onSuccess { hasMemoToday.value = true }
@@ -467,7 +519,7 @@ class CardHomeState {
 
     // B07: "한 줄 남기기" 버튼을 보여줄지 판단 - 오늘 이미 회고를 남겼으면 버튼 자체를 숨김.
     suspend fun checkTodayMemo() {
-        val today = java.time.LocalDate.now().toString()
+        val today = currentServiceDateString() // ⚠️ 서버 날짜 기준(테스트 시뮬레이션 반영)
         runCatching {
             val response = ApiClient.recordApi.getDayDetail(today)
             if (response.isSuccessful) response.body() else null

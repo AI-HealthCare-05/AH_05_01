@@ -58,6 +58,30 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope) {
         }
         Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
+        // ⚠️ 테스트 전용 - 미션 10개를 이어서 테스트하려면 실제로 10일이 걸리니, 서버가
+        // 인식하는 "오늘"을 하루씩 앞당겨서 바로 다음 미션을 받을 수 있게 함. 디버그
+        // 빌드에서만 보임(release APK에는 안 보임 + 서버도 PROD면 404로 막아둠 - 이중 안전장치).
+        if (com.tmtn.app.BuildConfig.DEBUG) {
+            Row(
+                modifier = Modifier.fillMaxWidth().background(colors.errorContainer, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("테스트: 시뮬레이션 오늘 = ${state.debugSimulatedToday.value ?: "-"}", style = TmtnType.caption, color = colors.error)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "초기화", style = TmtnType.caption, color = colors.error,
+                        modifier = Modifier.clickable { scope.launch { state.resetDebugDay() } },
+                    )
+                    Text(
+                        "다음 날 ›", style = TmtnType.label, color = colors.error,
+                        modifier = Modifier.clickable { scope.launch { state.advanceDebugDay() } },
+                    )
+                }
+            }
+        }
+
         MascotCard(state, isSelected, scope)
         TmtnIndexSummaryCard(state)
         RecentSummaryListCard(state)
