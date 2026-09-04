@@ -8,6 +8,7 @@ import com.tmtn.app.network.model.CompleteChallengeRequestBody
 import com.tmtn.app.network.model.MaterialItem
 import com.tmtn.app.network.model.MemoUpdateRequest
 import com.tmtn.app.network.model.RestDayRequest
+import com.tmtn.app.ui.common.isoDateToKoreanLabel
 import com.tmtn.app.ui.onboarding.parseErrorMessage
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -149,9 +150,49 @@ class CardHomeState {
         loadCompanion()
         loadTuntunIndexSummary()
         loadRecentWeek()
+        // ⚠️ 2026-09-04 QA(P0-4) 반영: currentStreak가 여기서 채워지는 게 아니라 "오늘
+        // 쉬어가기" 바텀시트를 열 때만(openRestDaySheet) 채워지고 있었음. 그래서 홈의
+        // "연속 기록"이 항상 초기값 0으로만 보이고, 기록 탭·내 정보 탭(각자 따로 조회)과
+        // 어긋났음. 홈 로드 시에도 정확한 값을 받아오게 함.
+        loadStreak()
+    }
+
+    suspend fun loadStreak() {
+        runCatching {
+            val response = ApiClient.cardHomeApi.getStreak()
+            if (response.isSuccessful) response.body() else null
+        }.getOrNull()?.let { streak ->
+            restDaysUsedThisWeek.value = streak.rest_days_used_this_week
+            restDaysRemainingThisWeek.value = streak.rest_days_remaining_this_week
+            currentStreak.value = streak.current_streak
+        }
     }
 
     // B01b: "미션 이어하기" - 이미 확정된 오늘 챌린지의 카드 내용을 다시 불러와서 B06으로.
+    // ⚠️ 2026-09-04 희주조교님 피드백(P0 ①②) 반영: "미션 이어하기"를 누르면 진행 중이던
+    // 타이머/센서 화면으로 바로 가야 하는데, 항상 REVEALED(카드 앞면)로만 보내고 있었음.
+    // "이 행동 시작하기"(CardHomeFlow.kt의 onStartAction) 쪽엔 이미 정확한 복구 로직이
+    // 있었는데 여긴 재사용을 안 해서 따로 놀고 있었던 것 - 하나로 합쳐서 두 진입점 모두
+    // 같은 기준으로 판단하게 함. REVEALED에서 다시 "시작하기"를 누르면 서버가 이미
+    // ACTIVE인 챌린지를 또 시작시키려다 409로 튕기는 게 ②(오류)의 원인이었음.
+    fun stepForRevealedCard(card: CardRevealResponse): CardHomeStep = when {
+        card.state == "COMPLETED" || card.state == "SKIPPED" -> CardHomeStep.COMPLETED
+        card.exec_type == "CHECK" -> CardHomeStep.CHALLENGE_CHECK
+        card.exec_type == "TIMER" -> when (card.state) {
+            "ACTIVE" -> CardHomeStep.CHALLENGE_TIMER_RUNNING
+            "PAUSED" -> CardHomeStep.CHALLENGE_TIMER_PAUSED
+            else -> CardHomeStep.CHALLENGE_TIMER_START
+        }
+        else -> {
+            // SENSOR형: 프로세스가 살아있는 동안만 추적 중인지 알 수 있음(CurrentChallengeHolder는
+            // 메모리 상태라 앱을 완전히 껐다 켜면 리셋됨 - 진짜 복구는 상세 재조회 API가 없어서
+            // 아직 미지원, B01b 만들 때 적어둔 것과 같은 제약).
+            val alreadyTracking = com.tmtn.app.sensor.CurrentChallengeHolder.challengeId == card.challenge_id &&
+                com.tmtn.app.sensor.CurrentChallengeHolder.execType != null
+            if (alreadyTracking) CardHomeStep.SENSOR_MEASURING else CardHomeStep.SENSOR_INTRO
+        }
+    }
+
     suspend fun continueTodayMission() {
         val challengeId = todayChallengeId.value ?: return
         isLoading.value = true
@@ -162,17 +203,7 @@ class CardHomeState {
             response.body()!!
         }.onSuccess { card ->
             revealedCard.value = card
-            // ⚠️ 이미 완료(또는 건너뛴) 챌린지를 다시 "시작"하려고 하면 서버가 정당하게
-            // 막아서(READY/PAUSED가 아니라 409) "측정을 시작하지 못했어요" 같은 혼란스러운
-            // 에러로 이어졌음. 완료된 건이면 처음부터 완료 화면으로 보내서 그 상황 자체를 막음.
-            // ⚠️ SKIPPED(중단하기로 끝낸 미션)도 COMPLETED와 같이 다시 "시작"할 수 없는
-            // 종료 상태임. 서버(challenge_service.skip)가 SKIPPED -> ACTIVE 전이를 허용하지
-            // 않아서, 여기서 안 막으면 REVEALED로 들어간 뒤 "이 행동 시작하기"를 눌렀을 때
-            // 결국 startChallenge 호출이 409로 튕기며 "시작할 수 없는 상태입니다" 에러로 이어짐.
-            step.value = when (card.state) {
-                "COMPLETED", "SKIPPED" -> CardHomeStep.COMPLETED
-                else -> CardHomeStep.REVEALED
-            }
+            step.value = stepForRevealedCard(card)
         }.onFailure { e ->
             errorMessage.value = e.message ?: "미션 정보를 가져오지 못했어요."
         }
@@ -204,7 +235,10 @@ class CardHomeState {
                     index < 70.0 -> "보통"
                     else -> "양호"
                 }
-                tuntunIndexPeriodLabel.value = "${body.activityWindowStart} ~ ${body.activityWindowEnd}"
+                // ⚠️ QA 반영: activityWindowStart/End가 ISO("2026-08-29") 그대로 나가서
+                // 홈 화면 다른 날짜(점 포맷)와 표기가 어긋나 보였음 - 통일된 포맷으로 변환.
+                tuntunIndexPeriodLabel.value =
+                    "${isoDateToKoreanLabel(body.activityWindowStart)} ~ ${isoDateToKoreanLabel(body.activityWindowEnd)}"
             } else {
                 tuntunIndexValue.value = null
             }
@@ -290,14 +324,7 @@ class CardHomeState {
             todayChallengeState.value == "SKIPPED"
         if (finished) return
 
-        runCatching {
-            val response = ApiClient.cardHomeApi.getStreak()
-            if (response.isSuccessful) response.body() else null
-        }.getOrNull()?.let { streak ->
-            restDaysUsedThisWeek.value = streak.rest_days_used_this_week
-            restDaysRemainingThisWeek.value = streak.rest_days_remaining_this_week
-            currentStreak.value = streak.current_streak
-        }
+        loadStreak()
         showRestDaySheet.value = true
     }
 

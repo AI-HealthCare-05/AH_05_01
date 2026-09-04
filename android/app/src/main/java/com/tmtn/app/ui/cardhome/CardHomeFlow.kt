@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.cardhome
 
+import com.tmtn.app.ui.common.toKoreanDateLabel
+import java.time.LocalDate
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,8 +20,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -74,6 +79,9 @@ fun CardHomeFlow(
     onStopSensorTracking: () -> Unit,
     onOpenSettings: () -> Unit,
     onImmersiveChange: (Boolean) -> Unit = {},
+    // ⚠️ 온보딩 완료 직후 "오늘의 카드 보러 가기"를 누르면, 홈(마스코트 카드)에서
+    // "오늘의 카드 고르기"를 한 번 더 누르게 하는 대신 카드 고르는 화면으로 바로 이어줌.
+    startAtDeckPick: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalTmtnColors.current
@@ -82,6 +90,32 @@ fun CardHomeFlow(
 
     LaunchedEffect(Unit) {
         state.loadToday()
+        // ⚠️ 이미 오늘 카드를 고른 상태(isSelected/완료/쉼 등)면 건너뛰고 그대로 홈을 보여줌 -
+        // 온보딩 막 끝낸 신규 계정에서만 실제로 의미가 있는 분기.
+        if (startAtDeckPick && state.step.value == CardHomeStep.HOME && state.todayChallengeId.value == null) {
+            state.step.value = CardHomeStep.DECK_PICK
+        }
+    }
+
+    // ⚠️ 2026-09-04 QA(N-2) 반영: 미션을 완료(또는 쉬어가기)하고 홈으로 돌아와도 화면이
+    // "진행 중"으로 그대로 남아있던 버그. completeChallenge()/completeTimerChallenge() 등이
+    // 성공해도 로컬 revealedCard.value를 안 갱신해서, HOME으로 돌아왔을 때 예전 값을 그대로
+    // 보여주고 있었음(앱을 강제 종료하고 재실행해야만 loadToday()가 다시 불려서 반영됐음).
+    // step이 HOME으로 바뀔 때마다 서버 최신 상태를 다시 불러오게 함.
+    //
+    // ⚠️ 2026-09-04 추가 수정: "최초 진입은 LOADING이라 중복 걱정 없다"고 적어뒀었는데
+    // 틀렸음 - loadToday() 자체가 성공하면서 LOADING -> HOME으로 바꾸는 그 순간에도 이
+    // effect가 똑같이 걸려서, 방금 위에서 시작한 loadToday()가 다 끝나기도 전에 또 한 번
+    // loadToday()를 불렀음. 두 호출의 네트워크 요청이 겹치면서 하나가 취소(Canceled)되고,
+    // 그 취소가 "실패"로 처리되면서 카드 에러 화면으로 튕기던 버그. 바로 이전 단계가
+    // LOADING(=최초 진입)이었을 때는 건너뛰도록 이전 단계를 같이 추적함.
+    var stepBeforeCurrent by remember { mutableStateOf(state.step.value) }
+    LaunchedEffect(state.step.value) {
+        val prev = stepBeforeCurrent
+        stepBeforeCurrent = state.step.value
+        if (state.step.value == CardHomeStep.HOME && prev != CardHomeStep.LOADING && prev != CardHomeStep.HOME) {
+            state.loadToday()
+        }
     }
 
     // 시스템 뒤로가기(제스처/버튼) - 화면 안의 "←" 버튼과 똑같이 동작하게.
@@ -112,43 +146,12 @@ fun CardHomeFlow(
     }
 
     // 카드의 exec_type에 따라 "이 행동 시작하기"가 어디로 갈지 결정하는 공통 로직.
-    // CHECK/TIMER는 새로 만든 C그룹 화면으로, 나머지(SENSOR_*)는 아직 전용 화면이 없어서
-    // 기존 센서 테스트 화면(MissionTestScreen)으로 잠깐 다리 역할.
+    // ⚠️ CardHomeState.stepForRevealedCard()와 같은 판단 기준을 씀(continueTodayMission()도
+    // 이걸 재사용해서, "이어하기"로 오든 여기서 "시작하기"를 누르든 결과가 항상 일치함).
     val onStartAction: () -> Unit = {
         val card = state.revealedCard.value
         if (card != null) {
-            when {
-                // ⚠️ 이미 완료된 미션인데 "이 행동 시작하기"를 다시 누르면 서버가 재시작을
-                // 거부해서 "측정을 시작하지 못했어요" 같은 혼란스러운 에러로 이어졌음.
-                // 완료된 건 다시 볼 수만 있게 하고, 시작 동작 자체가 안 일어나게 막음.
-                // SKIPPED(중단으로 끝낸 미션)도 COMPLETED와 동일하게 재시작 자체를 막음 —
-                // 서버가 SKIPPED -> ACTIVE 전이를 허용하지 않아서(challenge_service.skip),
-                // 여기서 안 막으면 TIMER_START까지 갔다가 "시작할 수 없는 상태입니다" 409로 이어짐.
-                card.state == "COMPLETED" || card.state == "SKIPPED" -> state.step.value = CardHomeStep.COMPLETED
-                card.exec_type == "CHECK" -> state.step.value = CardHomeStep.CHALLENGE_CHECK
-                // ⚠️ TIMER형도 SENSOR형과 같은 이유로 "이미 진행 중인지" 확인이 필요함.
-                // 뒤로가기로 REVEALED까지 나왔다가 다시 "이 행동 시작하기"를 누르면 서버는
-                // 여전히 ACTIVE(또는 PAUSED)인데 매번 TIMER_START(0:00)로 보내서 startTimer()가
-                // startChallenge를 또 호출 -> 이미 ACTIVE라 409("시작할 수 없는 상태입니다")로
-                // 이어지던 버그. card.state는 startTimer/pauseTimer/resumeTimer가 성공할 때마다
-                // 같이 갱신해두므로, 여기서 그 값을 보고 진행 중이던 화면으로 바로 이어줌.
-                card.exec_type == "TIMER" -> state.step.value = when (card.state) {
-                    "ACTIVE" -> CardHomeStep.CHALLENGE_TIMER_RUNNING
-                    "PAUSED" -> CardHomeStep.CHALLENGE_TIMER_PAUSED
-                    else -> CardHomeStep.CHALLENGE_TIMER_START
-                }
-                else -> {
-                    // Figma C17(앱 복구)의 축소판: 같은 챌린지를 이미 측정 중이면(예: 화면
-                    // 전환 중에 실수로 뒤로 갔다가 다시 시작 누른 경우) 처음부터 다시 시작하는
-                    // 게 아니라 진행 중이던 화면으로 바로 이어줌.
-                    // ⚠️ 앱이 완전히 꺼졌다가 재실행된 경우의 진짜 복구는 "이미 선택된 챌린지
-                    // 상세 재조회 API"가 없어서 아직 안 됨 (B01b 만들 때 적어둔 것과 같은 제약).
-                    val alreadyTracking =
-                        com.tmtn.app.sensor.CurrentChallengeHolder.challengeId == card.challenge_id &&
-                            com.tmtn.app.sensor.CurrentChallengeHolder.execType != null
-                    state.step.value = if (alreadyTracking) CardHomeStep.SENSOR_MEASURING else CardHomeStep.SENSOR_INTRO
-                }
-            }
+            state.step.value = state.stepForRevealedCard(card)
         }
     }
 
@@ -234,7 +237,7 @@ private fun LoadingScreen() {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text("2026. 8. 27. 목요일", style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
         Box(
             modifier = Modifier.fillMaxWidth().height(32.dp)
                 .background(colors.outlineVariant, RoundedCornerShape(8.dp)),

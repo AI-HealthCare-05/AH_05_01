@@ -45,8 +45,19 @@ class RecordService:
     def __init__(self):
         self.repo = RecordRepository()
 
-    async def _build_status_map(self, user_id, start: date, end: date) -> dict[date, tuple[str, object]]:
-        """날짜 -> (status, card_set) 매핑. card_set은 상세 조회 시 재사용하려고 같이 반환."""
+    async def _build_status_map(
+        self, user_id, start: date, end: date, signup_date: date | None = None
+    ) -> dict[date, tuple[str, object]]:
+        """날짜 -> (status, card_set) 매핑. card_set은 상세 조회 시 재사용하려고 같이 반환.
+
+        ⚠️ 2026-09-04 QA 반영: 가입 이전 날짜를 "미완료"로 보여주던 버그를 고치면서
+        (signup_date 이전은 조회 자체를 안 하게) 예전엔 조회 범위(start)를 가입일로
+        당겨버렸는데, 그러면 "최근 7일"/"주간" 같이 슬롯 개수가 고정된 위젯이 실제
+        날짜 수만큼만 오는 문제가 새로 생겼음(홈 최근 7일이 2개만 나오는 등). 이제
+        범위(start~end)는 그대로 두고, signup_date 이전 날짜만 "BEFORE_SIGNUP"이라는
+        별도 상태로 표시함 - 슬롯 개수는 항상 요청한 범위만큼 나오면서도, 그 사람이
+        아직 계정도 없었던 날을 "미완료"라고 하는 거짓은 안 하게 됨.
+        """
 
         card_sets = await self.repo.get_card_sets_in_range(user_id, start, end)
         notes = await self.repo.get_notes_in_range(user_id, start, end)
@@ -58,7 +69,9 @@ class RecordService:
             note = notes.get(current)
             card_set = card_set_by_date.get(current)
 
-            if note and note.is_rest_day:
+            if signup_date is not None and current < signup_date:
+                status_map[current] = ("BEFORE_SIGNUP", None)
+            elif note and note.is_rest_day:
                 status_map[current] = ("REST", card_set)
             elif card_set and card_set.selection and card_set.selection.challenge:
                 challenge_state = card_set.selection.challenge.state
@@ -80,17 +93,13 @@ class RecordService:
         if start > today:
             return MonthlyCalendarResponse(year=year, month=month, days=[], completed_count=0, rest_count=0)
 
-        # ⚠️ 리뷰 반영: 미래 날짜는 위에서 이미 걸렀는데, "가입 이전" 날짜는 안 걸러서
-        # 가입한 달의 1일부터 가입일 전날까지가 전부 "미완료"로 잘못 표시되고 있었음.
-        # (그 날은 사용자가 아직 계정도 없었으니 "완료 안 함"이 아니라 "해당 없음"임.)
-        # 가입일 이전 날짜는 시작일을 가입일로 당겨서 아예 안 만듦.
+        # ⚠️ 2026-09-04 QA 반영: "가입 이전" 날짜를 시작일을 당겨서 아예 안 만들었더니,
+        # 이번 달의 실제 칸 수 자체가 줄어버리는 부작용이 있었음(달력이야 어차피 칸이
+        # 넘치니 큰 문제는 아니지만, 아래 주간 리포트에서는 슬롯 수가 고정이라 문제가 됨 -
+        # 일관성 있게 여기도 범위는 그대로 두고 signup_date만 넘겨서 상태로 구분함).
         signup_date = user.created_at.date()
-        if signup_date > start:
-            start = signup_date
-        if start > end:
-            return MonthlyCalendarResponse(year=year, month=month, days=[], completed_count=0, rest_count=0)
 
-        status_map = await self._build_status_map(user.id, start, end)
+        status_map = await self._build_status_map(user.id, start, end, signup_date=signup_date)
         days = [CalendarDayItem(date=d, status=s) for d, (s, _) in sorted(status_map.items())]
         completed_count = sum(1 for _, (s, _) in status_map.items() if s == "COMPLETED")
         rest_count = sum(1 for _, (s, _) in status_map.items() if s == "REST")
@@ -102,13 +111,9 @@ class RecordService:
     async def get_weekly_report(self, user: User) -> WeeklyReportResponse:
         today = service_today()
         start = today - timedelta(days=6)
-        # ⚠️ 리뷰 반영: 월간 캘린더와 같은 이유 - 가입한 지 7일이 안 된 사용자는 가입 전
-        # 날짜까지 "미완료"로 잡혀서 "이번 주 N일 실천"이 실제보다 적게 나왔음.
         signup_date = user.created_at.date()
-        if signup_date > start:
-            start = signup_date
 
-        status_map = await self._build_status_map(user.id, start, today)
+        status_map = await self._build_status_map(user.id, start, today, signup_date=signup_date)
         days = [CalendarDayItem(date=d, status=s) for d, (s, _) in sorted(status_map.items())]
         completed_count = sum(1 for _, (s, _) in status_map.items() if s == "COMPLETED")
 

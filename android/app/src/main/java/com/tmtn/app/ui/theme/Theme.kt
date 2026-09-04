@@ -3,6 +3,7 @@ package com.tmtn.app.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
@@ -81,12 +82,33 @@ private val DefaultTmtnColors = TmtnColors(
 
 val LocalTmtnColors = staticCompositionLocalOf { DefaultTmtnColors }
 
+// ⚠️ 2026-09-04 QA(P0-6) 반영: "고대비" 설정 - onSurfaceVariant/outlineVariant처럼 연한
+// 색으로 쓰던 보조 텍스트·테두리를 onSurface에 가깝게 당겨서 대비를 키움. 나머지 색은
+// 그대로 둠(색 자체를 바꾸는 게 아니라 "연한 색을 덜 연하게"만 하는 최소한의 개입).
+private val HighContrastTmtnColors = DefaultTmtnColors.copy(
+    onSurfaceVariant = ColorOnSurface,
+    outlineVariant = ColorOutline,
+)
+
+val LocalTmtnTextScale = staticCompositionLocalOf { 1f }
+
 /** 이름은 기존 MainActivity.kt가 참조하던 그대로 유지 (TMTNv1Theme).
- * HANDOFF.md 기준 다크모드 정의가 없어서 시스템 설정과 무관하게 항상 라이트로 고정. */
+ * HANDOFF.md 기준 다크모드 정의가 없어서 시스템 설정과 무관하게 항상 라이트로 고정.
+ *
+ * ⚠️ 2026-09-04 QA(P0-6) 반영: AccessibilitySettingsHolder를 구독해서 글자 크기·고대비를
+ * 전역에 반영함(LocalTmtnTextScale/LocalTmtnColors). 설정이 바뀌면 이 값들을 구독하는
+ * 모든 화면이 자동으로 다시 그려짐. */
 @Composable
 fun TMTNv1Theme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = TmtnLightColorScheme,
-        content = content,
-    )
+    val seniorMode = AccessibilitySettingsHolder.seniorMode.value
+    val textScale = textScaleHintToFactor(AccessibilitySettingsHolder.textScaleHint.value)
+
+    MaterialTheme(colorScheme = TmtnLightColorScheme) {
+        CompositionLocalProvider(
+            LocalTmtnColors provides (if (seniorMode) HighContrastTmtnColors else DefaultTmtnColors),
+            LocalTmtnTextScale provides textScale,
+        ) {
+            content()
+        }
+    }
 }

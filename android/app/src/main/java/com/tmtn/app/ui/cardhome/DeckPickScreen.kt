@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.cardhome
 
+import com.tmtn.app.ui.common.toKoreanDateLabel
+import java.time.LocalDate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -50,7 +52,7 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text("2026. 8. 27. 목요일", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
             Text(
                 if (picked == null) "마음 가는 카드로\n한 장만 골라 줘." else "가운데 카드로 정할까?",
                 style = TmtnType.headline, color = colors.onSurface,

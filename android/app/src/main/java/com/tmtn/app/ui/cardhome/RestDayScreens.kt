@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.cardhome
 
+import com.tmtn.app.ui.common.toKoreanDateLabel
+import java.time.LocalDate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -85,7 +87,7 @@ fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
                 )
             }
             Text("오늘은 쉬어갈까요?", style = TmtnType.title, color = colors.onSurface)
-            Text("2026. 8. 27. 목요일", style = TmtnType.bodyLarge, color = colors.onSurface)
+            Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.bodyLarge, color = colors.onSurface)
 
             Row(
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -130,7 +132,7 @@ fun RestDayDoneScreen(state: CardHomeState, scope: kotlinx.coroutines.CoroutineS
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("틈튼", style = TmtnType.title, color = colors.onSurface)
-        Text("2026. 8. 27. 목요일", style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
         Column(
             modifier = Modifier

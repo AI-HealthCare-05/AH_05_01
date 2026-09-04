@@ -15,6 +15,7 @@ import com.tmtn.app.network.model.NotificationSettingResponse
 import com.tmtn.app.network.model.NotificationSettingUpdateRequest
 import com.tmtn.app.network.model.UserInfoResponse
 import com.tmtn.app.ui.onboarding.parseErrorMessage
+import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
 
 enum class ProfileScreenKey {
     HOME, NOTIFICATION, NOTIFICATION_TIME, PERMISSIONS, ACCOUNT, HEALTH, EXERCISE, CONSENT, ACCESSIBILITY,
@@ -46,7 +47,14 @@ class ProfileState {
         runCatching { ApiClient.profileApi.getLatestHealthInput() }.getOrNull()?.let { if (it.isSuccessful) healthInput.value = it.body() }
         runCatching { ApiClient.profileApi.getLatestExerciseHabits() }.getOrNull()?.let { if (it.isSuccessful) exerciseHabits.value = it.body() }
         runCatching { ApiClient.profileApi.listConsents() }.getOrNull()?.let { if (it.isSuccessful) consents.value = it.body() ?: emptyList() }
-        runCatching { ApiClient.profileApi.getAccessibility() }.getOrNull()?.let { if (it.isSuccessful) accessibility.value = it.body() }
+        runCatching { ApiClient.profileApi.getAccessibility() }.getOrNull()?.let {
+            if (it.isSuccessful) {
+                accessibility.value = it.body()
+                it.body()?.let { body ->
+                    AccessibilitySettingsHolder.apply(body.large_controls, body.senior_mode, body.preferred_text_scale_hint)
+                }
+            }
+        }
         runCatching { ApiClient.profileApi.getNotificationSettings() }.getOrNull()?.let { if (it.isSuccessful) notificationSetting.value = it.body() }
         isLoading.value = false
     }
@@ -119,7 +127,13 @@ class ProfileState {
         runCatching {
             val response = ApiClient.profileApi.updateAccessibility(update)
             if (response.isSuccessful) response.body() else null
-        }.getOrNull()?.let { accessibility.value = it }
+        }.getOrNull()?.let {
+            accessibility.value = it
+            // ⚠️ 2026-09-04 QA(P0-6) 반영: 여기서 서버에 저장만 하고 끝나서, 설정 화면을
+            // 나가야만(또는 앱을 재시작해야만) 반영되는 것처럼 느껴졌음. 바로 전역 홀더에
+            // 반영해서 이 화면의 "미리보기"부터 다른 화면까지 즉시 바뀌게 함.
+            AccessibilitySettingsHolder.apply(it.large_controls, it.senior_mode, it.preferred_text_scale_hint)
+        }
     }
 
     // F02: 알림 전체 켜기/끄기

@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.cardhome
 
+import com.tmtn.app.ui.common.toKoreanDateLabel
+import java.time.LocalDate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,7 +56,7 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope) {
                 modifier = Modifier.clickable { state.step.value = CardHomeStep.NOTIFICATION_INBOX },
             )
         }
-        Text("2026. 8. 27. 목요일", style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
         MascotCard(state, isSelected, scope)
         TmtnIndexSummaryCard(state)
@@ -321,6 +323,13 @@ private fun RecentSummaryListCard(state: CardHomeState) {
 @Composable
 private fun DayDot(status: String, isToday: Boolean) {
     val colors = LocalTmtnColors.current
+    // ⚠️ 2026-09-04 QA 반영: 가입 이전 날짜("BEFORE_SIGNUP")까지 이 자리에 올 수 있게 됨
+    // (record_service.py 참고) - "미완료"처럼 테두리를 그리면 마치 그날 안 한 것처럼
+    // 보이니, 아예 안 그리고 빈 자리로만 남김.
+    if (status == "BEFORE_SIGNUP") {
+        Box(modifier = Modifier.size(10.dp))
+        return
+    }
     Box(
         modifier = Modifier
             .size(10.dp)

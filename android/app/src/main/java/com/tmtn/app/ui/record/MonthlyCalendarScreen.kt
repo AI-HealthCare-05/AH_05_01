@@ -20,8 +20,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.theme.LocalTmtnColors
@@ -32,6 +36,23 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /** Figma D01 · 기록 · 월 캘린더 (D04 기록없음/D07 일부실패도 여기서 같이 처리) */
+
+/** ⚠️ 2026-09-04 디자인 스펙 반영: 미완료 셀은 피그마 기준 실선이 아니라 점선 원
+ * (dash="2.5 2.5")임. Modifier.border()는 실선만 지원해서, Canvas에 직접 점선 원을
+ * 그리는 방식으로 구현. */
+private fun Modifier.dashedCircleBorder(width: Dp, color: Color, dashDp: Dp = 2.5.dp, gapDp: Dp = 2.5.dp): Modifier =
+    this.drawBehind {
+        val strokeWidthPx = width.toPx()
+        drawCircle(
+            color = color,
+            radius = (size.minDimension - strokeWidthPx) / 2f,
+            style = Stroke(
+                width = strokeWidthPx,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashDp.toPx(), gapDp.toPx()), 0f),
+            ),
+        )
+    }
+
 @Composable
 fun MonthlyCalendarScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: () -> Unit) {
     val colors = LocalTmtnColors.current
@@ -106,7 +127,6 @@ private fun MonthCalendarCard(state: RecordState, scope: CoroutineScope) {
     val calendar = state.monthlyCalendar.value ?: return
     val ym = YearMonth.of(state.year.value, state.month.value)
     val firstDayOfWeek = ym.atDay(1).dayOfWeek.value // 1=월 ~ 7=일
-    val daysInMonth = ym.lengthOfMonth()
     val statusByDate = calendar.days.associateBy { it.date }
 
     Column(
@@ -137,24 +157,28 @@ private fun MonthCalendarCard(state: RecordState, scope: CoroutineScope) {
             }
         }
 
-        // 42칸(6주) 고정 그리드 - HANDOFF 규칙
+        // 42칸(6주) 고정 그리드 - HANDOFF 규칙.
+        // ⚠️ 2026-09-04 디자인 스펙 반영: 이전/다음 달 날짜가 빈칸이었는데, 피그마 기준
+        // 흐린 색으로 숫자를 그대로 보여줘야 함(첨부 이미지 27~31, 1~6 참고). 날짜 자체를
+        // LocalDate로 계산해서, 이번 달이면 실제 상태로, 아니면 흐린 숫자만 표시.
         val leadingBlanks = firstDayOfWeek - 1
         val totalCells = 42
-        val cells = (0 until totalCells).map { idx ->
-            val dayNum = idx - leadingBlanks + 1
-            if (dayNum in 1..daysInMonth) dayNum else null
-        }
+        val monthStart = ym.atDay(1)
         val today = LocalDate.now()
-        cells.chunked(7).forEach { week ->
+        (0 until totalCells).chunked(7).forEach { week ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                week.forEach { dayNum ->
-                    if (dayNum == null) {
-                        Box(modifier = Modifier.size(34.dp))
-                    } else {
-                        val dateStr = "%04d-%02d-%02d".format(state.year.value, state.month.value, dayNum)
+                week.forEach { idx ->
+                    val cellDate = monthStart.plusDays((idx - leadingBlanks).toLong())
+                    if (cellDate.monthValue == state.month.value && cellDate.year == state.year.value) {
+                        val dateStr = "%04d-%02d-%02d".format(state.year.value, state.month.value, cellDate.dayOfMonth)
                         val status = statusByDate[dateStr]?.status
-                        val isToday = state.year.value == today.year && state.month.value == today.monthValue && dayNum == today.dayOfMonth
-                        DayCell(dayNum, status, isToday) { scope.launch { state.openDayDetail(dateStr) } }
+                        val isToday = state.year.value == today.year && state.month.value == today.monthValue &&
+                            cellDate.dayOfMonth == today.dayOfMonth
+                        DayCell(cellDate.dayOfMonth, status, isToday) { scope.launch { state.openDayDetail(dateStr) } }
+                    } else {
+                        Box(modifier = Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                            Text("${cellDate.dayOfMonth}", style = TmtnType.label, color = colors.outline)
+                        }
                     }
                 }
             }
@@ -162,8 +186,8 @@ private fun MonthCalendarCard(state: RecordState, scope: CoroutineScope) {
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LegendDot(colors.onSurface, "실천")
-            LegendDot(colors.disabledContainer, "쉼")
-            LegendDot(Color.Transparent, "미완료", outlineColor = colors.outline)
+            LegendDot(colors.disabledContainer, "쉼", outlineColor = colors.onSurface)
+            LegendDot(Color.Transparent, "미완료", dashed = true, outlineColor = colors.outline)
             LegendDot(Color.Transparent, "오늘", outlineColor = colors.secondary)
         }
         Text(
@@ -188,7 +212,7 @@ private fun DayCell(day: Int, status: String?, isToday: Boolean, onClick: () -> 
                 when (status) {
                     "COMPLETED" -> Modifier.background(colors.onSurface, CircleShape)
                     "REST" -> Modifier.background(colors.disabledContainer, CircleShape).border(1.5.dp, colors.onSurface, CircleShape)
-                    "INCOMPLETE" -> Modifier.border(1.5.dp, colors.outline, CircleShape)
+                    "INCOMPLETE" -> Modifier.dashedCircleBorder(1.5.dp, colors.outline)
                     else -> Modifier
                 },
             ),
@@ -202,12 +226,20 @@ private fun DayCell(day: Int, status: String?, isToday: Boolean, onClick: () -> 
 }
 
 @Composable
-private fun LegendDot(color: Color, label: String, outlineColor: Color? = null) {
+private fun LegendDot(color: Color, label: String, outlineColor: Color? = null, dashed: Boolean = false) {
     val colors = LocalTmtnColors.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         Box(
-            modifier = Modifier.size(12.dp).background(color, RoundedCornerShape(3.dp))
-                .then(if (outlineColor != null) Modifier.border(1.5.dp, outlineColor, RoundedCornerShape(3.dp)) else Modifier),
+            // ⚠️ 2026-09-04 디자인 스펙 반영: 캘린더 셀은 원형인데 범례만 사각형이었음(피그마는
+            // 전부 원형). 모양을 CircleShape로 통일하고, 점선(미완료)까지 실제 셀과 똑같이 맞춤.
+            modifier = Modifier.size(12.dp).background(color, CircleShape)
+                .then(
+                    when {
+                        dashed && outlineColor != null -> Modifier.dashedCircleBorder(1.5.dp, outlineColor, dashDp = 1.5.dp, gapDp = 1.5.dp)
+                        outlineColor != null -> Modifier.border(1.5.dp, outlineColor, CircleShape)
+                        else -> Modifier
+                    },
+                ),
         )
         Text(label, style = TmtnType.caption, color = colors.onSurfaceVariant)
     }

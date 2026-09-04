@@ -260,13 +260,13 @@ class MissionSensorService : Service() {
         runSeconds: Int,
         walkSeconds: Int,
         timestamp: Long
-    ) {
+    ): kotlinx.coroutines.Job? {
         val challengeId = CurrentChallengeHolder.challengeId
         if (challengeId == null) {
-            return
+            return null
         }
 
-        serviceScope.launch {
+        return serviceScope.launch {
             db.missionRecordDao().insert(
                 MissionRecord(challengeId = challengeId, measurementType = "STEP", value = steps, recordedAt = timestamp)
             )
@@ -294,7 +294,15 @@ class MissionSensorService : Service() {
     override fun onDestroy() {
         super.onDestroy()
 
-        saveToLocalDbAndSync(
+        updateJob?.cancel()
+
+        // ⚠️ 2026-09-04 희주조교님 피드백(P0 ③, "끝내기 → 기록이 날아감") 반영: 예전엔 위
+        // saveToLocalDbAndSync()가 코루틴을 띄우자마자(=아직 DB insert도 안 끝난 상태에서)
+        // 바로 아래줄 serviceScope.cancel()이 그 코루틴을 취소시켜버렸음. 그래서 "끝내기"를
+        // 누른 그 순간의 마지막 증가분(정확히 사용자가 지금까지 채운 값)이 거의 항상
+        // 저장·동기화되기 전에 날아갔음. 이 마지막 저장+동기화 코루틴이 실제로 끝난 뒤에만
+        // 스코프를 정리하도록 순서를 바꿈.
+        val finalSyncJob = saveToLocalDbAndSync(
             steps = stepCounterManager.stepCount,
             floors = stairClimbManager.floorsClimbed,
             stepInPlace = stepInPlaceManager.stepCount,
@@ -304,9 +312,11 @@ class MissionSensorService : Service() {
             walkSeconds = walkingCadenceManager.getCurrentTotalSeconds(),
             timestamp = System.currentTimeMillis()
         )
-
-        updateJob?.cancel()
-        serviceScope.cancel()
+        if (finalSyncJob != null) {
+            finalSyncJob.invokeOnCompletion { serviceScope.cancel() }
+        } else {
+            serviceScope.cancel()
+        }
 
         stepCounterManager.stop()
         stairClimbManager.stop()

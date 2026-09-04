@@ -7,8 +7,11 @@ import androidx.compose.ui.graphics.Color
 // 교체함 — 초록은 이제 어디에도 안 쓰임. A/B/D/G 여러 화면에서 교차 확인해서 일관됨.
 
 // 색 · 기본
-val ColorPrimary = Color(0xFF16181C)
-val ColorOnSurface = Color(0xFF16181C)
+// ⚠️ 2026-09-04 희주조교님 피드백(P2 ⑧) 반영: 순수 검정에 가까운 #16181C가 "너무
+// 새까맣다"는 의견이라 #2C2C2C로 올림. 순백(#FFFFFF) 배경 대비 14.0:1로 WCAG AA
+// 기준(4.5:1)을 여유 있게 넘음. 하드코딩된 색이 없어서 이 토큰 두 줄만 바꾸면 전체 반영됨.
+val ColorPrimary = Color(0xFF2C2C2C)
+val ColorOnSurface = Color(0xFF2C2C2C)
 val ColorOnSurfaceVariant = Color(0xFF666A71)
 val ColorBackground = Color(0xFFFFFFFF)
 val ColorSurface = Color(0xFFF7F4EE)

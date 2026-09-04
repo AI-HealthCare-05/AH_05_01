@@ -36,7 +36,7 @@ CALIBRATION_VERSION = "보정 v1.0"
 V2_MOCK_MODEL_VERSION = "mock-ui-integration-v0.1"
 V2_SCORE_CONTRACT_VERSION = "v0.2-empirical-cdf-owner-approved"
 V2_NOTICE = (
-    "튼튼지수는 입력 정보와 통계 모델을 바탕으로 산출한 생활습관 개선 참고용 보정 점수이며, "
+    "틈튼지수는 입력 정보와 통계 모델을 바탕으로 산출한 생활습관 개선 참고용 보정 점수이며, "
     "의료진의 진단이나 치료를 대신하지 않습니다. 현재 화면의 건강영역 점수는 연동 확인용 Mock 값입니다."
 )
 V2_OLDER_ADULT_NOTICE = "65세 이상에서는 모델의 예측 불확실성이 상대적으로 클 수 있어 참고용으로 활용해 주세요."

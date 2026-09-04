@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.tmtn.app.network.ApiClient
 import com.tmtn.app.network.SessionManager
 import com.tmtn.app.network.TokenHolder
 import com.tmtn.app.sensor.MissionSensorService
@@ -49,6 +50,7 @@ import com.tmtn.app.ui.profile.ProfileFlow
 import com.tmtn.app.ui.profile.ProfileScreenKey
 import com.tmtn.app.ui.record.RecordFlow
 import com.tmtn.app.ui.reference.ReferenceFlow
+import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
 import com.tmtn.app.ui.theme.TMTNv1Theme
 
 /** 앱의 최상위 화면 흐름. 각 단계는 Navigation Compose 없이 상태값으로만 전환함. */
@@ -88,12 +90,32 @@ class MainActivity : ComponentActivity() {
                     var screen by remember {
                         mutableStateOf(if (TokenHolder.accessToken != null) AppScreen.MAIN else AppScreen.ONBOARDING)
                     }
+                    // ⚠️ 2026-09-04 QA(P0-6) 반영: 접근성 설정(글자 크기·고대비)이 서버엔 저장돼도
+                    // 화면에 반영되는 코드가 없었음. 앱 시작 시 한 번 불러와서 AccessibilitySettingsHolder에
+                    // 채워두면, TMTNv1Theme이 이걸 구독해서 전역에 반영함. 로그인 전(온보딩)이면
+                    // 401이 나서 그냥 기본값(보통/고대비 없음)으로 남음 - 문제 없음.
+                    LaunchedEffect(Unit) {
+                        runCatching { ApiClient.profileApi.getAccessibility() }
+                            .getOrNull()?.let { response ->
+                                if (response.isSuccessful) {
+                                    response.body()?.let {
+                                        AccessibilitySettingsHolder.apply(
+                                            it.large_controls, it.senior_mode, it.preferred_text_scale_hint,
+                                        )
+                                    }
+                                }
+                            }
+                    }
                     var currentTab by remember { mutableStateOf(MainTab.HOME) }
                     // B06(카드 공개)·C그룹(챌린지 진행)처럼 하단 내비가 없어야 하는 몰입 단계인지
                     var isImmersive by remember { mutableStateOf(false) }
                     // H07(세션 만료)에서 "로그인하기" 눌러서 넘어온 경우 - 온보딩 처음(A01)이
                     // 아니라 A05(로그인)부터 시작해야 함.
                     var enterOnboardingAtLogin by remember { mutableStateOf(false) }
+                    // ⚠️ 온보딩 막 끝내고 "오늘의 카드 보러 가기"를 누르면, 홈 화면 한 번 더
+                    // 거치지 않고 카드 고르는 화면으로 바로 이어주기 위한 값. 한 번 쓰고 나면
+                    // false로 되돌려서, 이후 홈 탭을 오갈 때는 원래대로 홈부터 보이게 함.
+                    var justCompletedOnboarding by remember { mutableStateOf(false) }
                     // ⚠️ 참고 탭 "계산에 쓰인 값"에서 몸 정보/운동 정보 행을 눌렀을 때, 내 정보
                     // 탭으로 전환하면서 그 항목 편집 화면으로 바로 들어가게 하기 위한 값.
                     // 소비하고 나면 다시 HOME으로 되돌려서, 하단 탭에서 직접 "내 정보"를 눌렀을
@@ -118,7 +140,10 @@ class MainActivity : ComponentActivity() {
                         )
                     } else when (screen) {
                         AppScreen.ONBOARDING -> OnboardingFlow(
-                            onOnboardingComplete = { screen = AppScreen.MAIN },
+                            onOnboardingComplete = {
+                                justCompletedOnboarding = true
+                                screen = AppScreen.MAIN
+                            },
                             hasSensorPermissions = { hasSensorPermissions() },
                             onRequestPermissions = { checkPermissionsAndStart() },
                             startAtLogin = enterOnboardingAtLogin,
@@ -134,15 +159,20 @@ class MainActivity : ComponentActivity() {
                             Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                             Box(modifier = Modifier.weight(1f)) {
                                 when (currentTab) {
-                                    MainTab.HOME -> CardHomeFlow(
-                                        hasSensorPermissions = { hasSensorPermissions() },
-                                        onStartSensorTracking = { challengeId, execType ->
-                                            startTrackingChallenge(challengeId, execType)
-                                        },
-                                        onStopSensorTracking = { stopMissionService() },
-                                        onOpenSettings = { openAppSettings() },
-                                        onImmersiveChange = { isImmersive = it },
-                                    )
+                                    MainTab.HOME -> {
+                                        val deckPickOnEntry = remember(currentTab) { justCompletedOnboarding }
+                                        CardHomeFlow(
+                                            hasSensorPermissions = { hasSensorPermissions() },
+                                            onStartSensorTracking = { challengeId, execType ->
+                                                startTrackingChallenge(challengeId, execType)
+                                            },
+                                            onStopSensorTracking = { stopMissionService() },
+                                            onOpenSettings = { openAppSettings() },
+                                            onImmersiveChange = { isImmersive = it },
+                                            startAtDeckPick = deckPickOnEntry,
+                                        )
+                                        LaunchedEffect(Unit) { justCompletedOnboarding = false }
+                                    }
                                     MainTab.RECORD -> RecordFlow(
                                         onGoPickCard = { currentTab = MainTab.HOME },
                                     )

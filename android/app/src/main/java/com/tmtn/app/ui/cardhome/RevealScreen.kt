@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.cardhome
 
+import com.tmtn.app.ui.common.toKoreanDateLabel
+import java.time.LocalDate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -148,7 +150,7 @@ private fun NoteCard(card: CardRevealResponse) {
         ) {
             Column {
                 Text("오늘의 틈", style = TmtnType.bodyLarge, color = NoteCream)
-                Text("2026. 8. 27. 목요일", style = TmtnType.caption, color = NoteCream.copy(alpha = 0.76f))
+                Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = NoteCream.copy(alpha = 0.76f))
                 if (material != null) {
                     Text(
                         "${material.first} · ${card.domain ?: material.second}",
