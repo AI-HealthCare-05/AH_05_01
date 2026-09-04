@@ -11,6 +11,9 @@
 from datetime import date, timedelta
 from math import isfinite
 
+import httpx
+
+from app.core import config
 from app.core.time_utils import service_today
 from app.dtos.tuntun_score import (
     ScoreBandRange,
@@ -150,6 +153,63 @@ class TuntunScoreService:
         score = await self._calculate_mock_score(user, today)
         return TuntunScoreOrEligibilityResponse(eligible=True, score=score)
 
+    async def _get_pregnancy_status(self, user: User) -> str | None:
+        """⚠️ 통합모델 입력 계약(input_schema.json)은 "pregnancy_status: explicit
+        nonpregnant required by score adapter" — 미수집을 nonpregnant로 조용히
+        가정하면 안 된다고 명시돼 있음. 지금 온보딩·건강정보 어디에도 이 값을 실제로
+        수집하는 필드가 없어서, 여기서는 항상 None을 돌려주고 실모델 호출 자체를
+        건너뛰게 함(호출부가 Mock으로 폴백). 온보딩에 이 값을 실제로 수집하게 되면
+        이 함수만 채우면 됨 - 그 전까지는 값을 만들어내지 않는 게 맞다고 판단함.
+        """
+        return None
+
+    async def _call_local_model_inference(
+        self,
+        age_years: int,
+        sex_code: int,
+        height_cm: float,
+        weight_kg: float,
+        aerobic_equivalent_min_week: float,
+        strength_days_week: int,
+        pregnancy_status: str,
+        activity_window_end: date,
+        recorded_days: int,
+    ) -> dict | None:
+        """⚠️ 2026-09-04: 로컬 개발/검토용 실모델 서비스(별도 Python 3.14.7 프로세스,
+        tuntun_local_service.py)가 떠 있을 때만 동작. config.TUNTUN_LOCAL_MODEL_URL을
+        .env에 안 채우면(기본값 None) 이 함수는 맨 앞에서 바로 None을 돌려주고 끝나서
+        운영에는 절대 영향 없음. 모델 패키지 자체는 이 저장소에 없고 별도 배포 채널로
+        받아서 로컬에서 직접 띄우는 구조 - PRODUCTION_RELEASE_GATE: BLOCKED 상태라
+        운영 서버에 이 값을 채우면 안 됨.
+
+        실패(연결 안 됨/타임아웃/4xx/5xx)하면 조용히 None을 돌려주고, 호출부가 기존
+        Mock 계산으로 폴백함 - 로컬 모델 서버를 안 띄워놓고 테스트해도 앱이 죽지 않음.
+        """
+        if not config.TUNTUN_LOCAL_MODEL_URL:
+            return None
+
+        body = {
+            "features": {
+                "age_years": min(max(age_years, 19), 80),  # 모델 top-code: 80세 이상은 80으로
+                "sex_code": sex_code,
+                "height_cm": height_cm,
+                "weight_kg": weight_kg,
+                "leisure_aerobic_moderate_equivalent_min_week": aerobic_equivalent_min_week,
+                "strength_days_week": min(strength_days_week, 7),
+            },
+            "pregnancy_status": pregnancy_status,
+            "activity_window_end": activity_window_end.isoformat(),
+            "recorded_days": recorded_days,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.post(f"{config.TUNTUN_LOCAL_MODEL_URL}/score", json=body)
+            if response.status_code != 200:
+                return None
+            return response.json()
+        except httpx.HTTPError:
+            return None
+
     async def get_score_v2(self, user: User) -> TuntunScoreV2Response:
         """4영역 UI 연결을 검증하기 위한 deterministic Mock 응답을 만든다.
 
@@ -179,6 +239,31 @@ class TuntunScoreService:
         physical_score = _V2_MOCK_HEALTH_SCORES["physical"] if has_health_inputs else None
         diabetes_score = _V2_MOCK_HEALTH_SCORES["diabetes"] if has_health_inputs else None
         hypertension_score = _V2_MOCK_HEALTH_SCORES["hypertension"] if has_health_inputs else None
+
+        # ⚠️ 2026-09-04: 로컬 검토용 실모델이 떠 있으면(TUNTUN_LOCAL_MODEL_URL 설정 시) 그
+        # 결과로 통째로 교체. pregnancy_status를 아직 못 구하면(_get_pregnancy_status가
+        # None) 절대 호출 안 하고 위 Mock 값 그대로 씀 - "모른다"를 "임신 아님"으로
+        # 넘겨짚지 않음.
+        if has_health_inputs and habit is not None:
+            pregnancy_status = await self._get_pregnancy_status(user)
+            if pregnancy_status is not None:
+                current_year_for_age = today.year - (1 if user.birth_month and today.month < user.birth_month else 0)
+                age_for_model = current_year_for_age - user.birth_year
+                moderate_for_model = _nonnegative_finite_number(habit.aerobic_moderate_minutes) or 0.0
+                vigorous_for_model = _nonnegative_finite_number(habit.aerobic_high_minutes) or 0.0
+                real_response = await self._call_local_model_inference(
+                    age_years=age_for_model,
+                    sex_code=1 if user.gender == "MALE" else 2,
+                    height_cm=_positive_finite_number(input_values.get("height_cm")),
+                    weight_kg=_positive_finite_number(input_values.get("weight_kg")),
+                    aerobic_equivalent_min_week=moderate_for_model + (2.0 * vigorous_for_model),
+                    strength_days_week=int(_nonnegative_finite_number(habit.strength_weekly_count) or 0),
+                    pregnancy_status=pregnancy_status,
+                    activity_window_end=today,
+                    recorded_days=recorded_days,
+                )
+                if real_response is not None:
+                    return TuntunScoreV2Response.model_validate(real_response)
 
         aerobic_score = None
         strength_score = None

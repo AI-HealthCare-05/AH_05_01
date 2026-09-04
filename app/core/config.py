@@ -22,6 +22,16 @@ class Config(BaseSettings):
     TIMEZONE: zoneinfo.ZoneInfo = field(default_factory=lambda: zoneinfo.ZoneInfo("Asia/Seoul"))
     TEMPLATE_DIR: str = os.path.join(Path(__file__).resolve().parent.parent, "templates")
 
+    # ⚠️ 2026-09-04: 틈튼지수 실모델(신체·당뇨·고혈압) 로컬 검토용 연결. 별도 Python
+    # 3.14.7 프로세스(tuntun_local_service.py, 127.0.0.1)로 떠 있을 때만 사용. 운영
+    # 배포 승인 전(PRODUCTION_RELEASE_GATE: BLOCKED)이라 기본값은 비활성(None)이고,
+    # .env에 이 값을 채운 사람의 로컬 환경에서만 실모델을 타게 됨 - 값을 안 채우면
+    # 지금과 똑같이 Mock으로만 동작해서 운영에는 절대 영향 없음.
+    # 모델 패키지 자체(joblib 33MB, 검토용 소스)는 이 저장소에 없음 - 별도 배포 채널
+    # (공유 드라이브 등)에서 받아 로컬에 풀고 tuntun_local_service.py를 띄운 뒤 그 주소를
+    # 여기 넣을 것. 예: http://127.0.0.1:8765
+    TUNTUN_LOCAL_MODEL_URL: str | None = None
+
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_USER: str = "root"

@@ -96,7 +96,7 @@ class TuntunComponentScoreV2(BaseModel):
     available: bool
     band_label: str | None = Field(alias="bandLabel")
     guidance: str
-    source: Literal["mock_health_input", "questionnaire", "unavailable"]
+    source: Literal["mock_health_input", "model_inference", "questionnaire", "unavailable"]
 
 
 class TuntunScoreV2Response(BaseModel):
