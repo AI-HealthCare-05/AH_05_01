@@ -48,10 +48,7 @@ class MissionTemplateRepository:
         """Efraimidis-Spirakis 알고리즘. 중복 없이 가중치 기반으로 k개를 뽑는다.
         random.choices는 복원추출(중복 허용)이라 카드 3장이 서로 겹칠 수 있어서 이 방식을 씀."""
 
-        keyed = [
-            (random.random() ** (1.0 / max(w, MIN_WEIGHT)), item)
-            for item, w in zip(items, weights, strict=True)
-        ]
+        keyed = [(random.random() ** (1.0 / max(w, MIN_WEIGHT)), item) for item, w in zip(items, weights, strict=True)]
         keyed.sort(key=lambda pair: pair[0], reverse=True)
         return [item for _, item in keyed[:k]]
 

@@ -14,17 +14,13 @@ class CardRepository:
             "options__mission_template_version", "selection__card_option"
         )
 
-    async def create_set_with_options(
-        self, user_id, service_date: date, templates: list
-    ) -> DailyCardSet:
+    async def create_set_with_options(self, user_id, service_date: date, templates: list) -> DailyCardSet:
         """문서 §6: "daily_card_sets와 card_options는 한 트랜잭션으로 저장한다."
         호출하는 쪽(서비스 레이어)에서 in_transaction()으로 감싸서 써야 함."""
 
         card_set = await self._set_model.create(user_id=user_id, service_date=service_date)
         for index, template in enumerate(templates, start=1):
-            await self._option_model.create(
-                card_set=card_set, mission_template_version=template, option_index=index
-            )
+            await self._option_model.create(card_set=card_set, mission_template_version=template, option_index=index)
         return card_set
 
     async def get_option(self, option_id) -> CardOption | None:

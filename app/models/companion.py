@@ -82,12 +82,8 @@ class MissionReplacement(models.Model):
 
     id = fields.UUIDField(primary_key=True, default=uuid.uuid4)
     challenge = fields.OneToOneField("models.Challenge", related_name="replacement")  # uq_replacement_once
-    from_version = fields.ForeignKeyField(
-        "models.MissionTemplateVersion", related_name="replaced_from"
-    )
-    to_version = fields.ForeignKeyField(
-        "models.MissionTemplateVersion", related_name="replaced_to"
-    )
+    from_version = fields.ForeignKeyField("models.MissionTemplateVersion", related_name="replaced_from")
+    to_version = fields.ForeignKeyField("models.MissionTemplateVersion", related_name="replaced_to")
     reason = fields.CharField(max_length=100, null=True)
     replaced_at = fields.DatetimeField(auto_now_add=True)
 

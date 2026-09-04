@@ -18,9 +18,7 @@ class PredictionService:
     def __init__(self):
         self.repo = PredictionRepository()
 
-    async def save_batch(
-        self, caller: User, request: PredictionResultBatchRequest
-    ) -> PredictionResultBatchResponse:
+    async def save_batch(self, caller: User, request: PredictionResultBatchRequest) -> PredictionResultBatchResponse:
         """모델 파이프라인이 호출하는 저장 API. 관리자 계정으로만 호출 가능
         (앱 사용자가 직접 자기 예측 결과를 조작할 수 없게).
 

@@ -144,9 +144,7 @@ class SensorChallengeConfig(models.Model):
     기능명세서 §4(SENSOR_RUNNING) 확인: target_duration_seconds·valid_duration_seconds·
     speed_threshold_kmh·continuous_qualifying_seconds·sampling_request_interval_ms·mission_version."""
 
-    challenge = fields.OneToOneField(
-        "models.Challenge", related_name="sensor_config", pk=True
-    )
+    challenge = fields.OneToOneField("models.Challenge", related_name="sensor_config", pk=True)
     speed_threshold_kmh = fields.DecimalField(max_digits=4, decimal_places=1)
     continuous_qualifying_seconds = fields.IntField()
     sampling_request_interval_ms = fields.IntField()  # 명세 표현에 맞춰 필드명 통일(요청 간격)
@@ -173,7 +171,9 @@ class SensorMeasurementEvent(models.Model):
 
     id = fields.UUIDField(primary_key=True, default=uuid.uuid4)
     challenge = fields.ForeignKeyField("models.Challenge", related_name="sensor_measurements")
-    measurement_type = fields.CharField(max_length=20)  # STEP / STAIR / STEP_IN_PLACE / RUN_DISTANCE_M / RUN_DURATION / WALK_DURATION
+    measurement_type = fields.CharField(
+        max_length=20
+    )  # STEP / STAIR / STEP_IN_PLACE / RUN_DISTANCE_M / RUN_DURATION / WALK_DURATION
     event_timestamp_ns = fields.BigIntField(null=True)  # RUNNING 전용, 실제 경과시간 계산용
     speed_kmh = fields.DecimalField(max_digits=4, decimal_places=1, null=True)  # RUNNING 전용
     value = fields.IntField(null=True)  # STEP/STAIR 전용 (mission_records.py의 value 그대로)

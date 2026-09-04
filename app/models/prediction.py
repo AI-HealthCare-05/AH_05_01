@@ -25,7 +25,7 @@ class SubmodelType(StrEnum):
 
 
 class PredictionResultStatus(StrEnum):
-    """"결과 상태와 미제공 사유"를 구분하기 위한 상태값."""
+    """ "결과 상태와 미제공 사유"를 구분하기 위한 상태값."""
 
     COMPUTED = "COMPUTED"  # 정상 계산됨 (value가 채워짐)
     FAILED = "FAILED"  # 실행 자체가 실패함
@@ -34,7 +34,7 @@ class PredictionResultStatus(StrEnum):
 
 
 class ApprovedModelVersion(models.Model):
-    """"계산됐다는 것"과 "공개해도 된다는 것"은 별개라서 분리된 테이블.
+    """ "계산됐다는 것"과 "공개해도 된다는 것"은 별개라서 분리된 테이블.
     (submodel_type, model_version) 조합이 여기 is_active=True로 있어야만
     해당 버전으로 계산된 PredictionResult가 사용자에게 노출됨."""
 

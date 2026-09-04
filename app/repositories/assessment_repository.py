@@ -31,9 +31,7 @@ class AssessmentRepository:
             status=status,
         )
 
-    async def create_result(
-        self, job_id, score: float, band: str, factors, model_version: str
-    ) -> AssessmentResult:
+    async def create_result(self, job_id, score: float, band: str, factors, model_version: str) -> AssessmentResult:
         """uq_result_per_job(OneToOne) — job당 결과 1건만 존재 가능."""
 
         return await self._result_model.create(
@@ -44,9 +42,4 @@ class AssessmentRepository:
         return await self._job_model.get_or_none(id=job_id).prefetch_related("result")
 
     async def get_latest_for_user(self, user_id) -> AssessmentJob | None:
-        return (
-            await self._job_model.filter(user_id=user_id)
-            .order_by("-created_at")
-            .prefetch_related("result")
-            .first()
-        )
+        return await self._job_model.filter(user_id=user_id).order_by("-created_at").prefetch_related("result").first()

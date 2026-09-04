@@ -39,7 +39,7 @@ FIVE_ELEMENT_MAP = {
 
 
 def split_candidates(raw: str | None) -> list[str]:
-    """"가까운 산책로,가까운 공원,지금 있는 곳" 같은 콤마 구분 문자열을 리스트로."""
+    """ "가까운 산책로,가까운 공원,지금 있는 곳" 같은 콤마 구분 문자열을 리스트로."""
 
     if not raw or not raw.strip():
         return []
