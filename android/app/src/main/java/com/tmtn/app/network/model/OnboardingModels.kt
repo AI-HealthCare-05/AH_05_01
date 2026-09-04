@@ -30,7 +30,8 @@ data class UserUpdateRequest(
     val nickname: String? = null,
     val gender: String? = null,      // "MALE" / "FEMALE"
     val birth_year: Int? = null,
-    val birth_month: Int? = null
+    val birth_month: Int? = null,
+    val is_pregnant: Boolean? = null // ⚠️ 여성만 해당. 틈튼지수 실모델 입력 계약(임신 여부 필요) - 남성/미응답이면 null
 )
 
 data class UserInfoResponse(
@@ -42,6 +43,7 @@ data class UserInfoResponse(
     val birth_year: Int?,
     val birth_month: Int?,
     val gender: String?,
+    val is_pregnant: Boolean?,
     val created_at: String
 )
 

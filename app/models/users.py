@@ -25,6 +25,11 @@ class User(models.Model):
     gender = fields.CharEnumField(enum_type=Gender, null=True)
     birth_year = fields.SmallIntField(null=True)
     birth_month = fields.SmallIntField(null=True)  # 1~12
+    # ⚠️ 2026-09-04 추가: 틈튼지수 실모델(D0) 입력 계약이 "임신 여부를 명시적으로 알아야만
+    # 계산 가능(모르면 nonpregnant로 넘겨짚지 않음)"이라 추가. null=아직 안 물어봄(또는
+    # 남성이라 해당 없음). 여성 온보딩(A07)에서만 물어봄 - app/services/tuntun_score_service.py
+    # _get_pregnancy_status() 참고.
+    is_pregnant = fields.BooleanField(null=True)
     phone_number = fields.CharField(max_length=11, null=True)
     is_active = fields.BooleanField(default=True)
     is_admin = fields.BooleanField(default=False)

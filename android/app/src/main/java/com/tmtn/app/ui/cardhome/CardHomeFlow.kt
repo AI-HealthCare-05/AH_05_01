@@ -151,7 +151,17 @@ fun CardHomeFlow(
     val onStartAction: () -> Unit = {
         val card = state.revealedCard.value
         if (card != null) {
-            state.step.value = state.stepForRevealedCard(card)
+            // ⚠️ 2026-09-04 반영: 진행 중(ACTIVE/PAUSED)인 미션은 REVEALED 화면에 머무는
+            // 동안에도 실제로 시간이 계속 흐름. 로컬에 캐시된 revealedCard(직전 화면 그대로의
+            // 값)를 그대로 쓰면 그 사이 흐른 시간이 안 반영된 옛 경과 시간으로 타이머 화면이
+            // 열릴 수 있음. 이 경우엔 continueTodayMission()으로 서버에서 최신 상태를 다시
+            // 받아온 뒤(=적용된 화면으로) 이동. 아직 시작 전(READY 등)이면 새로 받아올 것도
+            // 없으니 그대로 즉시 전환.
+            if (card.state == "ACTIVE" || card.state == "PAUSED") {
+                scope.launch { state.refreshAndEnterInProgressMission() }
+            } else {
+                state.step.value = state.stepForRevealedCard(card)
+            }
         }
     }
 

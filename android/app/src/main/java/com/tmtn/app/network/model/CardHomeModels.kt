@@ -23,6 +23,10 @@ data class CardRevealResponse(
     val target_value: Int,
     val unit: String,
     val state: String,
+    // ⚠️ 2026-09-04 반영: 서버가 계산한 실제 경과 시간(초). ACTIVE면 지금까지 쌓인 값 +
+    // 이번 구간에서 흐른 시간까지 포함해서 내려줌 - CardHomeState.stepForRevealedCard()가
+    // 타이머 화면 진입 시 이 값으로 timerElapsedSeconds를 맞춤.
+    val elapsed_seconds: Int = 0,
     val fortune_text: String?,     // 오늘의 운세
     val lucky_location: String?,   // 행운의 위치
     val line_text: String?,        // 오늘의 한 줄

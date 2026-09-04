@@ -208,26 +208,66 @@ class CardHomeState {
     // 있었는데 여긴 재사용을 안 해서 따로 놀고 있었던 것 - 하나로 합쳐서 두 진입점 모두
     // 같은 기준으로 판단하게 함. REVEALED에서 다시 "시작하기"를 누르면 서버가 이미
     // ACTIVE인 챌린지를 또 시작시키려다 409로 튕기는 게 ②(오류)의 원인이었음.
-    fun stepForRevealedCard(card: CardRevealResponse): CardHomeStep = when {
-        card.state == "COMPLETED" || card.state == "SKIPPED" -> CardHomeStep.COMPLETED
-        card.exec_type == "CHECK" -> CardHomeStep.CHALLENGE_CHECK
-        card.exec_type == "TIMER" -> when (card.state) {
-            "ACTIVE" -> CardHomeStep.CHALLENGE_TIMER_RUNNING
-            "PAUSED" -> CardHomeStep.CHALLENGE_TIMER_PAUSED
-            else -> CardHomeStep.CHALLENGE_TIMER_START
+    fun stepForRevealedCard(card: CardRevealResponse): CardHomeStep {
+        val step = when {
+            card.state == "COMPLETED" || card.state == "SKIPPED" -> CardHomeStep.COMPLETED
+            card.exec_type == "CHECK" -> CardHomeStep.CHALLENGE_CHECK
+            card.exec_type == "TIMER" -> when (card.state) {
+                "ACTIVE" -> CardHomeStep.CHALLENGE_TIMER_RUNNING
+                "PAUSED" -> CardHomeStep.CHALLENGE_TIMER_PAUSED
+                else -> CardHomeStep.CHALLENGE_TIMER_START
+            }
+            else -> {
+                // SENSOR형: 프로세스가 살아있는 동안만 추적 중인지 알 수 있음(CurrentChallengeHolder는
+                // 메모리 상태라 앱을 완전히 껐다 켜면 리셋됨 - 진짜 복구는 상세 재조회 API가 없어서
+                // 아직 미지원, B01b 만들 때 적어둔 것과 같은 제약).
+                val alreadyTracking = com.tmtn.app.sensor.CurrentChallengeHolder.challengeId == card.challenge_id &&
+                    com.tmtn.app.sensor.CurrentChallengeHolder.execType != null
+                if (alreadyTracking) CardHomeStep.SENSOR_MEASURING else CardHomeStep.SENSOR_INTRO
+            }
         }
-        else -> {
-            // SENSOR형: 프로세스가 살아있는 동안만 추적 중인지 알 수 있음(CurrentChallengeHolder는
-            // 메모리 상태라 앱을 완전히 껐다 켜면 리셋됨 - 진짜 복구는 상세 재조회 API가 없어서
-            // 아직 미지원, B01b 만들 때 적어둔 것과 같은 제약).
-            val alreadyTracking = com.tmtn.app.sensor.CurrentChallengeHolder.challengeId == card.challenge_id &&
-                com.tmtn.app.sensor.CurrentChallengeHolder.execType != null
-            if (alreadyTracking) CardHomeStep.SENSOR_MEASURING else CardHomeStep.SENSOR_INTRO
+        // ⚠️ 2026-09-04 반영: 타이머 화면(진행 중/일시정지)에 들어갈 때마다 서버가 계산한
+        // 실제 경과 시간으로 맞춤. 예전엔 timerElapsedSeconds가 로컬 카운터라, 화면을
+        // 벗어났다가(뒤로가기→홈→다시 이어하기 등) 돌아오면 그 사이 실제로 흐른 시간이
+        // 반영 안 되고 멈춰있던 것처럼 보였음.
+        if (step == CardHomeStep.CHALLENGE_TIMER_RUNNING || step == CardHomeStep.CHALLENGE_TIMER_PAUSED) {
+            timerElapsedSeconds.value = card.elapsed_seconds
+            timerIsPaused.value = step == CardHomeStep.CHALLENGE_TIMER_PAUSED
         }
+        return step
     }
 
+    // ⚠️ 2026-09-04 반영: "미션 이어하기"를 누르면 곧바로 타이머/체크 등 진행 화면으로
+    // 들어가서 당황스러웠음 - 먼저 카드 화면(REVEALED)에서 내용을 한번 보여주고, 거기서
+    // "진행 중인 미션 확인" 버튼을 눌러야 실제 진행 화면으로 들어가게 함. 완료/중단된
+    // 미션은 기존처럼 바로 완료 화면(CardHomeStep.COMPLETED)으로 - 그건 "다시 보기"가
+    // 맞는 결과물이라 그대로 둠.
     suspend fun continueTodayMission() {
         val challengeId = todayChallengeId.value ?: return
+        isLoading.value = true
+        errorMessage.value = null
+        runCatching {
+            val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
+            if (!response.isSuccessful) error(parseErrorMessage(response))
+            response.body()!!
+        }.onSuccess { card ->
+            revealedCard.value = card
+            step.value = if (card.state == "COMPLETED" || card.state == "SKIPPED") {
+                CardHomeStep.COMPLETED
+            } else {
+                CardHomeStep.REVEALED
+            }
+        }.onFailure { e ->
+            errorMessage.value = e.message ?: "미션 정보를 가져오지 못했어요."
+        }
+        isLoading.value = false
+    }
+
+    // ⚠️ 2026-09-04 반영: REVEALED의 "진행 중인 미션 확인"/"이 행동 시작하기" 전용 - 여기서만
+    // stepForRevealedCard()로 실제 진행 상태(타이머/체크/센서 등)에 맞는 화면까지 들어감.
+    // continueTodayMission()과 fetch 로직은 같지만 도착 화면 결정 방식이 다름.
+    suspend fun refreshAndEnterInProgressMission() {
+        val challengeId = revealedCard.value?.challenge_id ?: return
         isLoading.value = true
         errorMessage.value = null
         runCatching {

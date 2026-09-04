@@ -42,6 +42,7 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
     var gender by state.gender
     var birthYear by state.birthYear
     var birthMonth by state.birthMonth
+    var isPregnant by state.isPregnant
     var heightCm by state.heightCm
     var weightKg by state.weightKg
 
@@ -112,6 +113,21 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
                 TmtnChip(text = "여성", selected = gender == "FEMALE", onClick = { gender = "FEMALE" })
             }
             Text("또래 참고 범위를 맞출 때만 씁니다. 화면에 표시되지 않아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+
+            // ⚠️ 2026-09-04 추가: 틈튼지수 실모델 입력 계약("임신 여부를 명시적으로 알아야
+            // 계산 가능")을 위해 추가. 여성일 때만 물음 - 남성은 생물학적으로 해당 사항이
+            // 없어서 서버가 자동으로 "해당 없음"으로 처리함(_get_pregnancy_status() 참고).
+            if (gender == "FEMALE") {
+                SectionHeader(title = "임신 여부", hint = "건강 참고 점수 계산용")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TmtnChip(text = "아니요", selected = isPregnant == false, onClick = { isPregnant = false })
+                    TmtnChip(text = "예", selected = isPregnant == true, onClick = { isPregnant = true })
+                }
+                Text(
+                    "임신 중에는 참고 점수를 정확히 계산하기 어려워 일부 항목을 표시하지 않을 수 있어요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
+            }
 
             // 키 · 몸무게 - Next/Done 키보드 액션으로 자동 이동 + 완료 시 키보드 자동으로 닫힘
             // 숫자만, 3자리(최대 999)까지만 입력 가능 (그 이상은 비현실적인 값이라 막음)

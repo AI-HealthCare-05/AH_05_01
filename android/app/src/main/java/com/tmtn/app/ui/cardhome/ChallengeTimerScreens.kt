@@ -220,7 +220,9 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
     val remaining = (targetSeconds - elapsed).coerceAtLeast(0)
 
     LaunchedEffect(state.timerIsPaused.value) {
-        while (!state.timerIsPaused.value) {
+        // ⚠️ 2026-09-04 반영: 목표 시간을 다 채운 뒤에도 타이머가 계속 흘렀음(QA에서도
+        // 지적됐던 부분) - 목표에 도달하면 멈추게 함.
+        while (!state.timerIsPaused.value && state.timerElapsedSeconds.value < targetSeconds) {
             delay(1000)
             state.timerElapsedSeconds.value += 1
         }
@@ -271,7 +273,12 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
                     )
                 }
                 Text(
-                    "${(progress * 100).toInt()}% · 목표를 다 채우면 완료할 수 있어요",
+                    // ⚠️ 2026-09-04 반영: 100%를 채웠는데도 "채우면"이라고 하던 문구 정정.
+                    if (progress >= 1f) {
+                        "100% · 목표를 다 채웠어요. 완료 버튼을 눌러주세요."
+                    } else {
+                        "${(progress * 100).toInt()}% · 목표를 다 채우면 완료할 수 있어요"
+                    },
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
             }
@@ -290,7 +297,12 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            TmtnTonalButton(text = "일시정지", onClick = { scope.launch { state.pauseTimer() } })
+            TmtnTonalButton(
+                text = "일시정지",
+                onClick = { scope.launch { state.pauseTimer() } },
+                // ⚠️ 2026-09-04 반영: 목표 시간을 다 채우면 "완료하기"만 누를 수 있게, 일시정지는 막음.
+                enabled = elapsed < targetSeconds,
+            )
             TmtnPrimaryButton(
                 text = "완료하기",
                 onClick = { scope.launch { state.completeTimerChallenge() } },

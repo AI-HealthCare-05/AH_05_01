@@ -96,6 +96,9 @@ class OnboardingState {
     var gender = mutableStateOf("FEMALE")
     var birthYear = mutableStateOf(1990)
     var birthMonth = mutableStateOf(3)
+    // ⚠️ 2026-09-04 추가: 여성일 때만 물어보는 임신 여부. null=아직 안 물어봤거나 응답 안 함
+    // (이 경우 서버에 아예 안 보냄 - "임신 아님"으로 넘겨짚지 않기 위함).
+    var isPregnant = mutableStateOf<Boolean?>(null)
     var heightCm = mutableStateOf("")
     var weightKg = mutableStateOf("")
 
@@ -231,7 +234,10 @@ class OnboardingState {
                             nickname = nickname.value.ifBlank { null },
                             gender = gender.value,
                             birth_year = birthYear.value,
-                            birth_month = birthMonth.value
+                            birth_month = birthMonth.value,
+                            // ⚠️ 남성이면 애초에 질문 자체를 안 보여줘서(UI) isPregnant가 항상
+                            // null - 서버가 성별로 자동 판단(nonpregnant)하므로 그냥 안 보내도 됨.
+                            is_pregnant = if (gender.value == "FEMALE") isPregnant.value else null,
                         )
                     )
                     if (!profileResponse.isSuccessful) error(parseErrorMessage(profileResponse))

@@ -1,5 +1,6 @@
 package com.tmtn.app.ui.cardhome
 
+import com.tmtn.app.ui.common.MockBadge
 import com.tmtn.app.ui.common.toKoreanDateLabel
 import java.time.LocalDate
 import androidx.compose.foundation.background
@@ -158,7 +159,10 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
             text = when {
                 isCompleted -> "오늘 카드 다시 보기"
                 isSkipped -> "오늘 카드 다시 보기"
-                isSelected -> "미션 이어하기"
+                // ⚠️ 2026-09-04 반영: "미션 이어하기"라는 별도 문구 대신 다른 선택된 상태와
+                // 똑같이 "오늘 카드 다시 보기"로 통일 - 눌렀을 때 곧장 진행 화면으로 안 들어가고
+                // 카드 화면부터 보여주는 걸로 바뀌어서, 문구도 그 결과와 맞춰야 헷갈리지 않음.
+                isSelected -> "오늘 카드 다시 보기"
                 isRestDay -> "그래도 미션 해볼래요"
                 else -> "오늘의 카드 고르기"
             },
@@ -234,10 +238,19 @@ private fun TmtnIndexSummaryCard(state: CardHomeState) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("틈튼지수", style = TmtnType.label, color = colors.onSurface)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("틈튼지수", style = TmtnType.label, color = colors.onSurface)
+                if (value != null && state.tuntunIndexIsMock.value) {
+                    MockBadge()
+                }
+            }
             Text("자세히 ›", style = TmtnType.caption, color = colors.onSurfaceVariant) // TODO: 참고 탭으로 이동(탭 전환 콜백 필요)
         }
-        if (value == null || band == null) {
+        if (state.tuntunIndexLoadFailed.value) {
+            // ⚠️ PR #12 리뷰(P1) 반영: 네트워크 실패를 "정보를 입력하세요"로 잘못 안내하던
+            // 문제 - 이미 다 입력한 사람이 오프라인이면 입력하라는 말을 들었음.
+            Text("불러오지 못했어요 · 네트워크를 확인해 주세요", style = TmtnType.body, color = colors.onSurfaceVariant)
+        } else if (value == null || band == null) {
             Text(
                 "아직 계산할 수 없어요 · 신체정보나 운동습관을 입력해 보세요",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
@@ -260,7 +273,9 @@ private fun TmtnIndexSummaryCard(state: CardHomeState) {
                     Box(
                         modifier = Modifier.weight(1f).height(10.dp)
                             .background(
-                                if (label == band) colors.secondary else colors.disabledContainer,
+                                // ⚠️ PR #12 리뷰(P2) 반영: 주황은 "오늘"에만 쓰는 색인데
+                                // 구간 막대에도 써서 겹쳐 있었음.
+                                if (label == band) colors.onSurface else colors.disabledContainer,
                                 RoundedCornerShape(4.dp),
                             ),
                     )
@@ -300,7 +315,12 @@ private fun RecentSummaryListCard(state: CardHomeState) {
         ) {
             Column {
                 Text("최근 7일", style = TmtnType.label, color = colors.onSurface)
-                Text("이번 주 ${completedCount}일 실천했어요", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text(
+                    // ⚠️ PR #12 리뷰(P1) 반영: 실패 시 빈 리스트라 "0일 실천"이라고 잘못
+                    // 말하던 문제 - 5일 실천한 사람에게 0일이라고 안내됐음.
+                    if (state.recentWeekLoadFailed.value) "불러오지 못했어요" else "이번 주 ${completedCount}일 실천했어요",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 val today = java.time.LocalDate.now().toString()

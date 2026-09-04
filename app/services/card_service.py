@@ -10,6 +10,7 @@ from app.models.users import User
 from app.repositories.card_repository import CardRepository
 from app.repositories.challenge_repository import ChallengeRepository
 from app.repositories.mission_repository import MissionTemplateRepository
+from app.services.challenge_service import _effective_duration_seconds
 
 
 class CardService:
@@ -74,6 +75,13 @@ class CardService:
                 .replace("{unit}", template.unit)
             )
 
+        # ⚠️ 2026-09-04 반영: 타이머 "이어하기" 시 멈춰있는 것처럼 보이던 버그 - 클라이언트
+        # 로컬 카운트 대신 서버가 실제 경과 시간을 계산해서 내려줌.
+        # challenge_service._effective_duration_seconds()와 완전히 같은 계산이라(ACTIVE면
+        # accumulated_duration_seconds + (지금 - started_at), UTC 기준) 새로 만들지 않고
+        # 그대로 재사용 - 두 곳에서 각자 구현하면 타임존 등이 어긋날 위험이 있음.
+        elapsed_seconds = _effective_duration_seconds(challenge)
+
         return CardRevealResponse(
             challenge_id=challenge.id,
             exec_type=challenge.exec_type,
@@ -84,6 +92,7 @@ class CardService:
             target_value=template.target_value,
             unit=template.unit,
             state=challenge.state,
+            elapsed_seconds=elapsed_seconds,
             fortune_text=template.fortune_text,
             lucky_location=lucky_location,
             line_text=line_text,

@@ -24,6 +24,13 @@ class UserUpdateRequest(BaseModel):
     birth_year: Annotated[int | None, Field(None, ge=1900, le=2100)]
     birth_month: Annotated[int | None, Field(None, ge=1, le=12)]
     gender: Annotated[Gender | None, Field(None, description="'MALE' or 'FEMALE'")]
+    # ⚠️ 2026-09-04 추가: 틈튼지수 실모델 입력 계약("임신 여부를 명시적으로 알아야 계산
+    # 가능")을 위해 추가. A07(필수 입력)에서 성별이 FEMALE일 때만 물어봄 - MALE이면 앱이
+    # 아예 이 필드를 안 보내도 되고(서비스 쪽에서 성별로 자동 판단), FEMALE인데 아직
+    # 응답 안 했으면 null로 유지됨(모른다는 뜻 - "임신 아님"으로 넘겨짚지 않음).
+    is_pregnant: Annotated[
+        bool | None, Field(None, description="여성만 해당. 모르면 null(임신 아님으로 가정하지 않음)")
+    ]
 
     @model_validator(mode="after")
     def _validate_birth_year_month_pair(self) -> "UserUpdateRequest":
@@ -42,6 +49,7 @@ class UserInfoResponse(BaseSerializerModel):
     birth_year: int | None = None
     birth_month: int | None = None
     gender: Gender | None = None
+    is_pregnant: bool | None = None
     created_at: datetime
 
 

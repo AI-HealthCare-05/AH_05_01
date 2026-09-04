@@ -40,6 +40,12 @@ class CardRevealResponse(BaseSerializerModel):
     target_value: int
     unit: str
     state: str
+    # ⚠️ 2026-09-04 반영: TIMER형을 "이어하기"로 재진입할 때 타이머가 멈춰있는 것처럼
+    # 보이던 버그. 클라이언트가 elapsed_seconds를 매번 0부터 로컬로만 세고 있어서,
+    # 화면을 벗어났다 돌아오면(뒤로가기→홈→다시 이어하기 등) 그 사이 실제로 흐른 시간이
+    # 반영이 안 됐음. 서버가 accumulated_duration_seconds + (지금 - started_at)을 계산해서
+    # 내려주면, 클라이언트는 이 값부터 이어서 세면 됨. ACTIVE가 아니면(READY 등) 0.
+    elapsed_seconds: int = 0
     fortune_text: str | None = None  # "오늘의 운세" (CSV fortune_text 그대로)
     lucky_location: str | None = None  # "행운의 위치" (location_candidates 중 하나)
     line_text: str | None = None  # "오늘의 한 줄" (line_text_template의 {place}/{num}/{unit} 채운 결과)

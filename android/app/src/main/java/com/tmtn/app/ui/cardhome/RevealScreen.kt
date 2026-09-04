@@ -106,9 +106,20 @@ fun RevealScreen(
             // 숨기고("어차피 onStartAction이 다시 완료 화면으로 돌려보내니 눌러봤자 의미
             // 없음), "오늘은 쉬어가기"도 숨김(이미 끝난 하루에 쉼까지 쓰면 이번 주 쉼 횟수가
             // 잘못 깎임). "추천 이유 보기"만 남겨서 왜 이 카드가 나왔는지는 계속 볼 수 있게 함.
+            //
+            // ⚠️ 2026-09-04 반영: 진행 중(ACTIVE/PAUSED)인 미션 화면에서 뒤로가기로 여기
+            // 돌아왔을 때 "이 행동 시작하기"가 그대로 보여서 마치 새로 시작하는 것처럼
+            // 헷갈렸음. 이제 진행 중이면 "진행 중인 미션 확인"으로 문구만 바꿔서 보여줌 -
+            // onStartAction은 이미 stepForRevealedCard()로 진행 상태에 맞는 화면(타이머
+            // 진행/일시정지 등)으로 정확히 보내주므로 그대로 재사용. "쉬어가기"는 진행
+            // 중인 미션 도중에 쓸 수 있는 게 아니라서 계속 숨김.
             val isFinished = card.state == "COMPLETED" || card.state == "SKIPPED"
+            val isInProgress = card.state == "ACTIVE" || card.state == "PAUSED"
             if (!isFinished) {
-                TmtnPrimaryButton(text = "이 행동 시작하기", onClick = onStartAction)
+                TmtnPrimaryButton(
+                    text = if (isInProgress) "진행 중인 미션 확인" else "이 행동 시작하기",
+                    onClick = onStartAction,
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -117,7 +128,7 @@ fun RevealScreen(
                 TextButton(onClick = { state.step.value = CardHomeStep.REASON_DETAIL }) {
                     Text("추천 이유 보기", style = TmtnType.label, color = colors.onSurfaceVariant)
                 }
-                if (!isFinished) {
+                if (!isFinished && !isInProgress) {
                     Text(
                         "·", style = TmtnType.label, color = colors.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp),
