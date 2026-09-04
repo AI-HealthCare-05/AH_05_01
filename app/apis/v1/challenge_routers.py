@@ -31,7 +31,9 @@ async def get_challenge(
     return await challenge_service.get_progress(user, challenge_id)
 
 
-@challenge_router.post("/{challenge_id}/start", response_model=ChallengeProgressResponse, status_code=status.HTTP_200_OK)
+@challenge_router.post(
+    "/{challenge_id}/start", response_model=ChallengeProgressResponse, status_code=status.HTTP_200_OK
+)
 async def start_challenge(
     challenge_id: UUID,
     user: Annotated[User, Depends(get_request_user)],
@@ -43,7 +45,9 @@ async def start_challenge(
     return await challenge_service.start(user, challenge_id)
 
 
-@challenge_router.post("/{challenge_id}/pause", response_model=ChallengeProgressResponse, status_code=status.HTTP_200_OK)
+@challenge_router.post(
+    "/{challenge_id}/pause", response_model=ChallengeProgressResponse, status_code=status.HTTP_200_OK
+)
 async def pause_challenge(
     challenge_id: UUID,
     user: Annotated[User, Depends(get_request_user)],
@@ -80,16 +84,12 @@ async def complete_challenge(
     body의 occurred_at은 선택 — 오프라인 상태에서 완료했다가 나중에 동기화하는 경우에 씀."""
 
     if not idempotency_key:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Idempotency-Key 헤더가 필요합니다."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Idempotency-Key 헤더가 필요합니다.")
     occurred_at = request.occurred_at if request else None
     return await challenge_service.complete(user, challenge_id, idempotency_key, occurred_at=occurred_at)
 
 
-@challenge_router.post(
-    "/{challenge_id}/skip", response_model=ChallengeProgressResponse, status_code=status.HTTP_200_OK
-)
+@challenge_router.post("/{challenge_id}/skip", response_model=ChallengeProgressResponse, status_code=status.HTTP_200_OK)
 async def skip_challenge(
     challenge_id: UUID,
     request: SkipChallengeRequest,

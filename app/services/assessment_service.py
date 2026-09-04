@@ -84,6 +84,4 @@ class AssessmentService:
     async def _to_response(self, job) -> AssessmentJobResponse:
         result = await job.result if job.status == AssessmentJobStatus.DONE else None
         result_dto = AssessmentResultResponse.model_validate(result) if result else None
-        return AssessmentJobResponse(
-            id=str(job.id), status=job.status, created_at=job.created_at, result=result_dto
-        )
+        return AssessmentJobResponse(id=str(job.id), status=job.status, created_at=job.created_at, result=result_dto)

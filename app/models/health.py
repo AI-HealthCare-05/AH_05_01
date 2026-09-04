@@ -69,7 +69,7 @@ class MissionExecType(StrEnum):
 
     TIMER = "TIMER"
     CHECK = "CHECK"
-    SENSOR_STEPS = "SENSOR_STEPS"                    # 실외 걷기 (StepCounterManager)
+    SENSOR_STEPS = "SENSOR_STEPS"  # 실외 걷기 (StepCounterManager)
     SENSOR_FLOORS_CLIMBED = "SENSOR_FLOORS_CLIMBED"  # 실제 계단 (StairClimbManager)
     SENSOR_STEPS_IN_PLACE = "SENSOR_STEPS_IN_PLACE"  # 제자리걸음 (StepCounterManager 재사용)
     SENSOR_RUNNING_DISTANCE = "SENSOR_RUNNING_DISTANCE"  # GPS 거리 목표 (RunningManager)

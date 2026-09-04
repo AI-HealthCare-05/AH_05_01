@@ -74,9 +74,7 @@ class CompanionService:
         """완료된 챌린지를 최신순으로. mission_snapshot에 title·five_element가 그대로 있어서
         따로 join 안 해도 됨(카드 확정 시점 스냅샷)."""
 
-        query = Challenge.filter(
-            selection__card_set__user=user, state=ChallengeState.COMPLETED
-        ).order_by("-updated_at")
+        query = Challenge.filter(selection__card_set__user=user, state=ChallengeState.COMPLETED).order_by("-updated_at")
         challenges = await query.prefetch_related("selection__card_set")
         items = []
         for c in challenges:
@@ -163,9 +161,7 @@ class CompanionService:
         top_element = max(element_counts, key=element_counts.get) if element_counts else None
         top_material_name = MATERIAL_INFO[top_element]["material_name"] if top_element else None
 
-        stage_label = next(
-            (s["label"] for s in STAGE_DEFINITIONS if s["stage_number"] == latest.stage_number), ""
-        )
+        stage_label = next((s["label"] for s in STAGE_DEFINITIONS if s["stage_number"] == latest.stage_number), "")
 
         return StageUpPendingResponse(
             previous_stage=latest.stage_number - 1,

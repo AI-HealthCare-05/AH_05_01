@@ -51,9 +51,7 @@ async def get_day_detail(
     return await service.get_day_detail(user, target_date)
 
 
-@record_router.patch(
-    "/day/{target_date}/memo", response_model=DayDetailResponse, status_code=status.HTTP_200_OK
-)
+@record_router.patch("/day/{target_date}/memo", response_model=DayDetailResponse, status_code=status.HTTP_200_OK)
 async def update_day_memo(
     target_date: date,
     request: MemoUpdateRequest,

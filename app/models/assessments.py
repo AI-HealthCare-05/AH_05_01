@@ -35,13 +35,10 @@ class AssessmentJob(models.Model):
 
     id = fields.UUIDField(primary_key=True, default=uuid.uuid4)
     user = fields.ForeignKeyField("models.User", related_name="assessment_jobs")
-    health_input_snapshot = fields.ForeignKeyField(
-        "models.HealthInputSnapshot", related_name="assessment_jobs"
-    )
+    health_input_snapshot = fields.ForeignKeyField("models.HealthInputSnapshot", related_name="assessment_jobs")
     model_release = fields.ForeignKeyField("models.ModelRelease", related_name="assessment_jobs")
     status = fields.CharEnumField(enum_type=AssessmentJobStatus, default=AssessmentJobStatus.PENDING)
     created_at = fields.DatetimeField(auto_now_add=True)
-
 
     class Meta:
         table = "assessment_jobs"

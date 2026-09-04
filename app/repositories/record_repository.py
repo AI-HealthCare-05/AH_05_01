@@ -13,10 +13,9 @@ class RecordRepository:
         """selection -> card_option -> mission_template_version, selection -> challenge까지
         한 번에 미리 가져옴 (날짜별로 매번 쿼리 안 날리려고)."""
 
-        return (
-            await self._card_set_model.filter(user_id=user_id, service_date__gte=start, service_date__lte=end)
-            .prefetch_related("selection__challenge", "selection__card_option__mission_template_version")
-        )
+        return await self._card_set_model.filter(
+            user_id=user_id, service_date__gte=start, service_date__lte=end
+        ).prefetch_related("selection__challenge", "selection__card_option__mission_template_version")
 
     async def get_card_set_by_date(self, user_id, service_date: date) -> DailyCardSet | None:
         return (

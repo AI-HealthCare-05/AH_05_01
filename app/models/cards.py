@@ -26,9 +26,7 @@ class CardOption(models.Model):
 
     id = fields.UUIDField(primary_key=True, default=uuid.uuid4)
     card_set = fields.ForeignKeyField("models.DailyCardSet", related_name="options")
-    mission_template_version = fields.ForeignKeyField(
-        "models.MissionTemplateVersion", related_name="card_options"
-    )
+    mission_template_version = fields.ForeignKeyField("models.MissionTemplateVersion", related_name="card_options")
     option_index = fields.IntField()  # 1~3, 문서 §8: position → option_index로 개명
     created_at = fields.DatetimeField(auto_now_add=True)
 

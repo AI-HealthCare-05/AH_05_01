@@ -27,10 +27,7 @@ class PredictionRepository:
     async def get_latest_computed_by_submodel(self, user_id) -> dict[str, PredictionResult]:
         """서브모델별 "가장 최근 COMPUTED 결과"만. FAILED/INPUT_MISSING 등은 사용자 노출용 조회에서 제외."""
 
-        rows = (
-            await self._result_model.filter(user_id=user_id, status="COMPUTED")
-            .order_by("-computed_at")
-        )
+        rows = await self._result_model.filter(user_id=user_id, status="COMPUTED").order_by("-computed_at")
         latest: dict[str, PredictionResult] = {}
         for row in rows:
             if row.submodel_type not in latest:
@@ -42,9 +39,7 @@ class PredictionRepository:
     ) -> ApprovedModelVersion:
         from datetime import UTC, datetime
 
-        instance, _ = await self._approval_model.get_or_create(
-            submodel_type=submodel_type, model_version=model_version
-        )
+        instance, _ = await self._approval_model.get_or_create(submodel_type=submodel_type, model_version=model_version)
         instance.is_active = is_active
         instance.approved_at = datetime.now(UTC) if is_active else instance.approved_at
         instance.approved_by_user_id = str(approved_by_user_id)
