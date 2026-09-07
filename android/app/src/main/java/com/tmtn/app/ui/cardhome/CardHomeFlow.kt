@@ -77,6 +77,9 @@ fun CardHomeFlow(
     hasSensorPermissions: () -> Boolean,
     onStartSensorTracking: (challengeId: String, execType: String) -> Unit,
     onStopSensorTracking: () -> Unit,
+    // ⚠️ 2026-09-04 추가: 센서 측정 일시정지/재개 - TIMER형과 같은 일시정지 개념을 센서형에도 적용.
+    onPauseSensorTracking: () -> Unit = {},
+    onResumeSensorTracking: () -> Unit = {},
     onOpenSettings: () -> Unit,
     onImmersiveChange: (Boolean) -> Unit = {},
     // ⚠️ 온보딩 완료 직후 "오늘의 카드 보러 가기"를 누르면, 홈(마스코트 카드)에서
@@ -109,12 +112,31 @@ fun CardHomeFlow(
     // loadToday()를 불렀음. 두 호출의 네트워크 요청이 겹치면서 하나가 취소(Canceled)되고,
     // 그 취소가 "실패"로 처리되면서 카드 에러 화면으로 튕기던 버그. 바로 이전 단계가
     // LOADING(=최초 진입)이었을 때는 건너뛰도록 이전 단계를 같이 추적함.
+    //
+    // ⚠️ 2026-09-04 재발견: 위 수정으로도 "카드를 가져오지 못했습니다"가 계속 재현됐음.
+    // 진짜 원인은 이거였음 - state.loadToday()를 이 LaunchedEffect(state.step.value) 안에서
+    // "직접" 실행하고 있었는데, loadToday()의 첫 줄이 step.value = LOADING으로 바꿔버림.
+    // 그 순간 이 effect의 키(state.step.value)가 또 바뀌어서, Compose가 지금 막 네트워크
+    // 요청 중이던 이 코루틴 자체를 취소시켜버림. 그 취소(CancellationException)가
+    // loadToday() 안의 runCatching에 "진짜 실패"로 잡혀서 에러 화면으로 튕겼던 것.
+    // scope.launch{}로 별도 코루틴에 띄우면, 이 effect가 재시작되는 것과 무관하게
+    // 끝까지 실행됨 - 스스로 자기 자신을 취소시키는 구조를 끊어냄.
     var stepBeforeCurrent by remember { mutableStateOf(state.step.value) }
     LaunchedEffect(state.step.value) {
         val prev = stepBeforeCurrent
         stepBeforeCurrent = state.step.value
         if (state.step.value == CardHomeStep.HOME && prev != CardHomeStep.LOADING && prev != CardHomeStep.HOME) {
-            state.loadToday()
+            scope.launch { state.loadToday() }
+        }
+        // ⚠️ 2026-09-04 반영: REVEALED에 뒤로가기로 들어올 때 캐시된 카드 정보가 오래돼서
+        // (예: 미션 시작 이후 뒤로가기 했는데 "이 행동 시작하기"가 다시 보이는 등) 실제
+        // 상태와 화면이 어긋나는 문제가 반복됐음. 어디서 오든 REVEALED에 들어올 때마다
+        // 항상 서버에서 다시 받아오게 통일 - 동작을 추가할 때마다 캐시 갱신을 빠뜨릴
+        // 걱정이 없어짐. HOME과 같은 이유로 scope.launch{}에 태워서, loadToday()처럼
+        // step.value를 직접 바꾸지는 않지만 일관되게 이 effect 자체의 취소와 무관하게
+        // 끝까지 실행되도록 함.
+        if (state.step.value == CardHomeStep.REVEALED && prev != CardHomeStep.LOADING) {
+            scope.launch { state.refreshRevealedCard() }
         }
     }
 
@@ -205,7 +227,9 @@ fun CardHomeFlow(
                 }
             }
             CardHomeStep.SENSOR_INTRO -> SensorIntroScreen(state, scope, hasSensorPermissions, onStartSensorTracking)
-            CardHomeStep.SENSOR_MEASURING -> SensorMeasuringScreen(state, onStopSensorTracking)
+            CardHomeStep.SENSOR_MEASURING -> SensorMeasuringScreen(
+                state, scope, onStopSensorTracking, onPauseSensorTracking, onResumeSensorTracking,
+            )
             CardHomeStep.SENSOR_PERMISSION_FALLBACK -> SensorPermissionFallbackScreen(state, onOpenSettings)
             CardHomeStep.SENSOR_RESULT -> SensorResultScreen(state, scope)
         }

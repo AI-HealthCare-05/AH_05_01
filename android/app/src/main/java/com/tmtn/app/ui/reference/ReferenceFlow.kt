@@ -126,21 +126,37 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("$displayScore", style = TmtnType.display, color = colors.onSurface)
-                    Box(
-                        modifier = Modifier.background(colors.secondaryContainer, RoundedCornerShape(999.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                    ) {
-                        Text(scoreBandLabel(tuntunIndex) + " 구간", style = TmtnType.caption, color = colors.onSurface)
+                // ⚠️ 2026-09-06 QA(P1-11) 반영: 반영 영역이 4개 중 1개(생활습관)뿐인데도
+                // 종합 80점 · "양호 구간"을 그대로 크게 보여줬음 - 사용자는 "건강이 양호"로
+                // 오해함. 절반(2개) 미만이면 점수·구간 라벨 자체를 숨기고 안내 문구로 대체.
+                if (score.availableComponentCount < 2) {
+                    Text(
+                        "아직 계산할 수 없어요 · 키와 몸무게를 입력하면 시작합니다",
+                        style = TmtnType.body, color = colors.onSurfaceVariant,
+                    )
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("$displayScore", style = TmtnType.display, color = colors.onSurface)
+                        Box(
+                            modifier = Modifier.background(colors.secondaryContainer, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Text(scoreBandLabel(tuntunIndex) + " 구간", style = TmtnType.caption, color = colors.onSurface)
+                        }
+                    }
+                    ScoreGaugeBar(value = displayScore)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("관심", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                        Text("보통", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                        Text("양호", style = TmtnType.caption, color = colors.onSurfaceVariant)
                     }
                 }
-                ScoreGaugeBar(value = displayScore)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("관심", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                    Text("보통", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                    Text("양호", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                }
+                // ⚠️ 2026-09-06 QA(P1-11) 반영: 홈 카드엔 있는데 정작 점수를 크게 보여주는
+                // 이 상세 화면엔 안전 문구가 없었음(CLAUDE.md 안전 문구 규칙).
+                Text(
+                    "${score.activityWindowStart} ~ ${score.activityWindowEnd} · 비진단용 참고 정보",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
                 InfoRow("생활습관 기간", "${score.activityWindowStart} ~ ${score.activityWindowEnd}")
                 InfoRow("반영 영역", "${score.availableComponentCount}개 / 4개")

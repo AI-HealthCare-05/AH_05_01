@@ -1,6 +1,7 @@
 package com.tmtn.app.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
@@ -35,14 +37,19 @@ fun SessionExpiredScreen(onLogin: () -> Unit, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth().height(200.dp).background(colors.surface, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    "일러스트 자리 · 다시 로그인 (에셋 준비 중)",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+                // ⚠️ 2026-09-06 반영: H07(세션 만료) 배치표 그대로 - "문 앞에서 기다리는" beaver_waiting.
+                Image(
+                    painter = painterResource(com.tmtn.app.R.drawable.beaver_waiting),
+                    contentDescription = "문 앞에서 기다리는 비버",
+                    modifier = Modifier.height(200.dp),
                 )
             }
             Text("다시 로그인해 주세요", style = TmtnType.title, color = colors.onSurface)
             Text(
-                "보안을 위해 일정 기간이 지나면 로그인이 풀립니다. 기록은 그대로 남아 있습니다.",
+                // ⚠️ 2026-09-06 QA(P2) 반영: "기록은 그대로 남아있다"를 여기서 한 번,
+                // 아래 강조 배지에서 또 한 번("기록은 모두 저장돼 있습니다") 말하고 있었음 -
+                // 여기서는 왜 로그인이 풀렸는지만 설명하고, 기록 보존 안내는 배지 하나로 통일.
+                "보안을 위해 일정 기간이 지나면 로그인이 풀립니다.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
         }

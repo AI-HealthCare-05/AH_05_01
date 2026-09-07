@@ -72,6 +72,47 @@ class MissionSensorService : Service() {
                 }
             }
 
+            // ⚠️ 2026-09-04 추가: 센서 측정 "일시정지" - 자가타이머형과 같은 개념. 지금 돌고
+            // 있는 exec_type의 매니저만 멈춤(다른 매니저는 안 건드림). reset()은 안 부르므로
+            // 그동안 쌓인 값은 그대로 유지되고, 새로 움직이기 전까지만 안 늘어남.
+            ACTION_PAUSE_TRACKING -> {
+                when (CurrentChallengeHolder.execType) {
+                    "SENSOR_RUNNING_DISTANCE", "SENSOR_RUNNING_DURATION" -> {
+                        runningManager.stop(); runningCadenceManager.stop()
+                        SensorDataHolder.setRunningActive(false)
+                    }
+                    "SENSOR_WALKING_DURATION" -> {
+                        walkingCadenceManager.stop()
+                        SensorDataHolder.setWalkingActive(false)
+                    }
+                    "SENSOR_FLOORS_CLIMBED" -> stairClimbManager.stop()
+                    "SENSOR_STEPS" -> stepCounterManager.stop()
+                }
+                SensorDataHolder.setSensorPaused(true)
+            }
+
+            // ⚠️ 2026-09-04 추가: 센서 측정 "이어서 측정". start()만 다시 부르고 reset()은
+            // 안 불러서, 일시정지 전까지 쌓인 값에 이어서 계속 잼.
+            ACTION_RESUME_TRACKING -> {
+                when (CurrentChallengeHolder.execType) {
+                    "SENSOR_RUNNING_DISTANCE" -> {
+                        runningManager.start()
+                        SensorDataHolder.setRunningActive(true)
+                    }
+                    "SENSOR_RUNNING_DURATION" -> {
+                        runningCadenceManager.start()
+                        SensorDataHolder.setRunningActive(true)
+                    }
+                    "SENSOR_WALKING_DURATION" -> {
+                        walkingCadenceManager.start()
+                        SensorDataHolder.setWalkingActive(true)
+                    }
+                    "SENSOR_FLOORS_CLIMBED" -> stairClimbManager.start()
+                    "SENSOR_STEPS" -> stepCounterManager.start()
+                }
+                SensorDataHolder.setSensorPaused(false)
+            }
+
             // Figma C09~C18: "측정 끝내기" 화면 버튼 + C15(백그라운드 알림)의 "끝내기" 액션이
             // 공통으로 이걸 씀 — 지금 CurrentChallengeHolder에 어떤 exec_type이 돌고 있는지
             // 보고 그것만 정확히 멈춤 (다른 매니저는 안 건드림).
@@ -388,6 +429,8 @@ class MissionSensorService : Service() {
     companion object {
         const val ACTION_START_TRACKING_CHALLENGE = "com.tmtn.app.ACTION_START_TRACKING_CHALLENGE"
         const val ACTION_STOP_TRACKING = "com.tmtn.app.ACTION_STOP_TRACKING"
+        const val ACTION_PAUSE_TRACKING = "com.tmtn.app.ACTION_PAUSE_TRACKING"
+        const val ACTION_RESUME_TRACKING = "com.tmtn.app.ACTION_RESUME_TRACKING"
         const val EXTRA_CHALLENGE_ID = "EXTRA_CHALLENGE_ID"
         const val EXTRA_EXEC_TYPE = "EXTRA_EXEC_TYPE"
 

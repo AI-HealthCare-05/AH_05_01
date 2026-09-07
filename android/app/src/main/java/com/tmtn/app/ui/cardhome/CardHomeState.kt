@@ -113,21 +113,27 @@ class CardHomeState {
     /** 완료 관련 함수들이 직접 COMPLETED로 안 가고 항상 이걸 거침 - 단계가 올랐으면
      * G07(STAGE_UP)을 먼저 보여주고, 아니면 그대로 COMPLETED로. */
     private suspend fun goToCompletedOrCelebrate() {
+        // ⚠️ 2026-09-06 QA(P1-4) 반영: "한 줄 남기기"(또는 건너뛰기) 이후 REVEALED로
+        // 보냈는데, 그 화면엔 축하·재료 획득·연속 기록 표시가 없어서 "완료했는데 아무
+        // 일도 안 일어난다"는 지적을 받음. 그 정보는 이미 홈 화면이 정확하게 보여주고
+        // 있으니(연속 기록·최근 7일·재료·댐 진행 전부 정상 동작 확인됨), 회고를 마치면
+        // 곧바로 홈으로 보내서 그 축하를 사용자가 직접 나가서 찾지 않아도 되게 함.
+        revealedCard.value = revealedCard.value?.copy(state = "COMPLETED")
         val pending = runCatching { ApiClient.cardHomeApi.getStageUpPending() }
             .getOrNull()?.let { if (it.isSuccessful) it.body() else null }
         if (pending != null) {
             stageUpPending.value = pending
             step.value = CardHomeStep.STAGE_UP
         } else {
-            step.value = CardHomeStep.COMPLETED
+            loadToday()
         }
     }
 
-    // G07: "자란 댐 보러 가기"/"닫기" 둘 다 - 봤다고 표시하고 완료 화면으로
+    // G07: "자란 댐 보러 가기"/"닫기" 둘 다 - 봤다고 표시하고 홈으로(P1-4와 같은 이유)
     suspend fun acknowledgeStageUp() {
         runCatching { ApiClient.cardHomeApi.markStageUpSeen() }
         stageUpPending.value = null
-        step.value = CardHomeStep.COMPLETED
+        loadToday()
     }
 
     suspend fun loadToday() {
@@ -210,7 +216,9 @@ class CardHomeState {
     // ACTIVE인 챌린지를 또 시작시키려다 409로 튕기는 게 ②(오류)의 원인이었음.
     fun stepForRevealedCard(card: CardRevealResponse): CardHomeStep {
         val step = when {
-            card.state == "COMPLETED" || card.state == "SKIPPED" -> CardHomeStep.COMPLETED
+            // ⚠️ 2026-09-04 반영: COMPLETED/SKIPPED을 별도 완료 화면(CardHomeStep.COMPLETED)
+            // 대신 카드 화면(REVEALED)으로 통일 - 완료/쉬어감 정보는 그 화면 하단에 표시됨.
+            card.state == "COMPLETED" || card.state == "SKIPPED" -> CardHomeStep.REVEALED
             card.exec_type == "CHECK" -> CardHomeStep.CHALLENGE_CHECK
             card.exec_type == "TIMER" -> when (card.state) {
                 "ACTIVE" -> CardHomeStep.CHALLENGE_TIMER_RUNNING
@@ -252,11 +260,11 @@ class CardHomeState {
             response.body()!!
         }.onSuccess { card ->
             revealedCard.value = card
-            step.value = if (card.state == "COMPLETED" || card.state == "SKIPPED") {
-                CardHomeStep.COMPLETED
-            } else {
-                CardHomeStep.REVEALED
-            }
+            // ⚠️ 2026-09-04 재수정: COMPLETED도 SKIPPED와 마찬가지로 "다시 보기"에서는
+            // 별도 축하 화면(CompletedScreen) 대신 카드 화면(REVEALED)으로 통일 - 완료/쉬어감
+            // 정보는 그 화면 하단에 같이 보여줌(RevealScreen.kt 참고). 방금 막 완료했을 때
+            // 뜨는 축하 화면은 goToCompletedOrCelebrate()가 따로 처리하므로 이 함수와는 무관.
+            step.value = CardHomeStep.REVEALED
         }.onFailure { e ->
             errorMessage.value = e.message ?: "미션 정보를 가져오지 못했어요."
         }
@@ -281,6 +289,50 @@ class CardHomeState {
             errorMessage.value = e.message ?: "미션 정보를 가져오지 못했어요."
         }
         isLoading.value = false
+    }
+
+    // ⚠️ 2026-09-04 반영: REVEALED에 뒤로가기로 들어올 때 캐시된(오래된) 카드 정보를
+    // 그대로 보여줘서, 예를 들어 미션 시작 이후 뒤로가기 했는데 "이 행동 시작하기"가
+    // 다시 활성화된 것처럼 보이는 등의 문제가 반복적으로 생겼음. startTimer()/pauseTimer()
+    // 처럼 동작마다 캐시를 손으로 갱신해두는 방식은 새 동작을 추가할 때마다 빠뜨리기
+    // 쉬움 - 그 대신 REVEALED에 들어올 때마다 항상 서버에서 다시 받아오는 쪽으로 통일.
+    // step은 안 바꾸고 카드 내용만 새로 고침(stepForRevealedCard()로 다른 화면에 보내지
+    // 않음) - "여기서는 카드 화면 자체를 보여주는 게 목적"이라 refreshAndEnterInProgressMission()과는
+    // 다름.
+    suspend fun refreshRevealedCard() {
+        val challengeId = revealedCard.value?.challenge_id ?: return
+        runCatching {
+            val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
+            if (!response.isSuccessful) error(parseErrorMessage(response))
+            response.body()!!
+        }.onSuccess { card ->
+            revealedCard.value = card
+        }.onFailure { e ->
+            errorMessage.value = e.message ?: "미션 정보를 가져오지 못했어요."
+        }
+    }
+
+    // ⚠️ 2026-09-06 QA(P0-1) 반영: 타이머가 Compose 화면이 떠 있는 동안에만 로컬로
+    // 초 단위 카운트를 세고 있어서, 앱이 백그라운드로 가면(다른 앱 전환, 화면 끔 등)
+    // 그 사이 실제로 흐른 시간이 전혀 반영이 안 됨 - 심하면 Activity가 재생성되면서
+    // 카운트가 훨씬 작은 값으로 "되감기"는 것처럼 보이기도 함. 근본적으로는 SENSOR처럼
+    // 포그라운드 서비스로 옮겨야 하지만(더 큰 작업), 그 전까지는 화면이 다시 보일
+    // 때마다(Activity onResume) 서버가 계산한 실제 경과 시간(elapsed_seconds, 서버가
+    // started_at 기준으로 정확히 계산해줌)으로 무조건 재동기화해서 "다시 열면 이어서
+    // 진행합니다"라는 화면 문구가 실제로 사실이 되게 함.
+    suspend fun syncTimerElapsedFromServer() {
+        val challengeId = revealedCard.value?.challenge_id ?: return
+        runCatching {
+            val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
+            if (!response.isSuccessful) error(parseErrorMessage(response))
+            response.body()!!
+        }.onSuccess { card ->
+            revealedCard.value = card
+            timerElapsedSeconds.value = card.elapsed_seconds
+            timerIsPaused.value = card.state == "PAUSED"
+        }
+        // 실패하면 조용히 무시 - 로컬 값 그대로 유지(백그라운드 복귀 시점의 부가 동기화라
+        // 실패했다고 화면에 에러를 띄우면 오히려 방해됨. 다음 기회에 다시 시도됨).
     }
 
     suspend fun loadCompanion() {
@@ -347,7 +399,11 @@ class CardHomeState {
     }
 
     // B03 -> B04: 카드 한 장을 "가운데로" 고름 (아직 서버에 확정 안 함)
+    // ⚠️ 2026-09-06 반영: 카드를 하나 고른 뒤에 다른 카드를 눌러도 선택이 그냥 바뀌던
+    // 버그(혁수님 할일 문서 2-1과 같은 지적) - 한 장을 고르면 "다시 고르기"를 눌러
+    // pickedIndex를 비우기 전까지는 다른 카드를 눌러도 무시되게 함.
     fun pickCard(index: Int) {
+        if (pickedIndex.value != null) return
         pickedIndex.value = index
     }
 
@@ -410,10 +466,13 @@ class CardHomeState {
         // 진입점에서도 이 함수를 공유해서 부르므로 여기서도 한 번 더 막아둠. 이미 완료/중단된
         // 미션인데 "쉬어가기"까지 확정되면 이번 주 쉼 횟수만 잘못 깎여나감(완료+쉼이 동시에
         // 찍히는 모순).
-        val finished = revealedCard.value?.state == "COMPLETED" ||
-            revealedCard.value?.state == "SKIPPED" ||
-            todayChallengeState.value == "COMPLETED" ||
-            todayChallengeState.value == "SKIPPED"
+        //
+        // ⚠️ 2026-09-06 반영: revealedCard.value?.state도 같이 확인했었는데, 이 값은
+        // loadToday()가 새로고침해도 안 지워지는 값이라 어제(또는 이전 날) 완료했던 카드
+        // 정보가 그대로 남아있음. "테스트용 다음 날로"로 날짜를 넘긴 뒤 "오늘은 쉬어가기"를
+        // 누르면, 새 날짜인데도 어제 완료 기록 때문에 여기서 조용히 막혀버렸음. 항상 최신으로
+        // 갱신되는 todayChallengeState만 신뢰하도록 정리.
+        val finished = todayChallengeState.value == "COMPLETED" || todayChallengeState.value == "SKIPPED"
         if (finished) return
 
         loadStreak()
@@ -538,8 +597,14 @@ class CardHomeState {
             // 원래 타이머 화면에 들어간 적도 없는데 실패하면 갑자기 타이머가 도는 화면으로
             // 튕겨서, "완료하기 눌렀는데 왜 타이머가 시작되냐"는 혼란 + 그 화면에서 다시
             // 시도해도 계속 실패하는 문제로 이어졌음. exec_type에 맞는 원래 화면으로 되돌림.
-            step.value = when (revealedCard.value?.exec_type) {
-                "CHECK" -> CardHomeStep.CHALLENGE_CHECK_CONFIRM
+            //
+            // ⚠️ 2026-09-04 추가 반영: SENSOR형(걷기/뛰기/계단)도 여기로 빠지면 무조건
+            // CHALLENGE_TIMER_RUNNING으로 갔었음 - 거리(m) 목표를 *60 해서 완전히 엉뚱한
+            // "시간" 목표(예: 300m -> 18000초=5시간)로 된 타이머가 도는 화면이 뜨는 버그였음.
+            // exec_type이 SENSOR_*면 SENSOR_MEASURING으로 돌려보냄.
+            step.value = when {
+                revealedCard.value?.exec_type == "CHECK" -> CardHomeStep.CHALLENGE_CHECK_CONFIRM
+                revealedCard.value?.exec_type?.startsWith("SENSOR_") == true -> CardHomeStep.SENSOR_MEASURING
                 else -> CardHomeStep.CHALLENGE_TIMER_RUNNING
             }
         }

@@ -1,6 +1,7 @@
 package com.tmtn.app.ui.onboarding
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -107,9 +109,11 @@ fun A02StartScreen(state: OnboardingState) {
                 .padding(16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                "마스코트 · 전신 비버\n(이미지 미확정)",
-                style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+            // ⚠️ 2026-09-06 반영: A02(시작 · 로그인·가입) 배치표 그대로 - "첫인사" beaver_standing.
+            Image(
+                painter = painterResource(com.tmtn.app.R.drawable.beaver_standing),
+                contentDescription = "인사하는 비버",
+                modifier = Modifier.size(148.dp),
             )
         }
 
@@ -170,6 +174,9 @@ fun A05LoginScreen(state: OnboardingState, scope: CoroutineScope, onLoginSuccess
             TmtnPrimaryButton(
                 text = "로그인",
                 onClick = { scope.launch { state.login(onLoginSuccess) } },
+                // ⚠️ 2026-09-06 QA(P1-8) 반영: 이메일·비밀번호 둘 다 비운 채로도 그대로
+                // 서버에 전송돼서 "요청이 실패했어요 (404)" 같은 원인 불명 에러로 이어졌음.
+                enabled = email.isNotBlank() && password.isNotBlank(),
             )
 
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {

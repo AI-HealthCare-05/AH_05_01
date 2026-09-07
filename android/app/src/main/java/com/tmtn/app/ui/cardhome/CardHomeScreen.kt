@@ -4,6 +4,7 @@ import com.tmtn.app.ui.common.MockBadge
 import com.tmtn.app.ui.common.toKoreanDateLabel
 import java.time.LocalDate
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,12 +12,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
@@ -54,7 +58,11 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope) {
             Text("틈튼", style = TmtnType.title, color = colors.onSurface)
             Text(
                 "알림", style = TmtnType.label, color = colors.onSurfaceVariant,
-                modifier = Modifier.clickable { state.step.value = CardHomeStep.NOTIFICATION_INBOX },
+                // ⚠️ 2026-09-06 QA(접근성) 반영: 패딩이 아예 없어서 터치 영역이 약 20dp였음.
+                modifier = Modifier
+                    .clickable { state.step.value = CardHomeStep.NOTIFICATION_INBOX }
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .wrapContentSize(Alignment.Center),
             )
         }
         Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
@@ -111,21 +119,30 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
             modifier = Modifier.fillMaxWidth().height(88.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                when {
-                    isCompleted -> "일러스트 자리 · 뿌듯한 비버"
-                    // ⚠️ 2026-09-03 리뷰 반영: SKIPPED(중단)를 REST(쉼)랑 같은 "쉬는 비버"로
-                    // 보여주고 있었는데, 서버 기준으로 완전히 다른 상태임(아래 문구 수정 참고).
-                    // 그림도 "쉬는" 포즈 대신 다른 포즈로 바꿔야 함 - 지금은 전용 에셋이 없어서
-                    // 자리 표시 문구만 구분해둠(에셋 준비되면 교체).
-                    isSkipped -> "일러스트 자리 · 카드를 내려놓은 비버"
-                    // ⚠️ 카드를 실제로 골랐으면(=진짜 뭔가 하기로 함) 그게 "쉼" 표시보다
-                    // 우선함. "쉼"은 아직 아무것도 안 골랐을 때만 보여주는 기본 상태.
-                    isSelected -> "일러스트 자리 · 응원하는 비버"
-                    isRestDay -> "일러스트 자리 · 쉬는 비버"
-                    else -> "일러스트 자리 · 카드를 든 비버"
+            // ⚠️ 2026-09-06 반영: 홍주님이 전달한 비버 그림 10종을 실제로 붙임(문서
+            // ASSETS_배치_전달서_2026-09-06.md 4장 참고). "완료"에 정확히 맞는 전용 포즈는
+            // 없어서, 뿌듯함과 가장 가까운 응원 포즈(cheer)를 재사용함 - 선택됨 상태와
+            // 그림이 같아지지만, 지금 있는 자산 안에서는 이게 제일 자연스러움.
+            Image(
+                painter = painterResource(
+                    when {
+                        isCompleted -> com.tmtn.app.R.drawable.beaver_cheer
+                        isSkipped -> com.tmtn.app.R.drawable.beaver_empty
+                        isSelected -> com.tmtn.app.R.drawable.beaver_cheer
+                        isRestDay -> com.tmtn.app.R.drawable.beaver_rest
+                        else -> com.tmtn.app.R.drawable.beaver_card
+                    },
+                ),
+                // ⚠️ 2026-09-06 QA(접근성) 반영: contentDescription이 null이라 TalkBack
+                // 사용자에게 이 화면 상태를 알려주는 그림 자체가 안 읽혔음.
+                contentDescription = when {
+                    isCompleted -> "오늘 미션을 완료한 비버"
+                    isSkipped -> "미션을 중단한 비버"
+                    isSelected -> "미션을 응원하는 비버"
+                    isRestDay -> "쉬고 있는 비버"
+                    else -> "카드를 든 비버"
                 },
-                style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+                modifier = Modifier.height(88.dp),
             )
         }
 
@@ -145,12 +162,14 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
         }
 
         Text(
+            // ⚠️ 2026-09-06 QA(P2) 반영: isSelected/else만 반말이고 나머지는 존댓말이라
+            // 한 화면 안에서 말투가 섞여 보였음 - 존댓말로 통일.
             when {
                 isCompleted -> "오늘 몫은 다 했어요. 잘했어요!"
                 isSkipped -> "오늘 카드는 여기서 멈췄어요."
-                isSelected -> "오늘 고른 미션이 기다리고 있어."
+                isSelected -> "오늘 고른 미션이 기다리고 있어요."
                 isRestDay -> "오늘은 쉬어가는 날이에요."
-                else -> "안녕! 오늘 카드 세 장 가져왔어."
+                else -> "안녕하세요! 오늘 카드 세 장 가져왔어요."
             },
             style = TmtnType.bodyLarge, color = colors.onSurface, textAlign = TextAlign.Center,
         )
@@ -186,10 +205,16 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
         } else if (isSkipped) {
             // 별다른 캡션 없음 - 이미 위 상태 문구로 충분히 설명됨.
         } else if (!isRestDay || isSelected) {
+            // ⚠️ 2026-09-06 반영: 캡션 텍스트 한 줄만 클릭 영역이라 좁아서 정확히 그
+            // 위를 안 누르면 반응이 없는 것처럼 느껴질 수 있었음. 터치 영역을 넉넉하게 넓힘.
+            // ⚠️ 재수정: fillMaxWidth()만 넣고 textAlign을 안 줘서 글자가 왼쪽으로 밀려
+            // 보이던 버그 - 원래처럼 가운데 정렬되게 함.
             Text(
                 "오늘은 쉬어가기", style = TmtnType.caption, color = colors.onSurfaceVariant,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .padding(vertical = 8.dp)
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp)
                     .clickable { scope.launch { state.openRestDaySheet() } },
             )
         } else {

@@ -23,6 +23,12 @@ object SensorDataHolder {
     private val _isServiceRunning = MutableStateFlow(false)
     val isServiceRunning: StateFlow<Boolean> = _isServiceRunning
 
+    // ⚠️ 2026-09-04 추가: 센서 측정 "일시정지" - 자가타이머(TIMER)형의 일시정지와 같은
+    // 개념을 센서형에도 적용. true면 실제 센서 리스너를 꺼둔 상태라, 그동안은
+    // 걸음/계단/거리/시간 등 어떤 값도 안 늘어남(측정도 "일시정지"됨).
+    private val _isSensorPaused = MutableStateFlow(false)
+    val isSensorPaused: StateFlow<Boolean> = _isSensorPaused
+
     // ── 제자리걸음(카운트) — 사용자가 시작/종료 ──
     private val _stepInPlaceCount = MutableStateFlow(0)
     val stepInPlaceCount: StateFlow<Int> = _stepInPlaceCount
@@ -73,6 +79,7 @@ object SensorDataHolder {
 
     fun updateWalkingSeconds(value: Int) { _walkingSeconds.value = value }
     fun setWalkingActive(active: Boolean) { _isWalkingActive.value = active }
+    fun setSensorPaused(paused: Boolean) { _isSensorPaused.value = paused }
 
     /** 걸음/계단(항상 측정되는 값들)을 초기화. 서비스를 완전히 중지할 때 사용. */
     fun resetAll() {

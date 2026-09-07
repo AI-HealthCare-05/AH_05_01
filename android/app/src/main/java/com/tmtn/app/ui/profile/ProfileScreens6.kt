@@ -78,6 +78,9 @@ fun PrivacyDataScreen(
     if (showDeleteRecordsDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteRecordsDialog = false },
+            // ⚠️ 2026-09-06 QA(P2) 반영: containerColor를 안 줘서 Material3 기본 배경색
+            // (연보라)이 그대로 노출됐음 - 앱 팔레트(베이지)에 없는 색.
+            containerColor = colors.surface,
             title = { Text("기록을 모두 지울까요?", style = TmtnType.title, color = colors.onSurface) },
             text = {
                 Text(

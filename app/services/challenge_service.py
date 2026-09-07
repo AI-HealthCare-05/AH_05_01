@@ -22,12 +22,35 @@ def _effective_duration_seconds(challenge) -> int:
     """⚠️ 2026-09-01 수정: 예전엔 accumulated_duration_seconds 컬럼값만 봤는데, 이 값은
     "일시정지했던 시점까지"만 반영되고 지금 ACTIVE로 흐르고 있는 구간은 안 들어있었음
     (모델 docstring엔 원래 이렇게 계산하기로 되어 있었는데 실제 코드가 안 따라가고 있었음).
-    ACTIVE 상태면 "지금까지 쌓인 것 + (지금 - started_at)"까지 더해서 실제 경과 시간을 계산."""
+    ACTIVE 상태면 "지금까지 쌓인 것 + (지금 - started_at)"까지 더해서 실제 경과 시간을 계산.
+
+    ⚠️ 2026-09-06 반영(naive/aware 방어): started_at을 저장할 때는 datetime.now(UTC)
+    (타임존 있음)를 쓰는데, challenges.started_at 필드 자체엔 타임존 관련 옵션이 없어서
+    DB가 naive를 돌려주거나 다른 타임존으로 잘못 라벨링해서 돌려줄 수 있음. 여기서 명시적으로
+    UTC로 맞춘 뒤에만 계산해서, DB가 뭘 돌려주든 항상 저장했던 실제 시각(UTC) 기준으로
+    일관되게 계산되게 함.
+
+    ⚠️ 2026-09-06 반영(목표치 상한): 시작해두고 뒤로가기만 한 채 오래 방치하면(서버엔
+    일시정지가 전달 안 됨) ACTIVE 상태가 며칠이고 유지되면서 경과 시간이 끝없이 커짐
+    (예: 9/4 새벽에 시작한 걸 9/6에 열어보니 45시간짜리로 나온 사례). "시작/이어하기 ~
+    일시정지/완료 전까지는 계속 측정 중이지만, 목표치에 도달하면 그 값에서 멈춘다"는
+    방향에 맞춰 target_duration_seconds가 있으면 그 값을 상한으로 고정 - 앱을 며칠 안
+    열어봐도 항상 목표치를 넘지 않는 값만 보이게 됨.
+    """
 
     base = challenge.accumulated_duration_seconds
     if challenge.state == ChallengeState.ACTIVE and challenge.started_at is not None:
+        started_at = challenge.started_at
+        if started_at.tzinfo is None:
+            # DB가 naive로 돌려준 경우 - 저장할 때 UTC로 만들어서 넣었으므로 그대로 UTC로 라벨링.
+            started_at = started_at.replace(tzinfo=UTC)
+        else:
+            # 이미 aware인데 다른 타임존(Asia/Seoul 등)으로 잘못 라벨링돼 있을 수 있으니 UTC로 정규화.
+            started_at = started_at.astimezone(UTC)
         now = datetime.now(UTC)
-        base += int((now - challenge.started_at).total_seconds())
+        base += int((now - started_at).total_seconds())
+    if challenge.target_duration_seconds is not None:
+        base = min(base, challenge.target_duration_seconds)
     return base
 
 

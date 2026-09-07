@@ -48,17 +48,15 @@ fun ReasonDetailScreen(state: CardHomeState, onBack: () -> Unit, onStartAction: 
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                // ⚠️ 2026-09-06 QA(레이아웃) 반영: 하단 탭바 높이(104dp)만큼 여백이 없어서
+                // "오늘은 하기 어려워요" 버튼이 탭바 뒤로 잘려 들어갔음.
+                .padding(horizontal = 20.dp, vertical = 16.dp).padding(bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("왜 이 카드를 골랐을까", style = TmtnType.label, color = colors.onSurface)
-            listOf(
-                "최근 7일 동안 유산소 기록이 다른 항목보다 적었어요.",
-                "지금 시간대에 완료한 기록이 가장 많았어요.",
-                "지난주에 비슷한 행동을 끝까지 마쳤어요.",
-            ).forEach { reason ->
-                Text("· $reason", style = TmtnType.body, color = colors.onSurface)
-            }
+            // ⚠️ 2026-09-06 QA(P1-3) 반영: "왜 이 카드를 골랐을까" 아래 3줄이 실제 추천
+            // 로직/API 없이 Figma 예시 문구를 그대로 보여주는 정적 텍스트였음 - 없는 근거를
+            // 있는 것처럼 말하는 셈이라 신뢰를 해침. 실제 추천 이유 API가 붙기 전까지는
+            // 이 섹션 자체를 빼고, 실제 데이터가 있는 "목표"/"완료 기준"만 보여줌.
 
             Text("목표", style = TmtnType.label, color = colors.onSurface)
             InfoCard(title = card?.title ?: "", caption = "${card?.target_value ?: ""}${card?.unit ?: ""}")
@@ -80,7 +78,8 @@ fun ReasonDetailScreen(state: CardHomeState, onBack: () -> Unit, onStartAction: 
                 )
                 Text("몸이 불편한 날은 건너뛰어도 괜찮습니다.", style = TmtnType.body, color = colors.onSurface)
             }
-            Text("추천 기준 v1.2 · 미션 규칙 v1.0", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            // ⚠️ 2026-09-06 QA(P2) 반영: "추천 기준 v1.2 · 미션 규칙 v1.0"이 사용자에게
+            // 뜻 없는 내부 버전 식별자라 그냥 제거함.
 
             if (!isCompleted) {
                 TmtnPrimaryButton(text = "이 행동 시작하기", onClick = onStartAction)

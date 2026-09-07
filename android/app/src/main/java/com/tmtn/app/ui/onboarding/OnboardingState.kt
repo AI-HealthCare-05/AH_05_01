@@ -36,7 +36,15 @@ enum class OnboardingStep {
  */
 // public으로 열어둠 — 카드/댐 화면(다른 패키지)에서도 같은 함수를 재사용하기 위함.
 fun parseErrorMessage(response: Response<*>): String {
-    val fallback = "요청이 실패했어요 (${response.code()})"
+    // ⚠️ 2026-09-06 QA(P1-8) 반영: 서버가 detail을 안 주는 경우(예: 라우팅 자체가 안 걸려서
+    // 404, 서버 내부 오류로 5xx) HTTP 상태 코드를 그대로("요청이 실패했어요 (404)") 보여줬음.
+    // 사용자는 자기가 뭘 잘못했는지, 기다려야 하는지 알 길이 없음 - 상황별 문장으로 바꾸고
+    // 실제 코드는 로그로만 남김(Log.w).
+    android.util.Log.w("ApiError", "HTTP ${response.code()} ${response.message()}")
+    val fallback = when (response.code()) {
+        in 400..499 -> "요청을 처리할 수 없었어요. 입력한 내용을 다시 확인해 주세요."
+        else -> "서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요."
+    }
     val bodyText = response.errorBody()?.string()
     if (bodyText.isNullOrBlank()) return fallback
 
@@ -80,10 +88,13 @@ class OnboardingState {
     var devOnlyCode = mutableStateOf<String?>(null)
 
     // A06 - 개별 동의 항목 (Figma data-bind 이름 기준)
-    var agreeTermsOfService = mutableStateOf(true)
-    var agreePrivacyPolicy = mutableStateOf(true)
-    var agreeAgeOver14 = mutableStateOf(true)
-    var agreeHealthDataUsage = mutableStateOf(true) // ⚠️ 2026-09-02 추가: 키·몸무게·운동습관 "수집·이용" 자체(필수) - 틈튼지수 "분석"과는 별개
+    // ⚠️ 법적 문제(2026-09-04 재확인): 필수 약관을 미리 체크된 상태로 시작하면 안 됨 -
+    // 미리 체크된 동의는 법적으로 동의로 인정되지 않음. 반드시 false로 시작해서 사용자가
+    // 직접 체크해야만 함(allMandatoryAgreed가 "다음" 버튼 활성화를 이미 막아줌).
+    var agreeTermsOfService = mutableStateOf(false)
+    var agreePrivacyPolicy = mutableStateOf(false)
+    var agreeAgeOver14 = mutableStateOf(false)
+    var agreeHealthDataUsage = mutableStateOf(false) // ⚠️ 2026-09-02 추가: 키·몸무게·운동습관 "수집·이용" 자체(필수) - 틈튼지수 "분석"과는 별개
     var agreeLocationUsage = mutableStateOf(false) // ⚠️ 2026-09-02 추가: 위치정보법 제15조 - 선택, GPS 안 쓰는 빌드면 이 줄 빼야 함
     var agreeHealthDataAnalysis = mutableStateOf(false) // "틈튼지수 산출을 위한 분석" - 선택
     var agreeMarketingPush = mutableStateOf(false)

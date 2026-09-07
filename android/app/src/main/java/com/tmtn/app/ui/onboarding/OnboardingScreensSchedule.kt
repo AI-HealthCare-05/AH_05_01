@@ -1,6 +1,7 @@
 package com.tmtn.app.ui.onboarding
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.theme.LocalTmtnColors
@@ -49,19 +51,21 @@ fun A09ScheduleIntroScreen(state: OnboardingState) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            // 마스코트 이미지 자리 (아직 에셋 없음, Figma 원본도 점선 슬롯)
+            // ⚠️ 2026-09-06 QA(P2) 반영: 여기만 "에셋 준비 중" 플레이스홀더가 화면 1/3을
+            // 차지했음(다른 화면엔 비버가 이미 들어가 있음) - "휴식" 포즈가 잠자는 시간
+            // 물어보는 이 화면 분위기와 제일 잘 맞아서 사용.
             Box(
                 modifier = Modifier
                     .height(240.dp)
                     .fillMaxWidth()
                     .background(colors.secondaryContainer, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.secondary, RoundedCornerShape(16.dp))
-                    .padding(16.dp),
+                    .border(1.dp, colors.secondary, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    "마스코트 이미지\n(에셋 준비 중)",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+                Image(
+                    painter = painterResource(com.tmtn.app.R.drawable.beaver_rest),
+                    contentDescription = "편안하게 쉬고 있는 비버",
+                    modifier = Modifier.height(208.dp),
                 )
             }
 
@@ -70,7 +74,10 @@ fun A09ScheduleIntroScreen(state: OnboardingState) {
                 color = colors.onSurface, textAlign = TextAlign.Center,
             )
             Text(
-                "그 시간에 맞춰서 알림을 보낼게. 건너뛰어도 바로 시작할 수 있어.",
+                // ⚠️ 2026-09-06 QA(P2) 반영: "나중에 하기"(우상단)/"건너뛰고 바로 시작하기"
+                // (하단) 버튼이 이미 명확한데, 본문에 "건너뛰어도 바로 시작할 수 있어"까지
+                // 또 설명해서 같은 화면에 건너뛰기 안내가 3번 나왔음 - 본문에서는 뺌.
+                "그 시간에 맞춰서 알림을 보낼게.",
                 style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
             )
 
@@ -108,7 +115,8 @@ fun A10ScheduleScreen(state: OnboardingState, scope: CoroutineScope) {
         ) {
             Text("몇 시에 자고 일어나?", style = TmtnType.headline, color = colors.onSurface)
             Text(
-                "이 시간에 맞춰 알림을 보낼게. 나중에 마이에서 고칠 수 있어.",
+                // ⚠️ 2026-09-06 QA(P2) 반영: "마이"는 CLAUDE.md가 금지한 표현 - "내 정보"가 맞음.
+                "이 시간에 맞춰 알림을 보낼게. 나중에 내 정보에서 고칠 수 있어.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
 

@@ -52,7 +52,10 @@ fun A03SignupScreen(state: OnboardingState, scope: CoroutineScope) {
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                // ⚠️ 2026-09-06 QA(레이아웃) 반영: imePadding()만으로는 마지막 필드
+                // 아래 "인증번호 받기" 버튼까지는 안 밀려 올라와서 키보드에 덮였음 -
+                // 하단에 여유 공간을 더 둬서 스크롤하면 버튼까지 확실히 보이게 함.
+                .padding(horizontal = 20.dp, vertical = 16.dp).padding(bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Text("이메일 인증을 마치면 바로 시작할 수 있습니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
@@ -83,7 +86,9 @@ fun A03SignupScreen(state: OnboardingState, scope: CoroutineScope) {
             Column {
                 TmtnStepBars(totalSteps = 3, currentStep = 1)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("1단계 / 3 · 계정 정보", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                // ⚠️ 2026-09-06 QA(P2) 반영: 온보딩 다른 화면들은 "1 / 2단계" 형식인데
+                // 여기만 "1단계 / 3"으로 순서가 달라서 표기 방식이 안 맞았음 - 형식 통일.
+                Text("1 / 3단계 · 계정 정보", style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
         }
     }

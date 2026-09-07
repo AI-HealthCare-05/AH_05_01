@@ -151,7 +151,14 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
             Text("여기 적은 값은 계정에만 저장되고 외부 제공에 쓰지 않습니다.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             Spacer(modifier = Modifier.height(8.dp))
-            TmtnPrimaryButton(text = "다음", onClick = { scope.launch { state.submitProfile() } })
+            // ⚠️ 2026-09-06 QA(P0-2) 반영: enabled 조건이 아예 없어서 키·몸무게를 비운
+            // 채로도 "다음"이 그대로 넘어갔음(허리둘레·틈튼지수 모델 입력이라 뒤에서
+            // "계산 안 됨"으로 이어짐 - P1-11). 최소한 값이 채워졌을 때만 진행되게 막음.
+            TmtnPrimaryButton(
+                text = "다음",
+                onClick = { scope.launch { state.submitProfile() } },
+                enabled = heightCm.isNotBlank() && weightKg.isNotBlank(),
+            )
         }
     }
 }

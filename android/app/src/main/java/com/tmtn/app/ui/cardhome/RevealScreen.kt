@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.network.model.CardRevealResponse
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
+import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
@@ -82,8 +83,13 @@ fun RevealScreen(
 ) {
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value ?: return
+    val isFinished = card.state == "COMPLETED" || card.state == "SKIPPED"
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // ⚠️ 2026-09-06 QA(레이아웃) 반영: 몰입 모드(하단 탭 숨김)인 건 의도된 것인데,
+        // 상단 앱바까지 없어서 화면에 보이는 나가는 길이 시스템 뒤로가기 제스처뿐이었음.
+        // 몰입 모드는 유지하되 상단 "←"만 추가 - previousStepFor(REVEALED)=HOME과 같은 동작.
+        TmtnTopBar(title = "오늘의 카드", onBack = { state.step.value = CardHomeStep.HOME })
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -102,18 +108,17 @@ fun RevealScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // ⚠️ "오늘 카드 다시 보기"로 완료/중단된 미션을 다시 열었을 때도 이 화면 자체는
-            // 그대로 재사용됨. isFinished를 두 버튼에 같이 써서: "이 행동 시작하기"는 완전히
-            // 숨기고("어차피 onStartAction이 다시 완료 화면으로 돌려보내니 눌러봤자 의미
-            // 없음), "오늘은 쉬어가기"도 숨김(이미 끝난 하루에 쉼까지 쓰면 이번 주 쉼 횟수가
-            // 잘못 깎임). "추천 이유 보기"만 남겨서 왜 이 카드가 나왔는지는 계속 볼 수 있게 함.
+            // 그대로 재사용됨. isFinished를 써서 "이 행동 시작하기"는 완전히 숨김("어차피
+            // onStartAction이 다시 완료 화면으로 돌려보내니 눌러봤자 의미 없음).
             //
             // ⚠️ 2026-09-04 반영: 진행 중(ACTIVE/PAUSED)인 미션 화면에서 뒤로가기로 여기
             // 돌아왔을 때 "이 행동 시작하기"가 그대로 보여서 마치 새로 시작하는 것처럼
             // 헷갈렸음. 이제 진행 중이면 "진행 중인 미션 확인"으로 문구만 바꿔서 보여줌 -
             // onStartAction은 이미 stepForRevealedCard()로 진행 상태에 맞는 화면(타이머
-            // 진행/일시정지 등)으로 정확히 보내주므로 그대로 재사용. "쉬어가기"는 진행
-            // 중인 미션 도중에 쓸 수 있는 게 아니라서 계속 숨김.
-            val isFinished = card.state == "COMPLETED" || card.state == "SKIPPED"
+            // 진행/일시정지 등)으로 정확히 보내주므로 그대로 재사용.
+            //
+            // ⚠️ 2026-09-04 멘토링 반영: "오늘은 쉬어가기"는 홈 화면에만 남기고 다른 화면
+            // 전부에서 없애기로 방향이 정해짐 - 이 화면(카드/B06)의 버튼도 제거.
             val isInProgress = card.state == "ACTIVE" || card.state == "PAUSED"
             if (!isFinished) {
                 TmtnPrimaryButton(
@@ -121,21 +126,15 @@ fun RevealScreen(
                     onClick = onStartAction,
                 )
             }
+            // ⚠️ 2026-09-06 반영: 완료/쉬어감 정보를 이 화면 하단에 보여주던 블록을
+            // 다시 없앰 - "카드만 보이면 된다"는 방향으로 정리됨. 별도 축하 화면
+            // (CompletedScreen)으로도 안 돌아가고, 그냥 이 카드 화면 자체만 보여줌.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
             ) {
                 TextButton(onClick = { state.step.value = CardHomeStep.REASON_DETAIL }) {
                     Text("추천 이유 보기", style = TmtnType.label, color = colors.onSurfaceVariant)
-                }
-                if (!isFinished && !isInProgress) {
-                    Text(
-                        "·", style = TmtnType.label, color = colors.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 12.dp),
-                    )
-                    TextButton(onClick = { scope.launch { state.openRestDaySheet() } }) {
-                        Text("오늘은 쉬어가기", style = TmtnType.label, color = colors.onSurface)
-                    }
                 }
             }
         }

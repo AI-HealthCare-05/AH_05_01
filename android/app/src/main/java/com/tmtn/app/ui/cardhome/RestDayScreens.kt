@@ -3,6 +3,7 @@ package com.tmtn.app.ui.cardhome
 import com.tmtn.app.ui.common.toKoreanDateLabel
 import java.time.LocalDate
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -142,10 +144,12 @@ fun RestDayDoneScreen(state: CardHomeState, scope: kotlinx.coroutines.CoroutineS
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Box(modifier = Modifier.fillMaxWidth().height(88.dp)) {
-                Text(
-                    "일러스트 자리 · 쉬는 비버", style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.Center),
+            Box(modifier = Modifier.fillMaxWidth().height(88.dp), contentAlignment = Alignment.Center) {
+                // ⚠️ 2026-09-06 반영: B16(홈 · 쉬어가기 확인) 배치표 그대로 - beaver_cheer.
+                Image(
+                    painter = painterResource(com.tmtn.app.R.drawable.beaver_cheer),
+                    contentDescription = "쉬어가기를 응원하는 비버",
+                    modifier = Modifier.height(88.dp),
                 )
             }
             Box(

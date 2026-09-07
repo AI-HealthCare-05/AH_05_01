@@ -167,6 +167,8 @@ class MainActivity : ComponentActivity() {
                                                 startTrackingChallenge(challengeId, execType)
                                             },
                                             onStopSensorTracking = { stopMissionService() },
+                                            onPauseSensorTracking = { pauseMissionService() },
+                                            onResumeSensorTracking = { resumeMissionService() },
                                             onOpenSettings = { openAppSettings() },
                                             onImmersiveChange = { isImmersive = it },
                                             startAtDeckPick = deckPickOnEntry,
@@ -273,6 +275,15 @@ class MainActivity : ComponentActivity() {
         val intent = Intent(this, MissionSensorService::class.java)
         stopService(intent)
         SensorDataHolder.resetAll()
+    }
+
+    // ⚠️ 2026-09-04 추가: 센서 측정 일시정지/재개 - sendServiceAction()을 그대로 재사용.
+    private fun pauseMissionService() {
+        sendServiceAction(MissionSensorService.ACTION_PAUSE_TRACKING)
+    }
+
+    private fun resumeMissionService() {
+        sendServiceAction(MissionSensorService.ACTION_RESUME_TRACKING)
     }
 
     private fun sendServiceAction(action: String) {

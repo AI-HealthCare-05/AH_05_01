@@ -251,6 +251,7 @@ fun LogoutConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     val colors = LocalTmtnColors.current
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = colors.surface,
         title = { Text("로그아웃할까요?", style = TmtnType.title, color = colors.onSurface) },
         text = {
             Text(

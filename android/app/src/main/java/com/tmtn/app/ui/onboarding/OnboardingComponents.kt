@@ -118,22 +118,23 @@ fun TmtnTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modif
 
 /** Figma btn--outlined: 테두리만 있는 버튼 (예: "이미 계정이 있어요"). */
 @Composable
-fun TmtnOutlinedButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun TmtnOutlinedButton(text: String, onClick: () -> Unit, enabled: Boolean = true, modifier: Modifier = Modifier) {
     val colors = LocalTmtnColors.current
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, colors.outline, RoundedCornerShape(14.dp))
-            .clickable { onClick() },
+            .border(1.dp, if (enabled) colors.outline else colors.disabledContainer, RoundedCornerShape(14.dp))
+            .clickable(enabled = enabled) { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = TmtnType.label, color = colors.primary)
+        Text(text, style = TmtnType.label, color = if (enabled) colors.primary else colors.onDisabled)
     }
 }
 
 /** Figma btn--tonal: 옅은 배경색(secondaryContainer)의 버튼 (예: "일시정지"). */
+/** Figma btn--tonal: 옅은 배경색의 버튼 (예: "일시정지"). */
 @Composable
 fun TmtnTonalButton(text: String, onClick: () -> Unit, enabled: Boolean = true, modifier: Modifier = Modifier) {
     val colors = LocalTmtnColors.current
@@ -142,7 +143,9 @@ fun TmtnTonalButton(text: String, onClick: () -> Unit, enabled: Boolean = true, 
             .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (enabled) colors.secondaryContainer else colors.disabledContainer)
+            // ⚠️ 2026-09-06 QA(P1-6) 반영: secondaryContainer가 주황 계열이라 "일시정지"
+            // 버튼이 주황 배경이었음 - "주황은 오늘에만" 규칙 위반. 무채색 계열로 교체.
+            .background(if (enabled) colors.outlineVariant else colors.disabledContainer)
             .clickable(enabled = enabled) { onClick() },
         contentAlignment = Alignment.Center,
     ) {
@@ -178,16 +181,31 @@ fun TmtnTextField(
     // 스크롤 가능한 Column(verticalScroll)이기만 하면 별도 설정 없이 여기 한 곳에서 전부 해결됨.
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    // ⚠️ 2026-09-06 QA(레이아웃) 반영: 비밀번호 필드 3곳 전부 표시/숨김 토글이 없었음.
+    // material-icons-extended 의존성이 없어서(눈 아이콘은 그 확장 세트 소속) 텍스트
+    // 토글("보기"/"숨기기")로 구현 - 시니어 사용자에게는 오히려 아이콘보다 명확함.
+    var showPassword by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
         supportingText = supportingText?.let { { Text(it, style = TmtnType.caption) } },
-        visualTransformation = if (isPassword) {
+        visualTransformation = if (isPassword && !showPassword) {
             androidx.compose.ui.text.input.PasswordVisualTransformation()
         } else {
             androidx.compose.ui.text.input.VisualTransformation.None
+        },
+        trailingIcon = if (isPassword) {
+            {
+                Text(
+                    if (showPassword) "숨기기" else "보기",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                    modifier = Modifier.clickable { showPassword = !showPassword }.padding(12.dp),
+                )
+            }
+        } else {
+            null
         },
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
             keyboardType = effectiveKeyboardType, imeAction = imeAction,

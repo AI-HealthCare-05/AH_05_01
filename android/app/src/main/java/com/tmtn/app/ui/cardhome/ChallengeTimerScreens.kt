@@ -8,19 +8,25 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.onboarding.TmtnTextButton
@@ -37,6 +43,13 @@ private fun formatMmSs(totalSeconds: Int): String {
     val s = totalSeconds % 60
     return "%d:%02d".format(m, s)
 }
+
+/** ⚠️ 2026-09-04 반영: "타이머형은 무조건 분 단위"라고 target_value * 60을 그대로 썼는데,
+ * CSV 200개 중 SELF_TIMER 42개 가운데 4개는 단위가 "초"였음(예: "주먹 쥐고 잠깐 버티기"
+ * 목표 3초) - 그 4개가 3초 목표인데 3분(180초)으로 계산되던 버그. unit 문자열을 실제로
+ * 보고 "초"면 그대로, 그 외(분 등)면 60을 곱함. */
+private fun targetSecondsFor(card: com.tmtn.app.network.model.CardRevealResponse): Int =
+    if (card.unit.contains("초")) card.target_value else card.target_value * 60
 
 /** Figma C01 · 체크형 챌린지 - 자가 확인 후 직접 "완료하기" 눌러야 기록됨. */
 @Composable
@@ -75,10 +88,15 @@ fun CheckChallengeScreen(state: CardHomeState, scope: CoroutineScope) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("완료 기준", style = TmtnType.label, color = colors.onSurfaceVariant)
+                // ⚠️ 2026-09-06 QA(P1-5) 반영: card.target_value/unit이 카드·추천 이유
+                // 화면엔 나오는데 정작 실행 화면(여기)에선 한 번도 안 쓰였음("5회" 목표가
+                // 실행 중엔 안 보임) - TIMER형이 이미 쓰는 "목표 N" 패턴을 그대로 재사용.
+                Text("목표 ${card.target_value}${card.unit}", style = TmtnType.body, color = colors.onSurface)
                 Text(card.guide_text, style = TmtnType.body, color = colors.onSurface)
-                Text("완료한 뒤 아래 버튼을 눌러 직접 확인해 주세요.", style = TmtnType.body, color = colors.onSurface)
             }
 
+            // ⚠️ 2026-09-06 QA(P2) 반영: 바로 위 박스의 "직접 확인해 주세요"(제거함)와
+            // 아래 문구가 같은 말을 두 번 하고 있었음 - 하나로 정리.
             Text(
                 "자동으로 완료되지 않습니다. 직접 확인해야 기록됩니다.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
@@ -92,7 +110,8 @@ fun CheckChallengeScreen(state: CardHomeState, scope: CoroutineScope) {
                 // 누르기 쉬웠음 - C01b(자가진단 확인) 화면을 하나 끼워서 한 번 더 확인하게 함.
                 onClick = { state.step.value = CardHomeStep.CHALLENGE_CHECK_CONFIRM },
             )
-            TmtnTextButton(text = "오늘은 쉬어가기", onClick = { scope.launch { state.openRestDaySheet() } })
+            // ⚠️ 2026-09-04 멘토링 반영: "오늘은 쉬어가기"는 홈 화면에만 남기고 다른 화면
+            // 전부에서 없애기로 방향이 정해짐 - 여기(CHECK형 미션 화면)도 제거.
         }
     }
 }
@@ -183,7 +202,9 @@ fun TimerStartScreen(state: CardHomeState, scope: CoroutineScope) {
                 )
                 Text("0:00", style = TmtnType.display, color = colors.onSurface)
                 Text("목표 ${card.target_value}${card.unit}", style = TmtnType.body, color = colors.onSurfaceVariant)
-                Box(modifier = Modifier.fillMaxWidth().height(10.dp).background(colors.outline, RoundedCornerShape(4.dp)))
+                // ⚠️ 2026-09-06 QA(P1-6) 반영: 진행 중 화면의 "빈 트랙" 배경과 똑같은 색이라
+                // 시작 전인데도 "이미 꽉 찬 것"처럼 보였음 - 더 옅은 색으로 구분되게 함.
+                Box(modifier = Modifier.fillMaxWidth().height(10.dp).background(colors.outlineVariant, RoundedCornerShape(4.dp)))
                 Text("0% · 시작하면 시간이 쌓여요", style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
@@ -204,7 +225,9 @@ fun TimerStartScreen(state: CardHomeState, scope: CoroutineScope) {
             }
 
             TmtnPrimaryButton(text = "시작하기", onClick = { scope.launch { state.startTimer() } })
-            TmtnTextButton(text = "오늘은 하기 어려워", onClick = { state.step.value = CardHomeStep.REVEALED })
+            // ⚠️ 2026-09-06 QA(P2) 반영: 같은 화면 안에서 "쌓여요"(반말)와 "기록됩니다"(존댓말)가
+            // 섞여있던 것 중 하나 - 존댓말로 통일.
+            TmtnTextButton(text = "오늘은 하기 어려워요", onClick = { state.step.value = CardHomeStep.REVEALED })
         }
     }
 }
@@ -214,10 +237,26 @@ fun TimerStartScreen(state: CardHomeState, scope: CoroutineScope) {
 fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value ?: return
-    val targetSeconds = card.target_value * 60 // 단위가 "분"인 타이머형 기준
+    val targetSeconds = targetSecondsFor(card)
     val elapsed = state.timerElapsedSeconds.value
     val progress = (elapsed.toFloat() / targetSeconds).coerceIn(0f, 1f)
     val remaining = (targetSeconds - elapsed).coerceAtLeast(0)
+
+    // ⚠️ 2026-09-06 QA(P0-1) 반영: 앱이 백그라운드로 갔다 돌아올 때(Activity onResume)
+    // 서버의 실제 경과 시간으로 다시 맞춤 - 화면이 안 보이던 동안 로컬 카운트가 멈춰있던
+    // 문제를 보정. Activity가 재생성되지 않고 그냥 pause/resume만 되는 흔한 경우(다른 앱
+    // 잠깐 봤다가 돌아오기)에 특히 중요함 - 그 경우는 REVEALED를 거치지 않아서 기존
+    // refreshRevealedCard() 자동 새로고침도 안 걸림.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch { state.syncTimerElapsedFromServer() }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(state.timerIsPaused.value) {
         // ⚠️ 2026-09-04 반영: 목표 시간을 다 채운 뒤에도 타이머가 계속 흘렀음(QA에서도
@@ -234,7 +273,9 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
             onBack = { state.step.value = CardHomeStep.REVEALED },
             trailing = {
                 TextButton(onClick = { state.showQuitDialog.value = true }) {
-                    Text("중단", style = TmtnType.label, color = colors.error)
+                    // ⚠️ 2026-09-06 QA(P1-6) 반영: 앱 팔레트에서 빨강은 error 전용인데,
+                    // "중단"은 실제 오류가 아니라 그냥 진행을 멈추는 액션이라 error색이 안 맞음.
+                    Text("중단", style = TmtnType.label, color = colors.onSurfaceVariant)
                 }
             },
         )
@@ -249,7 +290,9 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(colors.surface, RoundedCornerShape(16.dp))
-                    .border(3.dp, colors.secondary, RoundedCornerShape(16.dp))
+                    // ⚠️ 2026-09-06 QA(P1-6) 반영: 주황은 "오늘"에만 쓰는 색인데 이 카드
+                    // 테두리에도 쓰여서 규칙 위반이었음.
+                    .border(3.dp, colors.onSurface, RoundedCornerShape(16.dp))
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -268,8 +311,9 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
                 Box(modifier = Modifier.fillMaxWidth().height(10.dp)) {
                     Box(modifier = Modifier.fillMaxWidth().height(10.dp).background(colors.outline, RoundedCornerShape(4.dp)))
                     Box(
+                        // ⚠️ 2026-09-06 QA(P1-6) 반영: 진행바 채움도 주황이었음 - 무채색으로.
                         modifier = Modifier.fillMaxWidth(progress).height(10.dp)
-                            .background(colors.secondary, RoundedCornerShape(4.dp)),
+                            .background(colors.onSurface, RoundedCornerShape(4.dp)),
                     )
                 }
                 Text(
@@ -321,7 +365,7 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
 fun TimerPausedScreen(state: CardHomeState, scope: CoroutineScope) {
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value ?: return
-    val targetSeconds = card.target_value * 60
+    val targetSeconds = targetSecondsFor(card)
     val elapsed = state.timerElapsedSeconds.value
     val progressPercent = ((elapsed.toFloat() / targetSeconds) * 100).toInt()
 
@@ -396,7 +440,12 @@ fun ChallengeProcessingScreen(state: CardHomeState) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(formatMmSs(state.timerElapsedSeconds.value), style = TmtnType.display, color = colors.onSurface)
+            // ⚠️ 2026-09-04 반영: SENSOR형(걷기/뛰기/계단)도 완료 처리는 이 화면을 그대로
+            // 거치는데, 여기서 무조건 분:초 타이머를 보여줘서 "300m 뛰기" 같은 거리 미션에도
+            // 엉뚱한 시간이 표시되고 있었음. exec_type이 TIMER일 때만 시간을 보여줌.
+            if (card?.exec_type == "TIMER") {
+                Text(formatMmSs(state.timerElapsedSeconds.value), style = TmtnType.display, color = colors.onSurface)
+            }
             Text("목표를 모두 채웠어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
         }
         Text("기록을 저장하고 있어요…\n잠시만 기다려 주세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
@@ -409,6 +458,7 @@ private fun QuitDialog(state: CardHomeState, scope: CoroutineScope) {
     val colors = LocalTmtnColors.current
     AlertDialog(
         onDismissRequest = { state.showQuitDialog.value = false },
+        containerColor = colors.surface,
         title = { Text("오늘 미션을 그만둘까요?", style = TmtnType.bodyLarge, color = colors.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -427,13 +477,20 @@ private fun QuitDialog(state: CardHomeState, scope: CoroutineScope) {
         confirmButton = {
             Text(
                 "오늘은 그만두기", style = TmtnType.label, color = colors.error,
-                modifier = Modifier.clickable { scope.launch { state.quitChallenge() } }.padding(8.dp),
+                // ⚠️ 2026-09-06 QA(접근성) 반영: 터치 영역이 48dp 미만이었음 - 최소 영역 확보.
+                modifier = Modifier.clickable { scope.launch { state.quitChallenge() } }
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .wrapContentSize(Alignment.Center)
+                    .padding(8.dp),
             )
         },
         dismissButton = {
             Text(
                 "계속하기", style = TmtnType.label, color = colors.primary,
-                modifier = Modifier.clickable { state.showQuitDialog.value = false }.padding(8.dp),
+                modifier = Modifier.clickable { state.showQuitDialog.value = false }
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .wrapContentSize(Alignment.Center)
+                    .padding(8.dp),
             )
         },
     )
