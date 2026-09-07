@@ -115,7 +115,7 @@ fun CoachmarkOverlay(onSkip: () -> Unit, onFinish: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                if (coachStep == 1) "비버를 누르면 오늘의 카드가 열려." else "기록과 댐은 여기서 볼 수 있어.",
+                if (coachStep == 1) "비버를 누르면 오늘의 카드가 열려." else "기록과 틈튼 길은 여기서 볼 수 있어.",
                 style = TmtnType.bodyLarge, color = colors.onSurface,
             )
             Text("$coachStep / 2", style = TmtnType.caption, color = colors.onSurfaceVariant)

@@ -41,7 +41,7 @@ data class CompleteChallengeRequestBody(
     val occurred_at: String? = null
 )
 
-// ===== 댐(재료·단계) =====
+// ===== 틈튼 길(내부 API는 기존 재료·단계 계약 유지) =====
 data class MaterialItem(
     val element: String,
     val material_name: String,

@@ -236,9 +236,9 @@ private fun TmtnIndexSummaryCard() {
 }
 
 /**
- * Figma "최근 7일" + "댐" 목록 카드.
+ * Figma "최근 7일" + "틈튼 길" 목록 카드.
  * ⚠️ "최근 7일" 점 7개는 아직 전용 요약 API가 없어서 예시 표시만 함(기록 캘린더 주간 API로
- * 나중에 교체 가능). "댐"은 실제 GET /companion 데이터를 그대로 씀.
+ * 나중에 교체 가능). "틈튼 길"은 실제 GET /companion 데이터를 그대로 씀.
  */
 @Composable
 private fun RecentSummaryListCard(state: CardHomeState) {
@@ -272,21 +272,20 @@ private fun RecentSummaryListCard(state: CardHomeState) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text("댐", style = TmtnType.label, color = colors.onSurface)
-                val stage = state.companionStage.value
+                Text("틈튼 길", style = TmtnType.label, color = colors.onSurface)
                 val needed = state.companionMaterialsNeeded.value
                 val nextLabel = state.companionNextStageLabel.value
                 Text(
                     if (nextLabel != null && needed != null) {
-                        "$stage 단계 · $nextLabel · 다음까지 ${needed}개"
+                        "좋은 선택이 이어지고 있어요 · 다음 풍경까지 ${needed}번"
                     } else {
-                        "$stage 단계"
+                        "지금까지 만든 길을 천천히 돌아봐요"
                     },
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
             }
             // ⚠️ 이 행 오른쪽에 빈 공간이 있길래, 오행별 재료 개수를 여기 보여주기로 함.
-            // "댐" 탭(G01)에서 이미 쓰는 companion.materials를 홈에서도 재사용 - 새 API 없음.
+            // "틈튼 길" 탭(G01)에서 이미 쓰는 companion.materials를 홈에서도 재사용 - 새 API 없음.
             if (state.companionMaterials.value.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     MATERIAL_NAMES.keys.forEach { element ->

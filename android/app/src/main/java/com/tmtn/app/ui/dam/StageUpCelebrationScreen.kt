@@ -24,7 +24,7 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 
 /**
- * Figma G07 · 댐 단계 상승 · 축하.
+ * G07 · 새로운 길의 풍경 · 축하.
  * B07/C18(완료 화면) 뒤에 GET /companion/stage-up-pending으로 확인해서, 값이 있으면
  * 이 화면을 먼저 보여주고 POST /companion/stage-up-seen으로 봤다고 표시한 뒤 홈으로.
  */
@@ -44,17 +44,17 @@ fun StageUpCelebrationScreen(pending: StageUpPendingResponse, onGoToDam: () -> U
                     .background(colors.secondary, RoundedCornerShape(999.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp),
             ) {
-                Text("${pending.new_stage}단계 달성", style = TmtnType.label, color = colors.onSurface)
+                Text("새로운 풍경을 만났어요", style = TmtnType.label, color = colors.onSurface)
             }
 
-            Text("댐 몸통이\n이어졌어요", style = TmtnType.display, color = colors.onSurface)
+            Text("오늘도 건강한 길을\n한 칸 이어갔어요", style = TmtnType.display, color = colors.onSurface)
 
             Box(
                 modifier = Modifier.fillMaxWidth().height(132.dp).background(colors.surface, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    "이미지 미확정 · 댐 ${pending.new_stage}단계",
+                    "${pending.new_stage_label}\n발자국·꽃·가로등 일러스트 준비 중",
                     style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
                 )
             }
@@ -67,10 +67,8 @@ fun StageUpCelebrationScreen(pending: StageUpPendingResponse, onGoToDam: () -> U
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text("${pending.previous_stage}단계", style = TmtnType.bodyLarge, color = colors.onSurfaceVariant)
-                Text("→", style = TmtnType.title, color = colors.secondary)
                 Text(
-                    "${pending.new_stage}단계 · ${pending.new_stage_label}",
+                    pending.new_stage_label,
                     style = TmtnType.bodyLarge, color = colors.onSurface,
                 )
             }
@@ -82,7 +80,7 @@ fun StageUpCelebrationScreen(pending: StageUpPendingResponse, onGoToDam: () -> U
                     .padding(horizontal = 20.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("${pending.previous_stage}단계에서 쌓은 것", style = TmtnType.label, color = colors.onSurface)
+                Text("여기까지 이어온 행동", style = TmtnType.label, color = colors.onSurface)
                 Text(
                     "재료 ${pending.materials_gained_this_stage}개 · 실천 ${pending.days_practiced_this_stage}일 · " +
                         "쉼 ${pending.days_rested_this_stage}일",
@@ -96,7 +94,7 @@ fun StageUpCelebrationScreen(pending: StageUpPendingResponse, onGoToDam: () -> U
                 }
             }
 
-            TmtnPrimaryButton(text = "자란 댐 보러 가기", onClick = onGoToDam)
+            TmtnPrimaryButton(text = "이어진 길 보러 가기", onClick = onGoToDam)
             TmtnTextButton(text = "닫기", onClick = onClose)
         }
     }

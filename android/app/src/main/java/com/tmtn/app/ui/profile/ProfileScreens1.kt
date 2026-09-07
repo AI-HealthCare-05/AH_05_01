@@ -57,7 +57,7 @@ fun ProfileHomeScreen(state: ProfileState, onNavigate: (ProfileScreenKey) -> Uni
         ) {
             ProfileListItem("생활시간 · 알림", "아침 준비 · 점심 뒤 · 자기 전") { onNavigate(ProfileScreenKey.NOTIFICATION) }
             ProfileListItem("연동 · 권한", "걸음 수 허용 · 알림 허용") { onNavigate(ProfileScreenKey.PERMISSIONS) }
-            ProfileListItem("캐릭터 · 댐", "비버 · 댐") { onOpenDam() }
+            ProfileListItem("캐릭터 · 틈튼 길", "비버 · 오늘의 발자국") { onOpenDam() }
             ProfileListItem(
                 "몸 정보",
                 if (user?.birth_year != null) "생년월 ${user.birth_year}년 ${user.birth_month}월" else "입력 안 함",
@@ -183,7 +183,7 @@ fun AccountScreen(
             ) {
                 Text("계정 삭제", style = TmtnType.label, color = colors.onSurface)
                 Text(
-                    "삭제하면 기록·재료·댐이 모두 사라집니다. 되돌릴 수 없습니다.",
+                    "삭제하면 기록·재료·틈튼 길이 모두 사라집니다. 되돌릴 수 없습니다.",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
                 Row(

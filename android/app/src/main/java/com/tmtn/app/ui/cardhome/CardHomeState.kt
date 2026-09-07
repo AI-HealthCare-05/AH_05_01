@@ -102,7 +102,7 @@ class CardHomeState {
         }
     }
 
-    // G07: "자란 댐 보러 가기"/"닫기" 둘 다 - 봤다고 표시하고 완료 화면으로
+    // G07: "이어진 길 보러 가기"/"닫기" 둘 다 - 봤다고 표시하고 완료 화면으로
     suspend fun acknowledgeStageUp() {
         runCatching { ApiClient.cardHomeApi.markStageUpSeen() }
         stageUpPending.value = null

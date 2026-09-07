@@ -81,7 +81,7 @@ fun PrivacyDataScreen(
             title = { Text("기록을 모두 지울까요?", style = TmtnType.title, color = colors.onSurface) },
             text = {
                 Text(
-                    "행동 기록, 재료, 댐 진행이 사라집니다. 계정과 이메일은 그대로 둡니다. 되돌릴 수 없습니다.",
+                    "행동 기록, 재료, 틈튼 길이 사라집니다. 계정과 이메일은 그대로 둡니다. 되돌릴 수 없습니다.",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
             },

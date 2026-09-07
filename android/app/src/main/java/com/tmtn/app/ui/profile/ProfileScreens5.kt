@@ -178,7 +178,7 @@ fun AccountDeleteReauthScreen(state: ProfileState, scope: CoroutineScope, onBack
             ) {
                 Checkbox(checked = confirmed, onCheckedChange = { confirmed = it })
                 Text(
-                    "기록·재료·댐이 모두 사라지는 것을 확인했습니다.",
+                    "기록·재료·틈튼 길이 모두 사라지는 것을 확인했습니다.",
                     style = TmtnType.body, color = colors.onSurface, modifier = Modifier.weight(1f),
                 )
             }
@@ -235,7 +235,7 @@ fun AccountDeletedScreen(onGoHome: () -> Unit) {
                 .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
                 .padding(16.dp),
         ) {
-            Text("기록 · 재료 · 댐은 모두 지웠습니다. 삭제 상태 조회나 복구는 제공하지 않습니다.", style = TmtnType.body, color = colors.onSurface)
+            Text("기록 · 재료 · 틈튼 길은 모두 지웠습니다. 삭제 상태 조회나 복구는 제공하지 않습니다.", style = TmtnType.body, color = colors.onSurface)
         }
         Text(
             "법령이 정한 최소 보관 기간이 있는 항목은 그 기간이 끝난 뒤 지웁니다.",

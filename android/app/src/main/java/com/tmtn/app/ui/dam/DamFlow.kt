@@ -48,7 +48,7 @@ private fun previousScreenFor(screen: DamScreen): DamScreen? = when (screen) {
     DamScreen.COLLECTION -> DamScreen.HOME
 }
 
-/** G01/G02/G03 "댐" 탭 전체. 화면 이동은 다른 흐름과 동일한 패턴(상태값으로 전환). */
+/** G01/G02/G03 "틈튼 길" 탭 전체. 내부 companion API 계약은 그대로 사용한다. */
 @Composable
 fun DamFlow() {
     val colors = LocalTmtnColors.current
@@ -104,7 +104,7 @@ fun DamFlow() {
     }
 }
 
-/** Figma G01 · 댐 홈 */
+/** G01 · 틈튼 길 홈 */
 @Composable
 private fun DamHomeScreen(
     companion: CompanionResponse?,
@@ -118,7 +118,7 @@ private fun DamHomeScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("집 · 댐", style = TmtnType.title, color = colors.onSurface)
+        Text("오늘의 틈튼 길", style = TmtnType.title, color = colors.onSurface)
 
         Box(
             modifier = Modifier
@@ -129,7 +129,7 @@ private fun DamHomeScreen(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "댐 일러스트 자리 (${companion?.current_stage ?: 0}단계, 에셋 준비 중)",
+                "발자국과 꽃이 이어지는 길\n(일러스트 준비 중)",
                 style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
             )
         }
@@ -144,29 +144,21 @@ private fun DamHomeScreen(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                Text(
+                    currentStageInfo?.label ?: "오늘의 길을 열어볼까요?",
+                    style = TmtnType.title, color = colors.onSurface,
+                )
+                Text(
+                    "좋은 선택이 오늘의 길을 만들고 있어요.",
+                    style = TmtnType.body, color = colors.onSurfaceVariant,
+                )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
-                        "${companion.current_stage}단계" + (currentStageInfo?.label?.let { " · $it" } ?: ""),
-                        style = TmtnType.title, color = colors.onSurface,
-                    )
-                    if (companion.next_stage_threshold != null) {
-                        Text("${companion.total_materials} / ${companion.next_stage_threshold}", style = TmtnType.body, color = colors.onSurfaceVariant)
-                    }
-                }
-                if (companion.next_stage_threshold != null) {
-                    val progress = (companion.total_materials.toFloat() / companion.next_stage_threshold).coerceIn(0f, 1f)
-                    Box(modifier = Modifier.fillMaxWidth().height(8.dp)) {
-                        Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(colors.outline, RoundedCornerShape(4.dp)))
-                        Box(modifier = Modifier.fillMaxWidth(progress).height(8.dp).background(colors.onSurface, RoundedCornerShape(4.dp)))
-                    }
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        if (companion.materials_needed_for_next > 0) "다음 단계까지 재료 ${companion.materials_needed_for_next}개" else "최고 단계예요",
+                        if (companion.materials_needed_for_next > 0) "다음 풍경까지 행동 ${companion.materials_needed_for_next}번" else "지금까지 만든 길을 돌아봐요",
                         style = TmtnType.caption, color = colors.onSurfaceVariant,
                     )
                     Text(
-                        "단계 안내 ›", style = TmtnType.caption, color = colors.onSurface,
+                        "길에서 만나는 풍경 ›", style = TmtnType.caption, color = colors.onSurface,
                         modifier = Modifier.clickable { onOpenStageGuide() },
                     )
                 }
@@ -252,7 +244,7 @@ private fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (Stri
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(16.dp),
             ) {
                 Text(
-                    "어떤 재료든 하나씩 쌓이면 댐은 자라.\n골고루 아니어도 괜찮아.",
+                    "어떤 행동이든 하나씩 이어지면 길이 생겨요.\n골고루 하지 않아도 괜찮아요.",
                     style = TmtnType.body, color = colors.onSurface,
                 )
             }
@@ -260,13 +252,13 @@ private fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (Stri
     }
 }
 
-/** Figma G03 · 댐 단계 안내 */
+/** G03 · 길의 풍경 안내 */
 @Composable
 private fun StageGuideScreen(companion: CompanionResponse?, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "댐이 자라는 순서", onBack = onBack)
+        TmtnTopBar(title = "길에서 만나는 풍경", onBack = onBack)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -284,12 +276,12 @@ private fun StageGuideScreen(companion: CompanionResponse?, onBack: () -> Unit) 
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${stage.stage_number}단계 · ${stage.label}", style = TmtnType.bodyLarge, color = colors.onSurface)
+                        Text(stage.label, style = TmtnType.bodyLarge, color = colors.onSurface)
                         if (stage.completed) {
                             Text("완료", style = TmtnType.caption, color = colors.onSurfaceVariant)
                         }
                     }
-                    Text("재료 ${stage.threshold}개부터", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                    Text("행동 ${stage.threshold}번부터 만날 수 있어요", style = TmtnType.caption, color = colors.onSurfaceVariant)
                 }
             }
 
@@ -300,7 +292,7 @@ private fun StageGuideScreen(companion: CompanionResponse?, onBack: () -> Unit) 
                     .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
                     .padding(16.dp),
             ) {
-                Text("단계가 내려가는 일은 없습니다. 쉬어도 쌓인 재료는 그대로 남습니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
+                Text("오늘은 쉬어가도 괜찮아요. 이미 이어온 길과 재료는 그대로 남아요.", style = TmtnType.body, color = colors.onSurfaceVariant)
             }
         }
     }

@@ -137,7 +137,7 @@ fun HelpDetailScreen(onBack: () -> Unit, onInquiry: () -> Unit) {
 
 private val INQUIRY_TOPICS = listOf(
     "CARD_CHALLENGE" to "카드 · 챌린지",
-    "RECORD_DAM" to "기록 · 댐",
+    "RECORD_DAM" to "기록 · 틈튼 길",
     "ACCOUNT_LOGIN" to "계정 · 로그인",
     "OTHER" to "그 밖에",
 )

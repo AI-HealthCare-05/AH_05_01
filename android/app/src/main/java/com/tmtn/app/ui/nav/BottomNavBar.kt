@@ -31,15 +31,12 @@ import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 
-/** Figma 하단 최상위 목적지 5개(§1): 기록·댐·홈·참고·마이 (홈이 가운데).
- * ⚠️ Figma 컴포넌트 설명엔 "카드"라고 되어 있지만 실제 배치는 전부 "댐" — 라우팅은 댐 기준. */
-/** Figma FLOWS.md(2026-08-31 갱신): "홈·기록·틈튼지수·댐·내 정보" 순서, 참고→틈튼지수·마이→내 정보로 이름 변경됨.
- * 진입 화면: 홈→B01, 기록→D01, 틈튼지수→E01, 댐→G01, 내 정보→F01 */
+/** 하단 최상위 목적지 5개. 기존 댐 라우팅은 유지하고 사용자 명칭만 "틈튼 길"로 변경. */
 enum class MainTab(val label: String) {
     HOME("홈"),
     RECORD("기록"),
     REFERENCE("틈튼지수"),
-    DAM("댐"),
+    DAM("틈튼 길"),
     MY("내 정보"),
 }
 
@@ -162,22 +159,20 @@ private fun TabIcon(tab: MainTab, color: Color, strokeWidth: Float) {
                 drawLine(color, Offset(w * 0.75f, h * 0.22f), Offset(w * 0.75f, baseline), stroke.width, StrokeCap.Round)
             }
             MainTab.DAM -> {
-                // 댐 구조 - 위쪽 가로대 + 기둥 3개 + 아래쪽 물결선
-                val top = h * 0.22f
-                drawLine(color, Offset(w * 0.1f, top), Offset(w * 0.9f, top), stroke.width, StrokeCap.Round)
-                val pillarBottom = h * 0.62f
-                listOf(0.25f, 0.5f, 0.75f).forEach { fx ->
-                    drawLine(color, Offset(w * fx, top), Offset(w * fx, pillarBottom), stroke.width, StrokeCap.Round)
+                // 오늘의 선택이 이어지는 굽은 길과 발자국
+                val roadPath = Path().apply {
+                    moveTo(w * 0.18f, h * 0.9f)
+                    quadraticTo(w * 0.82f, h * 0.72f, w * 0.36f, h * 0.48f)
+                    quadraticTo(w * 0.12f, h * 0.3f, w * 0.72f, h * 0.1f)
                 }
-                drawLine(color, Offset(w * 0.1f, pillarBottom), Offset(w * 0.9f, pillarBottom), stroke.width, StrokeCap.Round)
-                // 물결선
-                val wavePath = Path().apply {
-                    moveTo(w * 0.08f, h * 0.8f)
-                    quadraticBezierTo(w * 0.25f, h * 0.68f, w * 0.42f, h * 0.8f)
-                    quadraticBezierTo(w * 0.58f, h * 0.92f, w * 0.75f, h * 0.8f)
-                    quadraticBezierTo(w * 0.85f, h * 0.72f, w * 0.92f, h * 0.8f)
+                drawPath(roadPath, color = color, style = stroke)
+                listOf(
+                    Offset(w * 0.27f, h * 0.78f),
+                    Offset(w * 0.58f, h * 0.59f),
+                    Offset(w * 0.35f, h * 0.38f),
+                ).forEach { center ->
+                    drawCircle(color = color, radius = w * 0.055f, center = center, style = stroke)
                 }
-                drawPath(wavePath, color = color, style = stroke)
             }
             MainTab.MY -> {
                 // 사람 - 머리(원) + 몸통(아치)
