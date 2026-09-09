@@ -23,7 +23,7 @@ async def get_today_cards(
     # 뜨는 배포 환경에서는 00~09시 KST 사이 사용자에게 "어제"로 판정되는 문제가 있었음.
     # TODO는 여전히 유효(사용자별 timezone·RESET_SCHEDULES는 아직 없음) - 다만 최소한
     # 서버 로컬시간이 아니라 KST 고정으로는 지금 맞춰둠.
-    today = service_today()
+    today = service_today(user.id)  # ⚠️ 2026-09-08: 계정별 오프셋 적용
     return await card_service.get_or_create_today(user, today)
 
 

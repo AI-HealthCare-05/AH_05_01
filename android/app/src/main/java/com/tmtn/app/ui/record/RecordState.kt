@@ -5,7 +5,6 @@ import com.tmtn.app.network.ApiClient
 import com.tmtn.app.network.model.DayDetailResponse
 import com.tmtn.app.network.model.MemoUpdateRequest
 import com.tmtn.app.network.model.MonthlyCalendarResponse
-import com.tmtn.app.network.model.RestDayRequest
 import com.tmtn.app.network.model.StreakResponse
 import com.tmtn.app.network.model.WeeklyReportResponse
 import com.tmtn.app.ui.onboarding.parseErrorMessage
@@ -33,9 +32,8 @@ class RecordState {
     var dayDetail = mutableStateOf<DayDetailResponse?>(null)
     var showDaySheet = mutableStateOf(false)
 
-    // D05/D06: 연속기록 · 쉼
+    // D05: 연속기록
     var streak = mutableStateOf<StreakResponse?>(null)
-    var showRestSheet = mutableStateOf(false)
 
     suspend fun loadMonthly(y: Int = year.value, m: Int = month.value) {
         isLoading.value = true
@@ -94,36 +92,6 @@ class RecordState {
 
     fun closeDaySheet() {
         showDaySheet.value = false
-    }
-
-    // D03 -> D06: "쉼으로 표시" 바텀시트 열기
-    suspend fun openRestSheetFor(date: String) {
-        selectedDate.value = date
-        showRestSheet.value = true
-        loadStreak()
-    }
-
-    fun closeRestSheet() {
-        showRestSheet.value = false
-    }
-
-    // D06: "쉼으로 표시하기" 확정 - 실제 기록 API 재사용 (B16/B17과 동일 엔드포인트)
-    suspend fun confirmRestDay() {
-        val date = selectedDate.value ?: return
-        isLoading.value = true
-        errorMessage.value = null
-        runCatching {
-            val response = ApiClient.cardHomeApi.markRestDay(RestDayRequest(service_date = date))
-            if (!response.isSuccessful) error(parseErrorMessage(response))
-            response.body()!!
-        }.onSuccess {
-            streak.value = it
-            showRestSheet.value = false
-            loadMonthly()
-        }.onFailure { e ->
-            errorMessage.value = e.message ?: "쉼 표시에 실패했어요."
-        }
-        isLoading.value = false
     }
 
     // D03: 메모 저장/삭제 - 저장 뒤 하루 상세를 조용히 다시 불러와 화면 갱신

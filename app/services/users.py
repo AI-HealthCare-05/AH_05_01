@@ -4,7 +4,13 @@ from tortoise.transactions import in_transaction
 from app.core.utils.common import normalize_phone_number
 from app.core.utils.security import hash_password, verify_password
 from app.core.validators.user_validators import validate_password
-from app.dtos.users import AccountDeleteRequest, EmailChangeRequest, PasswordChangeRequest, UserUpdateRequest
+from app.dtos.users import (
+    AccountDeleteRequest,
+    EmailChangeRequest,
+    PasswordChangeRequest,
+    UserInfoResponse,
+    UserUpdateRequest,
+)
 from app.models.assessments import AssessmentJob, TmtnIndexResult
 from app.models.cards import DailyCardSet
 from app.models.challenges import PointLedger
@@ -25,6 +31,18 @@ class UserManageService:
         self.repo = UserRepository()
         self.auth_service = AuthService()
         self.email_verification_service = EmailVerificationService()
+
+    async def get_user_info(self, user: User) -> UserInfoResponse:
+        """⚠️ 2026-09-07 추가: /users/me. height_cm은 User 모델에 없고
+        health_input_snapshots(온보딩 입력, append-only)에서 최신값을 따로 조회해서 채움 -
+        안드로이드가 걷기/조깅 케이던스 임계값을 신장 구간표로 계산할 때 씀."""
+
+        info = UserInfoResponse.model_validate(user)
+        latest_health = await HealthInputSnapshot.filter(user_id=user.id).order_by("-measured_at").first()
+        if latest_health is not None:
+            height = (latest_health.input_values or {}).get("height_cm")
+            info.height_cm = float(height) if height is not None else None
+        return info
 
     async def update_user(self, user: User, data: UserUpdateRequest) -> User:
         if data.email:

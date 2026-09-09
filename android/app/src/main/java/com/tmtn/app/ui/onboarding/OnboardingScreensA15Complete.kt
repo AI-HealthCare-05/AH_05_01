@@ -15,8 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.theme.LocalTmtnColors
@@ -43,9 +45,11 @@ fun A15CompleteScreen(state: OnboardingState, onOnboardingComplete: () -> Unit) 
                 .border(1.dp, colors.secondary, RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                "손 흔드는 비버\n(이미지 미확정)",
-                style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+            // ⚠️ 2026-09-06 반영: A15(온보딩 완료) 배치표 그대로 - "손 흔들기" beaver_wave.
+            Image(
+                painter = painterResource(com.tmtn.app.R.drawable.beaver_wave),
+                contentDescription = "손 흔들며 인사하는 비버",
+                modifier = Modifier.height(176.dp),
             )
         }
 

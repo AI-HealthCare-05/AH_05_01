@@ -25,8 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.tmtn.app.network.model.DayDetailResponse
 import com.tmtn.app.ui.cardhome.MATERIAL_NAMES
 import com.tmtn.app.ui.cardhome.MaterialIcon
-import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
-import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.onboarding.TmtnTextButton
 import com.tmtn.app.ui.onboarding.TmtnTextField
 import com.tmtn.app.ui.theme.LocalTmtnColors
@@ -104,61 +102,7 @@ fun DayDetailSheet(state: RecordState, scope: CoroutineScope) {
                 }
             }
 
-            if (detail?.status != "REST") {
-                TmtnOutlinedButton(
-                    text = "쉼으로 표시",
-                    onClick = { scope.launch { state.openRestSheetFor(state.selectedDate.value ?: return@launch) } },
-                )
-            }
             TmtnTextButton(text = "닫기", onClick = { state.closeDaySheet() })
-        }
-    }
-
-    if (state.showRestSheet.value) {
-        RestSheet(state, scope)
-    }
-}
-
-@Composable
-private fun RestSheet(state: RecordState, scope: CoroutineScope) {
-    val colors = LocalTmtnColors.current
-    val streak = state.streak.value
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().background(colors.onSurface.copy(alpha = 0.32f)))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .background(colors.surface, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(
-                modifier = Modifier.width(36.dp).height(4.dp).align(Alignment.CenterHorizontally)
-                    .background(colors.outline, RoundedCornerShape(2.dp)),
-            )
-            Text("이 날을 쉼으로 표시할까요?", style = TmtnType.title, color = colors.onSurface)
-            Text(state.selectedDate.value ?: "", style = TmtnType.bodyLarge, color = colors.onSurface)
-
-            Row(modifier = Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("이번 주 남은 쉼", style = TmtnType.body, color = colors.onSurface)
-                Text("${streak?.rest_days_remaining_this_week ?: 2}회 / 2회", style = TmtnType.body, color = colors.onSurfaceVariant)
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(16.dp),
-            ) {
-                Text("쉼으로 표시한 날은 연속 기록을 끊지 않습니다.", style = TmtnType.body, color = colors.onSurface)
-            }
-            Text("한 주에 두 번까지 표시할 수 있습니다.", style = TmtnType.caption, color = colors.onSurfaceVariant)
-
-            TmtnPrimaryButton(
-                text = "쉼으로 표시하기",
-                onClick = { scope.launch { state.confirmRestDay() } },
-                enabled = (streak?.rest_days_remaining_this_week ?: 2) > 0,
-            )
-            TmtnTextButton(text = "닫기", onClick = { state.closeRestSheet() })
         }
     }
 }

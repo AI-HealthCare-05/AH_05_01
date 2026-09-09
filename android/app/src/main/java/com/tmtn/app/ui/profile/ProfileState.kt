@@ -2,7 +2,6 @@ package com.tmtn.app.ui.profile
 
 import androidx.compose.runtime.mutableStateOf
 import com.tmtn.app.network.ApiClient
-import com.tmtn.app.network.TokenHolder
 import com.tmtn.app.network.model.AccessibilityResponse
 import com.tmtn.app.network.model.AccessibilityUpdateRequest
 import com.tmtn.app.network.model.ConsentRequest
@@ -13,12 +12,17 @@ import com.tmtn.app.network.model.HealthInputRequest
 import com.tmtn.app.network.model.HealthInputResponse
 import com.tmtn.app.network.model.NotificationSettingResponse
 import com.tmtn.app.network.model.NotificationSettingUpdateRequest
+import com.tmtn.app.network.model.OnboardingScheduleRequest
 import com.tmtn.app.network.model.UserInfoResponse
+import com.tmtn.app.network.model.UserUpdateRequest
 import com.tmtn.app.ui.onboarding.parseErrorMessage
 import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
 
 enum class ProfileScreenKey {
-    HOME, NOTIFICATION, NOTIFICATION_TIME, PERMISSIONS, ACCOUNT, HEALTH, EXERCISE, CONSENT, ACCESSIBILITY,
+    // ⚠️ 2026-09-08 QA 반영: WAKE_SLEEP 추가. "자고 일어나는 시각" 행이 MainActivity에서 빈
+    // 람다({})로 연결돼 있어서 눌러도 아무 반응이 없었음(온보딩 A10 안에서만 동작하는 화면이라
+    // 미연결로 남겨뒀던 자리). 내 정보 탭 안에 같은 기능의 화면을 만들어서 연결함.
+    HOME, NOTIFICATION, NOTIFICATION_TIME, WAKE_SLEEP, PERMISSIONS, ACCOUNT, HEALTH, EXERCISE, CONSENT, ACCESSIBILITY,
     EMAIL_CHANGE, PASSWORD_CHANGE, DELETE_REAUTH, DELETE_DONE,
     PRIVACY_DATA, EXPORT_DATA, APP_INFO, HELP_DETAIL, INQUIRY,
 }
@@ -56,6 +60,50 @@ class ProfileState {
             }
         }
         runCatching { ApiClient.profileApi.getNotificationSettings() }.getOrNull()?.let { if (it.isSuccessful) notificationSetting.value = it.body() }
+        isLoading.value = false
+    }
+
+    // F08: 성별 저장 - ⚠️ 2026-09-07 QA(N5) 반영: 온보딩 기본값(FEMALE) 문제 때문에 잘못
+    // 저장된 성별을 되돌릴 방법이 없었음. users/me PATCH는 부분 수정을 허용하므로 gender만 보냄.
+    //
+    // ⚠️ 2026-09-08 QA 반영: 성별만 바꾸면 is_pregnant가 예전 값(또는 null)으로 남아서,
+    // 남성 -> 여성으로 바꾼 사용자는 틈튼지수 건강 영역이 계속 미산출됐음. 임신 여부를 같이
+    // 보내는 함수로 바꿈(남성이면 null을 보내서 "해당 없음"으로 정리됨 - 서버가 성별로 자동
+    // 판단하므로 null이 맞음).
+    suspend fun saveGenderAndPregnancy(gender: String, isPregnant: Boolean?) {
+        isLoading.value = true
+        errorMessage.value = null
+        runCatching {
+            val response = ApiClient.profileApi.updateMe(
+                UserUpdateRequest(gender = gender, is_pregnant = isPregnant)
+            )
+            if (!response.isSuccessful) error(parseErrorMessage(response))
+            response.body()!!
+        }.onSuccess { userInfo.value = it }
+            .onFailure { e -> errorMessage.value = e.message ?: "성별 저장에 실패했어요." }
+        isLoading.value = false
+    }
+
+    // ⚠️ 2026-09-08 QA 반영: "자고 일어나는 시각" 저장. 온보딩 A10과 같은 엔드포인트를 그대로
+    // 재사용함 - 서버가 기상/취침 시각을 따로 저장하지는 않고 알림 슬롯 3개(기상+2시간 /
+    // 점심(직접입력) / 취침-2시간)로 환산해서 보관하므로(notification_setting_service.py),
+    // 응답으로 돌아온 슬롯을 그대로 반영하면 화면이 최신 상태가 됨.
+    // ⚠️ 실제 로컬 알림 재예약(NotificationScheduler)은 호출부(WakeSleepEditScreen)에서
+    // 이 함수가 끝난 뒤 최신 slots로 함 - "알람이 안 온다" QA의 원인이 이 함수가 서버
+    // 저장만 하고 기기 예약을 안 했던 것이었음.
+    suspend fun saveWakeSleep(wakeTime: String, lunchTime: String, sleepTime: String) {
+        isLoading.value = true
+        errorMessage.value = null
+        runCatching {
+            val response = ApiClient.onboardingApi.submitSchedule(
+                OnboardingScheduleRequest(wake_time = wakeTime, lunch_time = lunchTime, sleep_time = sleepTime)
+            )
+            if (!response.isSuccessful) error(parseErrorMessage(response))
+            response.body()!!
+        }.onSuccess {
+            notificationSetting.value = it
+            screen.value = ProfileScreenKey.NOTIFICATION
+        }.onFailure { e -> errorMessage.value = e.message ?: "시간 저장에 실패했어요." }
         isLoading.value = false
     }
 
@@ -163,7 +211,8 @@ class ProfileState {
     }
 
     fun logout() {
-        TokenHolder.clear()
+        // ⚠️ 2026-09-08: refresh_token 쿠키까지 같이 비움(ApiClient.clearSession 주석 참고).
+        ApiClient.clearSession()
     }
 
     // ===== F16: 비밀번호 변경 =====
@@ -231,7 +280,9 @@ class ProfileState {
             )
             if (!response.isSuccessful) error(parseErrorMessage(response))
         }.onSuccess {
-            TokenHolder.clear()
+            // ⚠️ 2026-09-08: 계정이 사라졌으므로 refresh_token 쿠키도 같이 비워야 함 - 안 그러면
+            // 삭제된 계정의 쿠키가 남아서 재가입 직후 엉뚱한 갱신이 돌 수 있음.
+            ApiClient.clearSession()
             screen.value = ProfileScreenKey.DELETE_DONE
         }.onFailure { e -> errorMessage.value = e.message ?: "계정을 삭제하지 못했어요." }
         isLoading.value = false

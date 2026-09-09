@@ -42,6 +42,14 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
     var weightText by remember(health) {
         mutableStateOf((health?.input_values?.get("weight_kg") as? Number)?.toInt()?.toString() ?: "")
     }
+    // ⚠️ 2026-09-07 QA(N5) 반영: 성별이 읽기 전용이라 온보딩에서 잘못/무심코 넘긴 값을 되돌릴
+    // 방법이 없었음. 키·몸무게와 같은 방식(로컬 편집 후 저장)으로 고칠 수 있게 함.
+    var gender by remember(user) { mutableStateOf(user?.gender) }
+    // ⚠️ 2026-09-08 QA 반영: 온보딩(A07)에는 여성일 때 임신 여부를 묻는 칸이 있는데 이 화면엔
+    // 없었음. 그래서 여기서 성별을 여성으로 바꾸면 is_pregnant가 null인 채로 남고, 틈튼지수
+    // 건강 영역이 통째로 미산출됨(_get_pregnancy_status()가 "모른다"를 임신 아님으로 넘겨짚지
+    // 않기 때문). A07과 같은 질문을 여기에도 둬서 성별을 바꾼 뒤에도 계산이 이어지게 함.
+    var isPregnant by remember(user) { mutableStateOf(user?.is_pregnant) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "몸 정보", onBack = onBack)
@@ -53,7 +61,24 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             ) {
                 ProfileListItem("생년월일", if (user?.birth_year != null) "${user.birth_year}년 ${user.birth_month}월" else "-") { }
-                ProfileListItem("성별", genderLabel(user?.gender)) { }
+            }
+
+            Text("성별", style = TmtnType.label, color = colors.onSurface)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TmtnChip(text = "남성", selected = gender == "MALE", onClick = { gender = "MALE" })
+                TmtnChip(text = "여성", selected = gender == "FEMALE", onClick = { gender = "FEMALE" })
+            }
+
+            if (gender == "FEMALE") {
+                Text("임신 여부 (필수)", style = TmtnType.label, color = colors.onSurface)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TmtnChip(text = "아니요", selected = isPregnant == false, onClick = { isPregnant = false })
+                    TmtnChip(text = "예", selected = isPregnant == true, onClick = { isPregnant = true })
+                }
+                Text(
+                    "임신 중에는 참고 점수를 정확히 계산하기 어려워 일부 항목을 표시하지 않을 수 있어요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
             }
 
             TmtnTextField(
@@ -74,23 +99,36 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
             }
             Text("생년월일은 연·월까지만 받습니다.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
+            val saveBlockedReason = when {
+                heightText.toIntOrNull() == null -> "키를 입력해 주세요."
+                weightText.toIntOrNull() == null -> "몸무게를 입력해 주세요."
+                gender == "FEMALE" && isPregnant == null -> "임신 여부를 선택해 주세요."
+                else -> null
+            }
             TmtnPrimaryButton(
                 text = "저장하고 다시 계산",
                 onClick = {
                     val h = heightText.toIntOrNull()
                     val w = weightText.toIntOrNull()
-                    if (h != null && w != null) scope.launch { state.saveHealthInput(h, w) }
+                    scope.launch {
+                        val currentGender = gender
+                        // ⚠️ 2026-09-08: 성별과 임신 여부는 같이 보내야 함. 성별만 바꾸고
+                        // is_pregnant를 안 보내면 예전 값(또는 null)이 그대로 남아서, 남성에서
+                        // 여성으로 바꾼 사람은 계속 미산출 상태가 됨.
+                        val pregnancyToSave = if (currentGender == "FEMALE") isPregnant else null
+                        if (currentGender != null &&
+                            (currentGender != user?.gender || pregnancyToSave != user?.is_pregnant)
+                        ) {
+                            state.saveGenderAndPregnancy(currentGender, pregnancyToSave)
+                        }
+                        if (h != null && w != null) state.saveHealthInput(h, w)
+                    }
                 },
-                enabled = heightText.toIntOrNull() != null && weightText.toIntOrNull() != null,
+                enabled = saveBlockedReason == null,
+                disabledReason = saveBlockedReason,
             )
         }
     }
-}
-
-private fun genderLabel(gender: String?): String = when (gender) {
-    "MALE" -> "남성"
-    "FEMALE" -> "여성"
-    else -> "-"
 }
 
 /** Figma F09 · 운동 정보 수정 */

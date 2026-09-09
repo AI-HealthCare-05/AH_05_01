@@ -95,12 +95,11 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
     val displayScore = tuntunIndex.roundToInt()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            "참고", style = TmtnType.title, color = colors.onSurface,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-        )
+        // ⚠️ 2026-09-07 QA 반영: 하단 탭 라벨("틈튼지수")과 다른 "참고"라는 별도 상단
+        // 타이틀이 있어서 명칭이 헷갈렸음 - 바로 아래 카드에 "틈튼지수" 타이틀이 이미
+        // 있어서 중복이기도 했음. 상단 타이틀 자체를 없앰.
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(
@@ -126,21 +125,37 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("$displayScore", style = TmtnType.display, color = colors.onSurface)
-                    Box(
-                        modifier = Modifier.background(colors.secondaryContainer, RoundedCornerShape(999.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                    ) {
-                        Text(scoreBandLabel(tuntunIndex) + " 구간", style = TmtnType.caption, color = colors.onSurface)
+                // ⚠️ 2026-09-06 QA(P1-11) 반영: 반영 영역이 4개 중 1개(생활습관)뿐인데도
+                // 종합 80점 · "양호 구간"을 그대로 크게 보여줬음 - 사용자는 "건강이 양호"로
+                // 오해함. 절반(2개) 미만이면 점수·구간 라벨 자체를 숨기고 안내 문구로 대체.
+                if (score.availableComponentCount < 2) {
+                    Text(
+                        "아직 계산할 수 없어요 · 키와 몸무게를 입력하면 시작합니다",
+                        style = TmtnType.body, color = colors.onSurfaceVariant,
+                    )
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("$displayScore", style = TmtnType.display, color = colors.onSurface)
+                        Box(
+                            modifier = Modifier.background(colors.secondaryContainer, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Text(scoreBandLabel(tuntunIndex) + " 구간", style = TmtnType.caption, color = colors.onSurface)
+                        }
+                    }
+                    ScoreGaugeBar(value = displayScore)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("관심", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                        Text("보통", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                        Text("양호", style = TmtnType.caption, color = colors.onSurfaceVariant)
                     }
                 }
-                ScoreGaugeBar(value = displayScore)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("관심", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                    Text("보통", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                    Text("양호", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                }
+                // ⚠️ 2026-09-06 QA(P1-11) 반영: 홈 카드엔 있는데 정작 점수를 크게 보여주는
+                // 이 상세 화면엔 안전 문구가 없었음(CLAUDE.md 안전 문구 규칙).
+                Text(
+                    "${score.activityWindowStart} ~ ${score.activityWindowEnd} · 비진단용 참고 정보",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
                 InfoRow("생활습관 기간", "${score.activityWindowStart} ~ ${score.activityWindowEnd}")
                 InfoRow("반영 영역", "${score.availableComponentCount}개 / 4개")
@@ -188,12 +203,10 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
 fun ReferenceIneligibleScreen(state: ReferenceState, onOpenMyInfo: () -> Unit) {
     val colors = LocalTmtnColors.current
     Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            "참고", style = TmtnType.title, color = colors.onSurface,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-        )
+        // ⚠️ 2026-09-07 QA 반영: 위 ReferenceSummaryScreen과 같은 이유로 "참고" 상단
+        // 타이틀 제거.
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("계산할 수 있는 영역이 없어요", style = TmtnType.headline, color = colors.onSurface)

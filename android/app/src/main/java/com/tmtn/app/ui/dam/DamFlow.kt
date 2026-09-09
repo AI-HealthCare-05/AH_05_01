@@ -1,5 +1,6 @@
 package com.tmtn.app.ui.dam
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.network.ApiClient
@@ -115,7 +119,10 @@ private fun DamHomeScreen(
     val colors = LocalTmtnColors.current
 
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
+        // ⚠️ 2026-09-06 QA(레이아웃) 반영: 스크롤 하단 패딩이 하단 탭바 높이(104dp)만큼
+        // 없어서 마지막 콘텐츠(댐 카드 등)가 탭바 뒤로 잘려 들어갔음.
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 12.dp).padding(bottom = 92.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("집 · 댐", style = TmtnType.title, color = colors.onSurface)
@@ -123,14 +130,31 @@ private fun DamHomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(132.dp)
+                .height(180.dp)
                 .background(colors.surface, RoundedCornerShape(16.dp))
                 .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                "댐 일러스트 자리 (${companion?.current_stage ?: 0}단계, 에셋 준비 중)",
-                style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+            // ⚠️ 2026-09-06 반영: 홍주님이 전달한 댐 5단계 그림을 실제로 붙임(문서
+            // ASSETS_배치_전달서_2026-09-06.md 3장 참고). 캔버스 비율(1536×1024, 1.5:1)이
+            // 슬롯(350×180dp, 1.94:1)이랑 안 맞아서 Fit + BottomCenter로 - Crop을 쓰면
+            // 5단계(콘텐츠가 제일 큼)의 윗부분이 잘림. 5장 모두 바닥선이 같아서 이렇게
+            // 두면 1→5단계 성장이 정확히 보임. current_stage가 0(아직 없음)이면 1단계로.
+            val stage = (companion?.current_stage ?: 1).coerceIn(1, 5)
+            Image(
+                painter = painterResource(
+                    when (stage) {
+                        1 -> com.tmtn.app.R.drawable.dam_stage_1
+                        2 -> com.tmtn.app.R.drawable.dam_stage_2
+                        3 -> com.tmtn.app.R.drawable.dam_stage_3
+                        4 -> com.tmtn.app.R.drawable.dam_stage_4
+                        else -> com.tmtn.app.R.drawable.dam_stage_5
+                    },
+                ),
+                contentDescription = "댐 성장 ${stage}단계",
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.BottomCenter,
+                modifier = Modifier.fillMaxWidth().height(180.dp),
             )
         }
 
@@ -181,18 +205,33 @@ private fun DamHomeScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text("모은 재료", style = TmtnType.label, color = colors.onSurface)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    companion.materials.filter { it.count > 0 }.forEach { m ->
+                Row(
+                    // ⚠️ 2026-09-08 QA 반영: 재료 5종(나뭇가지·받침돌·다짐흙·새잎·물길)을
+                    // 가로로 나열하는데 스크롤이 전혀 없었음 - 화면 너비를 넘는 나머지
+                    // (보통 새잎·물길)가 그냥 잘려서 안 보이고, 스크롤도 안 돼서 볼 방법이
+                    // 없었음(QA - "모은 재료에 나뭇가지·받침돌·다짐흙만 표기, 스크롤도 안 됨").
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    // ⚠️ 2026-09-06 QA(P2) 반영: count > 0인 것만 걸러서 보여줬더니 5종
+                    // 중 일부만 보여서 "무엇을 더 모아야 하는지" 전체 그림이 안 잡혔음
+                    // (리포트: "나뭇가지·물길 칩이 렌더되지 않음, 둘 다 획득한 적이 있는데도").
+                    // 필터를 없애고, 0개인 것도 회색 톤으로 계속 보여줌 - 수집 동기 유지.
+                    companion.materials.forEach { m ->
+                        val hasAny = m.count > 0
                         Row(
                             modifier = Modifier
-                                .background(colors.surface, RoundedCornerShape(999.dp))
+                                .background(if (hasAny) colors.surface else colors.disabledContainer, RoundedCornerShape(999.dp))
                                 .border(1.dp, colors.outlineVariant, RoundedCornerShape(999.dp))
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             MaterialIcon(element = m.element, size = 24.dp)
-                            Text("${m.material_name} ${m.count}개", style = TmtnType.caption, color = colors.onSurface)
+                            Text(
+                                "${m.material_name} ${m.count}개", style = TmtnType.caption,
+                                color = if (hasAny) colors.onSurface else colors.onSurfaceVariant,
+                            )
                         }
                     }
                 }

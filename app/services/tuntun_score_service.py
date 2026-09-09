@@ -134,7 +134,7 @@ class TuntunScoreService:
         return recorded
 
     async def get_score(self, user: User) -> TuntunScoreOrEligibilityResponse:
-        today = service_today()  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정
+        today = service_today(user.id)  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정. 2026-09-08: 계정별 오프셋 적용
         recorded_days = await self._count_recorded_days(user.id, today)
 
         if recorded_days < REQUIRED_RECORDED_DAYS:
@@ -156,11 +156,18 @@ class TuntunScoreService:
     async def _get_pregnancy_status(self, user: User) -> str | None:
         """⚠️ 통합모델 입력 계약(input_schema.json)은 "pregnancy_status: explicit
         nonpregnant required by score adapter" — 미수집을 nonpregnant로 조용히
-        가정하면 안 된다고 명시돼 있음. 지금 온보딩·건강정보 어디에도 이 값을 실제로
-        수집하는 필드가 없어서, 여기서는 항상 None을 돌려주고 실모델 호출 자체를
-        건너뛰게 함(호출부가 Mock으로 폴백). 온보딩에 이 값을 실제로 수집하게 되면
-        이 함수만 채우면 됨 - 그 전까지는 값을 만들어내지 않는 게 맞다고 판단함.
+        가정하면 안 된다고 명시돼 있음.
+
+        2026-09-04: 온보딩(A07)에 여성만 물어보는 임신 여부 질문을 추가하면서 채움.
+        - 남성(MALE): 생물학적으로 해당 사항이 없어 자동으로 "nonpregnant" 확정.
+        - 여성이고 명시적으로 "아니오"(is_pregnant=False)라고 답한 경우만 "nonpregnant".
+        - 여성인데 아직 안 물어봤거나(is_pregnant=None) 임신 중(True)이면 None을 돌려줘서
+          실모델 호출 자체를 건너뛰게 함 - "모른다"를 "임신 아님"으로 넘겨짚지 않음.
         """
+        if user.gender == "MALE":
+            return "nonpregnant"
+        if user.gender == "FEMALE" and user.is_pregnant is False:
+            return "nonpregnant"
         return None
 
     async def _call_local_model_inference(
@@ -219,7 +226,7 @@ class TuntunScoreService:
         환산·coverage 정책이 승인되기 전까지 점수에 더하지 않는다.
         """
 
-        today = service_today()  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정
+        today = service_today(user.id)  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정. 2026-09-08: 계정별 오프셋 적용
         start = today - timedelta(days=LOOKBACK_DAYS - 1)
         recorded_days = await self._count_recorded_days(user.id, today)
         health = await self.health_repo.get_latest(user.id)
@@ -368,7 +375,9 @@ class TuntunScoreService:
         value = round(((completion_ratio * 0.5) + (factor_avg * 0.5)) * 100)
         value = max(0, min(100, value))
 
-        period_label = f"{start.strftime('%Y. %-m. %-d.')} ~ {today.strftime('%-m. %-d.')}"
+        # ⚠️ PR #12 리뷰(P1) 반영: %-m/%-d는 glibc(Linux/Mac)에만 있는 확장 포맷이라
+        # Windows에서 ValueError로 500이 남. f-string으로 직접 조립해서 플랫폼 무관하게 함.
+        period_label = f"{start.year}. {start.month}. {start.day}. ~ {today.month}. {today.day}."
 
         return TmtnScoreResponse(
             value=value,
@@ -376,7 +385,7 @@ class TuntunScoreService:
             marker_left_px=None,  # 실제 게이지 폭은 클라이언트가 계산 (서버 좌표 계산은 후속 작업)
             period_label=period_label,
             change_reason="이번 주 기록을 반영해 다시 계산했습니다." if factors else None,
-            last_updated_label=today.strftime("%Y. %-m. %-d."),
+            last_updated_label=f"{today.year}. {today.month}. {today.day}.",
             bands=_BANDS,
             factors=factors,
             excluded_factors=excluded,

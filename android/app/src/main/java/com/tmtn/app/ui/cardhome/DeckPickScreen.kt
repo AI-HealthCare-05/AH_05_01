@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -52,9 +54,16 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
+            Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
             Text(
-                if (picked == null) "마음 가는 카드로\n한 장만 골라 줘." else "가운데 카드로 정할까?",
+                // ⚠️ 2026-09-06 QA(P1-1) 반영: "가운데 카드로 정할까?"가 리터럴로 박혀
+                // 있어서, 첫/세 번째를 골라도 항상 "가운데"라고 말했음(바로 아래 칩은
+                // "${ordinal} 번째"로 정확한데 제목만 틀림). 같은 서수 매핑을 재사용.
+                if (picked == null) {
+                    "마음 가는 카드로\n한 장만 골라 줘."
+                } else {
+                    "${listOf("첫", "두", "세").getOrElse(picked) { "그" }} 번째 카드로 정할까?"
+                },
                 style = TmtnType.headline, color = colors.onSurface,
             )
 
@@ -83,7 +92,10 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
             } else {
                 SelectionIndicatorPill(index = picked)
                 Text(
-                    "확정하면 오늘은 바꿀 수 없습니다. 고르지 않은 두 장은 공개되지 않습니다.",
+                    // ⚠️ 2026-09-06 QA(P1-2) 반영: 이미 고른 뒤 다른 카드를 눌러도 선택이
+                    // 안 바뀌는 것 자체는 의도된 동작인데(하루 한 장 확정 전 실수 방지),
+                    // 그 안내가 없어서 "눌렀는데 반응이 없다"로 오해했음.
+                    "확정하면 오늘은 바꿀 수 없습니다. 고르지 않은 두 장은 공개되지 않습니다.\n다른 카드를 고르려면 아래 \"다시 고르기\"를 눌러주세요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
                 TmtnPrimaryButton(text = "이 카드로 확정", onClick = { state.openConfirmDialog() })
@@ -96,23 +108,35 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
     if (state.showConfirmDialog.value) {
         AlertDialog(
             onDismissRequest = { state.showConfirmDialog.value = false },
+            containerColor = colors.surface,
             title = { Text("이 카드로 확정할까요?", style = TmtnType.title, color = colors.onSurface) },
             text = {
+                // ⚠️ 2026-09-06 QA(P2) 반영: 바로 위 화면 본문 안내와 한 글자도 다르지
+                // 않아서, 다이얼로그가 새로운 정보 없이 그냥 반복이었음 - "한 번 더 확인"
+                // 이라는 다이얼로그 본연의 역할에 맞게 되돌릴 수 없다는 점만 짧게 강조.
                 Text(
-                    "확정하면 오늘은 카드를 바꿀 수 없습니다. 고르지 않은 두 장은 공개되지 않습니다.",
+                    "확정하면 되돌릴 수 없어요.",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
             },
             confirmButton = {
                 Text(
                     "확정하기", style = TmtnType.label, color = colors.primary,
-                    modifier = Modifier.clickable { scope.launch { state.confirmCard() } }.padding(8.dp),
+                    // ⚠️ 2026-09-06 QA(접근성) 반영: clickable{}.padding(8.dp)만 있어서
+                    // 실제 터치 영역이 약 36dp였음(48dp 미만) - 최소 터치 영역 확보.
+                    modifier = Modifier.clickable { scope.launch { state.confirmCard() } }
+                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        .wrapContentSize(Alignment.Center)
+                        .padding(8.dp),
                 )
             },
             dismissButton = {
                 Text(
                     "다시 고르기", style = TmtnType.label, color = colors.onSurfaceVariant,
-                    modifier = Modifier.clickable { state.showConfirmDialog.value = false }.padding(8.dp),
+                    modifier = Modifier.clickable { state.showConfirmDialog.value = false }
+                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        .wrapContentSize(Alignment.Center)
+                        .padding(8.dp),
                 )
             },
         )

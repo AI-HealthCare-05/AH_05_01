@@ -123,7 +123,11 @@ fun A08ExerciseScreen(state: OnboardingState, scope: CoroutineScope, hasSensorPe
             )
 
             Text(
-                "세 가지 강도를 모두 채워 주세요.\n나중에 마이에서 고칠 수 있어요.",
+                // ⚠️ 2026-09-06 QA(P2) 반영: "마이"는 CLAUDE.md가 금지한 표현("내 정보"가
+                // 맞음). 또한 바로 위 "0분도 괜찮아요"와 "모두 채워 주세요"가 모순돼 보였음
+                // (0분을 넣는 것도 "채운" 것인데 "채워 주세요"라고 하면 0은 안 된다는
+                // 뜻으로 읽힘) - 값이 없는 게 아니라 0이어도 된다는 걸 명확히 함.
+                "세 가지 모두 확인해 주세요 (0분이어도 괜찮아요).\n나중에 내 정보에서 고칠 수 있어요.",
                 style = TmtnType.caption, color = colors.onSurfaceVariant,
             )
 

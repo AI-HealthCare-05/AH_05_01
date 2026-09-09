@@ -92,4 +92,6 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    // ⚠️ 2026-09-08 추가: 미션 미완료·쉼/포기 리마인더 로컬 알림 스케줄링용.
+    implementation(libs.androidx.work.runtime.ktx)
 }

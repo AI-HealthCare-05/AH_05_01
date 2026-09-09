@@ -108,6 +108,7 @@ fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
     if (target != null) {
         AlertDialog(
             onDismissRequest = { withdrawTarget = null },
+            containerColor = colors.surface,
             title = { Text("동의를 철회할까요?", style = TmtnType.bodyLarge, color = colors.onSurface) },
             text = {
                 Text(

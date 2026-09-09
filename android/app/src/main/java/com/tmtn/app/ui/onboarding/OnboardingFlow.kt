@@ -9,6 +9,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -65,6 +66,14 @@ fun OnboardingFlow(
         }
     }
     val scope = rememberCoroutineScope()
+
+    // ⚠️ 2026-09-06 QA(P1-9) 반영: 스낵바 타이머가 화면 전환과 분리돼 있어서, 로그인
+    // 화면에서 뜬 에러가 "이메일로 가입하기"로 넘어간 뒤에도 6초 동안 그대로 남아있었음
+    // (가입 화면은 아무 요청도 안 했는데 실패 메시지가 보임). 화면(step)이 바뀔 때마다
+    // 지금 이전 화면에서 뜬 에러는 비워서, 새 화면은 항상 깨끗하게 시작하게 함.
+    LaunchedEffect(state.step.value) {
+        state.errorMessage.value = null
+    }
 
     // ⚠️ 예전엔 화면 안의 "←" 버튼만 단계를 되돌렸고, 폰의 시스템 뒤로가기(제스처/버튼)는
     // 아예 안 걸려있어서 그냥 앱이 종료(바탕화면으로 이동)돼버렸음. 여기서 같이 처리.

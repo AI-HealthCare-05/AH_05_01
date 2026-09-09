@@ -1,5 +1,6 @@
 package com.tmtn.app.ui.cardhome
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
@@ -127,9 +129,12 @@ fun CardErrorScreen(state: CardHomeState, scope: CoroutineScope) {
                     .background(colors.surface, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    "일러스트 자리 · 카드 못 가져옴",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+                // ⚠️ 2026-09-06 반영: B09(카드 덱 오류) 배치표 그대로 - "빈 카드첩을 들고
+                // 있는" beaver_empty.
+                Image(
+                    painter = painterResource(com.tmtn.app.R.drawable.beaver_empty),
+                    contentDescription = "빈 카드첩을 들고 있는 비버",
+                    modifier = Modifier.height(160.dp),
                 )
             }
 

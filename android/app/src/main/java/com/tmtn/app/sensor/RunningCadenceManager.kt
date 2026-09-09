@@ -18,10 +18,22 @@ import android.hardware.SensorManager
  * 해결: checkTimeout()을 만들어서 외부(서비스의 주기적 갱신 루프)에서
  * 걸음 이벤트와 무관하게 주기적으로 호출해, 마지막 걸음 이후 일정 시간이
  * 지나면 강제로 멈춤 처리하도록 했다.
+ *
+ * ⚠️ 2026-09-07 반영: 신장 비율 공식 대신, 실측 조깅 케이던스 연구 구간표를 그대로
+ * 적용. 각 구간의 하한값을 임계값으로 씀.
+ *
+ * 163cm 이하(단신)      : 175~185 spm → 175
+ * 163~173cm(중간 그룹 A): 170~180 spm → 170
+ * 173~183cm(중간 그룹 B): 165~175 spm → 165
+ * 183cm 이상(장신)      : 160~170 spm → 160
  */
 class RunningCadenceManager(
     context: Context,
-    heightCm: Float = 176f
+    heightCm: Float = 176f,
+    // ⚠️ 2026-09-07 추가: WalkingCadenceManager와 시그니처 통일을 위해 받아만 두고,
+    // 실제 보정은 아직 적용 안 함(조깅은 "일단 신장 기준값 그대로 유지"로 결정됨).
+    // 나중에 필요해지면 WalkingCadenceManager와 같은 방식으로 곱해서 적용하면 됨.
+    @Suppress("UNUSED_PARAMETER") ageYears: Int = 0
 ) : SensorEventListener {
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -30,11 +42,12 @@ class RunningCadenceManager(
     private val recentStepTimestamps = ArrayDeque<Long>()
     private val cadenceWindowMs = 4000L
 
-    private val baseThreshold = 140
-    private val referenceHeightCm = 176f
-    private val spmPerCm = 6f / 5f
-    private val runningCadenceThreshold: Int =
-        (baseThreshold - (heightCm - referenceHeightCm) * spmPerCm).toInt()
+    private val runningCadenceThreshold: Int = when {
+        heightCm <= 163f -> 175
+        heightCm <= 173f -> 170
+        heightCm <= 183f -> 165
+        else -> 160
+    }
 
     // 마지막으로 걸음이 감지된 시각. 타임아웃 판단 기준.
     private var lastStepDetectedAt: Long = 0L
@@ -62,10 +75,33 @@ class RunningCadenceManager(
         sensorManager.unregisterListener(this)
     }
 
+    // ⚠️ 2026-09-07 추가: WalkingCadenceManager와 같은 이유 - stop()만으로는
+    // isCurrentlyRunning/runningStartedAt이 안 지워져서, 일시정지 직후 checkTimeout()의
+    // 뒤늦은 정산(최대 runningTimeoutMs)까지 값이 안 멈추고 있다가 한번에 확 뛰는 것처럼
+    // 보였음. 일시정지 시점에 바로 정산.
+    fun settleOngoing() {
+        if (!isCurrentlyRunning) return
+        runningStartedAt?.let { started ->
+            accumulatedRunningSeconds += ((System.currentTimeMillis() - started) / 1000).toInt()
+        }
+        isCurrentlyRunning = false
+        runningStartedAt = null
+    }
+
     fun reset() {
         recentStepTimestamps.clear()
         isCurrentlyRunning = false
         accumulatedRunningSeconds = 0
+        runningStartedAt = null
+        lastStepDetectedAt = 0L
+    }
+
+    // ⚠️ 2026-09-06 추가: WalkingCadenceManager와 같은 이유 - 서버가 계산한 실제 경과
+    // 시간부터 이어서 셈.
+    fun resumeFrom(baselineSeconds: Int) {
+        recentStepTimestamps.clear()
+        isCurrentlyRunning = false
+        accumulatedRunningSeconds = baselineSeconds
         runningStartedAt = null
         lastStepDetectedAt = 0L
     }
