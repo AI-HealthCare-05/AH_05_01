@@ -26,19 +26,14 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
-/** Figma E02 · 틈튼지수 자세히. 하단 내비 없음(전면 몰입). */
+/** Figma E02 · 틈튼지수 자세히. 하단 내비 없음(전면 몰입).
+ * ⚠️ 2026-09-09 반영: 실모델(또래 백분위) 연동 - 기존 "관심/보통/양호" 구간 설명은 새
+ * 계약에 없는 개념이라 제거하고, 대신 각 영역이 어떤 참고 표본과 비교됐는지 보여줌. */
 @Composable
 fun ReferenceDetailScreen(state: ReferenceState) {
     val colors = LocalTmtnColors.current
     val score = state.score.value ?: return
-    val tuntunIndex = score.tuntunIndex ?: return
-    val tuntunBand = when {
-        tuntunIndex < 40.0 -> "관심"
-        tuntunIndex < 70.0 -> "보통"
-        else -> "양호"
-    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "틈튼지수", onBack = { state.goBack() })
@@ -51,23 +46,23 @@ fun ReferenceDetailScreen(state: ReferenceState) {
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(20.dp)).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${tuntunIndex.roundToInt()}", style = TmtnType.display, color = colors.onSurface)
-                    Text("$tuntunBand 구간", style = TmtnType.title, color = colors.onSurface)
-                }
-                Text("${score.activityWindowStart} ~ ${score.activityWindowEnd} 기준", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text(score.compositeDisplay.text, style = TmtnType.display, color = colors.onSurface)
+                Text(score.referenceCaution, style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.background, RoundedCornerShape(20.dp)).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("구간은 이렇게 나눕니다", style = TmtnType.title, color = colors.onSurface)
-                InfoRow("관심", "0 ~ 39")
-                InfoRow("보통", "40 ~ 69")
-                InfoRow("양호", "70 ~ 100")
+                Text("영역별 참고점수", style = TmtnType.title, color = colors.onSurface)
+                score.components.forEach { component ->
+                    InfoRow(
+                        component.label,
+                        component.absoluteReferenceScore?.let { "%.1f점".format(it) } ?: "계산 안 됨",
+                    )
+                }
                 Text(
-                    "구간이 바뀌어도 몸 상태가 바뀐 것은 아닙니다. 입력한 값과 최근 행동을 다시 계산한 결과입니다.",
+                    "참고점수가 바뀌어도 몸 상태가 바뀐 것은 아닙니다. 입력한 값과 최근 행동을 다시 계산한 결과입니다.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
             }
@@ -77,8 +72,8 @@ fun ReferenceDetailScreen(state: ReferenceState) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("데이터 출처", style = TmtnType.title, color = colors.onSurface)
-                Text(score.scoreContractVersion, style = TmtnType.body, color = colors.onSurface)
-                Text(score.modelVersion, style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text(score.modelVersion, style = TmtnType.body, color = colors.onSurface)
+                Text(score.formulaVersion, style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
             TmtnTextButton(text = "이번 계산에 반영된 항목 보기", onClick = { state.openFactors() })
@@ -106,23 +101,30 @@ fun ReferenceFactorsScreen(state: ReferenceState) {
                 modifier = Modifier.fillMaxWidth().background(colors.background, RoundedCornerShape(20.dp)).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                score.componentScores.forEach { component ->
+                score.components.forEach { component ->
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(component.label, style = TmtnType.bodyLarge, color = colors.onSurface)
-                        Box(
-                            modifier = Modifier.fillMaxWidth().height(8.dp)
-                                .clip(RoundedCornerShape(999.dp)).background(colors.disabledContainer),
-                        ) {
+                        if (component.available) {
                             Box(
-                                modifier = Modifier.fillMaxWidth(fraction = ((component.score ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f))
-                                    .height(8.dp)
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(colors.onSurface),
-                            )
+                                modifier = Modifier.fillMaxWidth().height(8.dp)
+                                    .clip(RoundedCornerShape(999.dp)).background(colors.disabledContainer),
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(
+                                        fraction = ((component.absoluteReferenceScore ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f),
+                                    )
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(colors.onSurface),
+                                )
+                            }
                         }
                         Text(
-                            component.score?.let { "${it.roundToInt()}점 · ${component.guidance}" }
-                                ?: "이번엔 값이 없어서 계산에서 뺐어요.",
+                            if (component.available) {
+                                "${component.rankDisplay.text} · ${COMPONENT_GUIDANCE[component.componentKey] ?: ""}"
+                            } else {
+                                "이번엔 값이 없어서 계산에서 뺐어요."
+                            },
                             style = TmtnType.caption,
                             color = colors.onSurfaceVariant,
                         )

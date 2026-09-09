@@ -1,0 +1,28 @@
+{
+  "fingerprint": "9d4fbaeb18d00e20e2487549e8b64099d7f7f9728ea6e9d35dde8ff1f39cb2e8",
+  "inputs": {
+    "code": "ddb75f1cb0c4e1cff0e1bb3ab49603d5c03dbce7890efa55a783b056975c19b9",
+    "contract": "31e72cbbc9583239877a4784fcca65426a435f94c2eabe18e4598f5080afbd24",
+    "fold/diabetes/1042/inner": "02df1a28958994086bd27234526349719ecc50b750d6c1b91a3dcfdfa335539f",
+    "fold/diabetes/1042/outer": "b7793063d67e56570fd181e491f5c9bbbeaa20f343188bbccd4b4bf559ea114f",
+    "fold/diabetes/2042/inner": "e52b388083f804376043467007f2fba08b4ba99ed58cdeb54165f87eafa17fa0",
+    "fold/diabetes/2042/outer": "8a8d55efac5028a79db67b8ca1b924983235908f5b6b86d2d3e07bda9f625f35",
+    "fold/diabetes/42/inner": "b24400d0d402e0449407ca28eac570c93717409bba17d5a891476530bf553dd0",
+    "fold/diabetes/42/outer": "db05750e26afb84c7cb630a9173f15802c7201dbf0e98b39a3dd75a021791f9c",
+    "fold/hypertension/1042/inner": "7a4adb835056441cc46eed704e9b528d8797b60979d5123bde264f9af6aae97a",
+    "fold/hypertension/1042/outer": "324427436595841b5c42648ef0922d889b024e3d8e0fd389837d9fc1c73585bf",
+    "fold/hypertension/2042/inner": "e08f4beba62f3283a2fad171d9c10058b6490d965bf41be2c1f816e1d84de5e9",
+    "fold/hypertension/2042/outer": "77dd8d5797e6d2d9be920605fd393f65b726d8009148d123250314d89a831ffc",
+    "fold/hypertension/42/inner": "4528867b4c05ed80e9b5cf84a9071d435b523cc75d8dbdc5e98531b39ab6732b",
+    "fold/hypertension/42/outer": "090a724b203ca62f989c8041c072eb528e3a788eb8bed4812d4923affa8b1942",
+    "task_frame/diabetes": "46c82d17cfe8ef87fcc4d0684f49ab17a8d29191ba87cade918ebc6a731aa854",
+    "task_frame/hypertension": "fafbecbae9abde5ad07a3517f57415e83e28295400a5e02773bb817a9052aedd"
+  },
+  "metric_rows": 552,
+  "production_release_gate": "BLOCKED_REFIT_PACKAGING_AND_QA_REQUIRED",
+  "prohibited_years_used": false,
+  "ranking_rows": 184,
+  "row_level_outputs_written": false,
+  "selected_task_count": 2,
+  "status": "PASS_D0_ONLY_SINGLE_COMBINATION_SELECTION"
+}

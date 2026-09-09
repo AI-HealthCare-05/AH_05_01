@@ -31,6 +31,10 @@ class Config(BaseSettings):
     # (공유 드라이브 등)에서 받아 로컬에 풀고 tuntun_local_service.py를 띄운 뒤 그 주소를
     # 여기 넣을 것. 예: http://127.0.0.1:8765
     TUNTUN_LOCAL_MODEL_URL: str | None = None
+    # ⚠️ 2026-09-09 추가 - vNext(또래 백분위) 모델 브릿지 URL. TUNTUN_LOCAL_MODEL_URL(v0.1
+    # legacy 계약, /score)과는 별개 - v0.2는 완전히 다른 계약(/score/peer/v2, X-Tuntun-Schema
+    # 헤더)을 쓰므로 설정도 분리함. 운영에는 절대 채우지 않음(LOCAL_REVIEW_CANDIDATE 상태).
+    TUNTUN_PEER_BRIDGE_URL: str | None = None
 
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306

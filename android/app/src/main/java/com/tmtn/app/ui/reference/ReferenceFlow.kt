@@ -32,7 +32,6 @@ import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
-import kotlin.math.roundToInt
 
 /** E01~E06 "참고"(틈튼지수) 탭 전체를 관리하는 최상위 컴포저블. 다른 탭 흐름과 같은 패턴.
  *
@@ -86,13 +85,14 @@ private fun LoadingBox() {
     }
 }
 
-/** Figma E01 · 참고 · 홈. 하단 내비 있음. */
+/** Figma E01 · 참고 · 홈. 하단 내비 있음.
+ * ⚠️ 2026-09-09 반영: 실모델(또래 백분위) 연동 - 기존 "관심/보통/양호" 구간·기간 표시는
+ * 새 계약에 없는 개념이라(bandLabel 항상 null, 기간 대신 단일 기준일) 제거함. 서버가
+ * 조립한 compositeDisplay.text를 그대로 보여줌. */
 @Composable
 fun ReferenceSummaryScreen(state: ReferenceState) {
     val colors = LocalTmtnColors.current
     val score = state.score.value ?: return
-    val tuntunIndex = score.tuntunIndex ?: return
-    val displayScore = tuntunIndex.roundToInt()
 
     Column(modifier = Modifier.fillMaxSize()) {
         // ⚠️ 2026-09-07 QA 반영: 하단 탭 라벨("틈튼지수")과 다른 "참고"라는 별도 상단
@@ -126,38 +126,23 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
                     }
                 }
                 // ⚠️ 2026-09-06 QA(P1-11) 반영: 반영 영역이 4개 중 1개(생활습관)뿐인데도
-                // 종합 80점 · "양호 구간"을 그대로 크게 보여줬음 - 사용자는 "건강이 양호"로
-                // 오해함. 절반(2개) 미만이면 점수·구간 라벨 자체를 숨기고 안내 문구로 대체.
+                // 종합 80점을 그대로 크게 보여줬음 - 사용자는 "건강이 양호"로 오해함.
+                // 절반(2개) 미만이면 점수 자체를 숨기고 안내 문구로 대체.
                 if (score.availableComponentCount < 2) {
                     Text(
                         "아직 계산할 수 없어요 · 키와 몸무게를 입력하면 시작합니다",
                         style = TmtnType.body, color = colors.onSurfaceVariant,
                     )
                 } else {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("$displayScore", style = TmtnType.display, color = colors.onSurface)
-                        Box(
-                            modifier = Modifier.background(colors.secondaryContainer, RoundedCornerShape(999.dp))
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
-                        ) {
-                            Text(scoreBandLabel(tuntunIndex) + " 구간", style = TmtnType.caption, color = colors.onSurface)
-                        }
-                    }
-                    ScoreGaugeBar(value = displayScore)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("관심", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                        Text("보통", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                        Text("양호", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                    }
+                    Text(score.compositeDisplay.text, style = TmtnType.display, color = colors.onSurface)
                 }
                 // ⚠️ 2026-09-06 QA(P1-11) 반영: 홈 카드엔 있는데 정작 점수를 크게 보여주는
                 // 이 상세 화면엔 안전 문구가 없었음(CLAUDE.md 안전 문구 규칙).
                 Text(
-                    "${score.activityWindowStart} ~ ${score.activityWindowEnd} · 비진단용 참고 정보",
+                    score.referenceCaution + " · 비진단용 참고 정보",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
-                InfoRow("생활습관 기간", "${score.activityWindowStart} ~ ${score.activityWindowEnd}")
                 InfoRow("반영 영역", "${score.availableComponentCount}개 / 4개")
                 if (score.isPartialScore) {
                     Text(
@@ -168,8 +153,8 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
                 }
             }
 
-            Text("영역별 점수", style = TmtnType.title, color = colors.onSurface)
-            score.componentScores.forEach { component ->
+            Text("영역별 순위", style = TmtnType.title, color = colors.onSurface)
+            score.components.forEach { component ->
                 ScoreComponentCard(component)
             }
 
@@ -178,16 +163,6 @@ fun ReferenceSummaryScreen(state: ReferenceState) {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(score.notice, style = TmtnType.caption, color = colors.onSurfaceVariant)
-                score.olderAdultNotice?.let {
-                    Text(it, style = TmtnType.caption, color = colors.onSurfaceVariant)
-                }
-                if (score.missionIntegrationStatus == "pending_evidence") {
-                    Text(
-                        "미션 수행값의 점수 환산은 검증 기준 확정 후 연결됩니다.",
-                        style = TmtnType.caption,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
             }
 
             TmtnOutlinedButton(
@@ -234,8 +209,17 @@ fun ReferenceIneligibleScreen(state: ReferenceState, onOpenMyInfo: () -> Unit) {
     }
 }
 
+// ⚠️ 2026-09-09 반영: 새 계약엔 영역별 안내 문구(guidance)가 없어서 - 기존 Mock 계약에
+// 있던 문구를 componentKey 기준으로 클라이언트에 그대로 유지함(서버 응답 자체는 등수만 줌).
+internal val COMPONENT_GUIDANCE = mapOf(
+    "physical" to "허리둘레 위험을 낮추는 방향으로 체중과 활동 습관을 꾸준히 관리해 보세요.",
+    "diabetes" to "규칙적인 활동과 균형 잡힌 식사를 이어가며 생활습관을 관리해 보세요.",
+    "hypertension" to "걷기 등 꾸준한 활동과 나트륨 섭취 관리를 실천해 보세요.",
+    "lifestyle" to "유산소 운동 시간과 주간 근력운동 일수를 조금씩 늘려 보세요.",
+)
+
 @Composable
-private fun ScoreComponentCard(component: com.tmtn.app.network.model.TuntunComponentScoreV2) {
+private fun ScoreComponentCard(component: com.tmtn.app.network.model.PeerComponent) {
     val colors = LocalTmtnColors.current
     Column(
         modifier = Modifier.fillMaxWidth().background(colors.background, RoundedCornerShape(16.dp)).padding(16.dp),
@@ -244,30 +228,19 @@ private fun ScoreComponentCard(component: com.tmtn.app.network.model.TuntunCompo
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(component.label, style = TmtnType.bodyLarge, color = colors.onSurface)
             Text(
-                component.score?.let { "${it.roundToInt()}점" } ?: "계산 안 됨",
+                if (component.available) component.rankDisplay.text else "계산 안 됨",
                 style = TmtnType.bodyLarge,
                 color = if (component.available) colors.onSurface else colors.onSurfaceVariant,
             )
         }
-        component.score?.let { value ->
-            Box(
-                modifier = Modifier.fillMaxWidth().height(8.dp)
-                    .clip(RoundedCornerShape(999.dp)).background(colors.disabledContainer),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth((value / 100.0).toFloat().coerceIn(0f, 1f)).height(8.dp)
-                        .clip(RoundedCornerShape(999.dp)).background(colors.secondary),
-                )
-            }
+        component.rankDisplay.tieNotice?.let {
+            Text(it, style = TmtnType.caption, color = colors.onSurfaceVariant)
         }
-        Text(component.guidance, style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Text(
+            COMPONENT_GUIDANCE[component.componentKey] ?: "",
+            style = TmtnType.caption, color = colors.onSurfaceVariant,
+        )
     }
-}
-
-private fun scoreBandLabel(value: Double): String = when {
-    value < 40.0 -> "관심"
-    value < 70.0 -> "보통"
-    else -> "양호"
 }
 
 @Composable

@@ -50,6 +50,11 @@ artifacts/
 *.parquet
 *.pkl
 *.joblib
+# ⚠️ 2026-09-09 추가: tuntun_peer_bridge/의 모델 파일은 예외 - 검토용 모델 브릿지가
+# 실제로 동작하려면 이 joblib들이 반드시 커밋에 포함돼야 함(manifest SHA-256으로
+# 무결성이 고정된 배포물의 일부). 위 *.joblib 규칙은 다른 곳(임시 학습 산출물 등)의
+# joblib을 계속 막아야 하므로 그대로 두고, 여기만 명시적으로 되살림.
+!tuntun_peer_bridge/**/*.joblib
 *.pt
 *.pth
 *.onnx

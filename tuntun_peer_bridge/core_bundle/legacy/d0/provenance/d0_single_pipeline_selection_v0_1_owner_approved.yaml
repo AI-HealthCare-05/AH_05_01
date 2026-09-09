@@ -1,0 +1,78 @@
+contract_name: d0_single_pipeline_selection
+contract_version: v0.1
+status: owner_approved_for_d0_only_mvp_selection
+approved_by: project_owner
+approved_at: "2026-09-04"
+approval_evidence: "Project owner instruction: proceed with selecting the single D0 deployment model and calibrator."
+
+scope:
+  tasks: [diabetes, hypertension]
+  pipeline: D0_F2_leisure_only
+  purpose: select_one_fixed_base_candidate_hyperparameter_and_calibrator_per_task
+  development_years: [2019, 2020, 2021]
+  seeds: [42, 1042, 2042]
+  outer_folds: 5
+  candidate_count: 46
+  calibrators: [identity, platt]
+  evaluated_combinations_per_task: 92
+
+sequencing_amendment:
+  decision: select_and_freeze_a_D0_only_MVP_baseline_before_D1_matched_D0_and_F0_are_complete
+  rationale: >-
+    The application needs a production-preparation baseline. D1 remains a separately
+    evaluated challenger and may replace D0 only after satisfying its pre-approved
+    paired adoption gates. F0 remains a separately labelled missing-exercise fallback
+    and does not block selection of the complete-six-feature D0 pipeline.
+  does_not_authorize:
+    - serving_OOF_predictions
+    - averaging_predictions_across_seeds
+    - opening_or_using_2022_for_selection
+    - D1_adoption
+    - F0_claims_for_missing_exercise_users
+    - production_release_before_full_development_refit_packaging_and_E2E_QA
+
+evaluation:
+  mode: fixed_combination_nested_OOF
+  requirement: >-
+    Every base candidate is held fixed across all five outer folds. Identity and Platt
+    are evaluated as separate combinations. For Platt, the calibrator is fitted only
+    from inner cross-fitted raw predictions of the corresponding outer-training split.
+  row_level_outputs: prohibited
+  participant_id_in_outputs_or_console: prohibited
+  evaluation_years_other_than_2019_2021: fail_closed
+  task_decisions_independent: true
+
+ranking:
+  primary: three_seed_mean_calibrated_brier
+  lower_is_better: true
+  equivalence_margin_from_best: 0.0005
+  stability_guard:
+    metric: three_seed_calibrated_brier_range
+    maximum_inclusive: 0.001
+  tie_breakers:
+    - three_seed_mean_log_loss_calibrated_ascending
+    - mean_absolute_calibration_slope_distance_from_1_ascending
+    - mean_absolute_calibration_intercept_distance_from_0_ascending
+    - three_seed_mean_pr_auc_descending
+    - three_seed_mean_roc_auc_descending
+    - model_family_simplicity_logistic_before_random_forest
+  exact_final_tie: lexicographically_stable_candidate_and_calibrator_id
+
+output_requirements:
+  - all_552_task_seed_combination_metric_rows_present
+  - all_184_task_combination_ranking_rows_present
+  - one_selected_combination_per_task
+  - checkpoint_resume_bound_to_input_contract_code_and_grid_hashes
+  - atomic_final_commit
+  - manifest_sha256_verified_before_commit
+  - no_row_level_or_PII_output
+
+post_selection:
+  required:
+    - independent_review_by_model_support_reviewer
+    - owner_freeze_record
+    - full_2019_2021_refit_of_selected_base_model
+    - fit_selected_calibrator_from_leakage_safe_full_development_cross_fitted_raw_predictions
+    - package_preprocessor_model_calibrator_schema_versions_and_hashes
+    - complete_release_gate_evaluation_and_backend_DB_frontend_E2E_QA
+  production_release_gate: BLOCKED

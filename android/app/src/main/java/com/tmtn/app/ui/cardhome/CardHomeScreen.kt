@@ -285,8 +285,7 @@ internal fun StatusBadge(text: String) {
 @Composable
 internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
-    val value = state.tuntunIndexValue.value
-    val band = state.tuntunIndexBand.value
+    val displayText = state.tuntunIndexDisplayText.value
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -302,7 +301,7 @@ internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () ->
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("틈튼지수", style = TmtnType.label, color = colors.onSurface)
-                if (value != null && state.tuntunIndexIsMock.value) {
+                if (displayText != null && state.tuntunIndexIsMock.value) {
                     MockBadge()
                 }
             }
@@ -320,40 +319,18 @@ internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () ->
             // ⚠️ PR #12 리뷰(P1) 반영: 네트워크 실패를 "정보를 입력하세요"로 잘못 안내하던
             // 문제 - 이미 다 입력한 사람이 오프라인이면 입력하라는 말을 들었음.
             Text("불러오지 못했어요 · 네트워크를 확인해 주세요", style = TmtnType.body, color = colors.onSurfaceVariant)
-        } else if (value == null || band == null) {
+        } else if (displayText == null) {
             Text(
                 "아직 계산할 수 없어요 · 신체정보나 운동습관을 입력해 보세요",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
         } else {
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("$value", style = TmtnType.display, color = colors.onSurface)
-                Box(
-                    modifier = Modifier
-                        .background(colors.surface, RoundedCornerShape(999.dp))
-                        .border(1.dp, colors.outlineVariant, RoundedCornerShape(999.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                ) {
-                    Text("$band 구간", style = TmtnType.caption, color = colors.onSurface)
-                }
-            }
-            // 0~100 구간 막대(관심/보통/양호 3분할) - 실제 구간만 강조색으로 표시
-            Row(modifier = Modifier.fillMaxWidth().height(10.dp)) {
-                listOf("관심", "보통", "양호").forEachIndexed { index, label ->
-                    Box(
-                        modifier = Modifier.weight(1f).height(10.dp)
-                            .background(
-                                // ⚠️ PR #12 리뷰(P2) 반영: 주황은 "오늘"에만 쓰는 색인데
-                                // 구간 막대에도 써서 겹쳐 있었음.
-                                if (label == band) colors.onSurface else colors.disabledContainer,
-                                RoundedCornerShape(4.dp),
-                            ),
-                    )
-                    if (index < 2) Spacer(modifier = Modifier.width(2.dp))
-                }
-            }
+            // ⚠️ 2026-09-09 반영: 실모델 전환 - 기존 "관심/보통/양호" 구간 막대는 새 계약에
+            // 없는 개념이라(bandLabel 항상 null) 제거함. 서버가 조립한 문구를 그대로 크게
+            // 보여줌.
+            Text(displayText, style = TmtnType.display, color = colors.onSurface)
             Text(
-                "${state.tuntunIndexPeriodLabel.value ?: ""} · 비진단용 참고 정보",
+                "동일 성별·연령대 참고 표본 대비 위치 · 비진단용 참고 정보",
                 style = TmtnType.caption, color = colors.onSurfaceVariant,
             )
         }

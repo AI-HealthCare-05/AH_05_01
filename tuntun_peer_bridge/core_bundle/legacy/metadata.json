@@ -1,0 +1,83 @@
+{
+  "d0_manifest": "1c64e17378da8f82f90fcaf4b20bdcb6797aa5e6101b9520e83347a18107f7c3",
+  "environment": {
+    "joblib": "1.5.3",
+    "numpy": "2.5.2",
+    "pandas": "2.3.3",
+    "python": "3.14.7",
+    "scikit-learn": "1.9.0",
+    "scipy": "1.18.1",
+    "threadpoolctl": "3.6.0"
+  },
+  "input_schema": {
+    "age_years": {
+      "integer": true,
+      "max": 120,
+      "min": 19,
+      "model_top_code": 80
+    },
+    "feature_order": [
+      "age_years",
+      "sex_code",
+      "height_cm",
+      "weight_kg",
+      "leisure_aerobic_moderate_equivalent_min_week",
+      "strength_days_week"
+    ],
+    "height_cm": {
+      "max": 220,
+      "min": 100
+    },
+    "leisure_aerobic_moderate_equivalent_min_week": {
+      "meaning": "canonical leisure moderate minutes + 2 * vigorous minutes; not raw sensor duration",
+      "min": 0,
+      "unit": "minutes/week"
+    },
+    "missing": "unavailable_no_imputation",
+    "pregnancy_status": "explicit nonpregnant required by score adapter",
+    "scope": "backend canonical adapter; no API/DB field mapping is implied",
+    "sex_code": {
+      "allowed": [
+        1,
+        2
+      ],
+      "meaning": "1=male,2=female"
+    },
+    "strength_days_week": {
+      "allowed": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "meaning": "5 denotes 5+ days, not an exact 5-day count"
+    },
+    "version": "d0_canonical_six_v0_1",
+    "weight_kg": {
+      "max": 250,
+      "min": 25
+    }
+  },
+  "model_version": "tuntun_integrated_candidate_v0_1",
+  "production_release_gate": "BLOCKED",
+  "reference_group_n": {
+    "19-39:1": 2077,
+    "19-39:2": 2246,
+    "40-64:1": 3314,
+    "40-64:2": 4367,
+    "65+:1": 1940,
+    "65+:2": 2459
+  },
+  "waist_n_jobs": 1,
+  "waist_params": {
+    "bootstrap": true,
+    "criterion": "squared_error",
+    "max_depth": 12,
+    "max_features": 0.7,
+    "min_samples_leaf": 5,
+    "n_estimators": 500,
+    "random_state": 42
+  }
+}

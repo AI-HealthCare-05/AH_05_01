@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "aerobicLowMinutes": {
+      "maximum": 10080,
+      "minimum": 0,
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "aerobicModerateMinutes": {
+      "maximum": 10080,
+      "minimum": 0,
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "aerobicVigorousMinutes": {
+      "maximum": 10080,
+      "minimum": 0,
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "bedtime": {
+      "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "birthMonth": {
+      "maximum": 12,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "birthYear": {
+      "maximum": 9999,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "heightCm": {
+      "maximum": 220,
+      "minimum": 100,
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "inputRevision": {
+      "maxLength": 100,
+      "minLength": 1,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pregnancyStatus": {
+      "enum": [
+        "pregnant",
+        "nonpregnant",
+        "unknown",
+        "not_applicable"
+      ]
+    },
+    "referenceDate": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string"
+    },
+    "sex": {
+      "enum": [
+        "male",
+        "female"
+      ]
+    },
+    "strengthFrequencyUnit": {
+      "enum": [
+        null,
+        "days",
+        "sessions"
+      ]
+    },
+    "strengthIntensity": {
+      "enum": [
+        null,
+        "light",
+        "moderate",
+        "hard"
+      ]
+    },
+    "strengthWeeklyCount": {
+      "maximum": 7,
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "wakeTime": {
+      "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "weightKg": {
+      "maximum": 250,
+      "minimum": 25,
+      "type": [
+        "number",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "birthYear",
+    "birthMonth",
+    "sex",
+    "referenceDate"
+  ],
+  "type": "object"
+}

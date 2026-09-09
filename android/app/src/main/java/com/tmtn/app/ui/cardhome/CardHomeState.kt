@@ -9,10 +9,8 @@ import com.tmtn.app.network.model.MaterialItem
 import com.tmtn.app.network.model.MemoUpdateRequest
 import com.tmtn.app.network.model.RestDayRequest
 import com.tmtn.app.ui.common.currentServiceDateString
-import com.tmtn.app.ui.common.isoDateToKoreanLabel
 import com.tmtn.app.ui.onboarding.parseErrorMessage
 import java.util.UUID
-import kotlin.math.roundToInt
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -87,12 +85,14 @@ class CardHomeState {
     // loadLocationConsent()가 false로 갱신함.
     var locationConsentGranted = mutableStateOf(true)
 
-    // ⚠️ 홈 "틈튼지수" 요약 카드 - 예전엔 "68"/"보통 구간" 등이 전부 하드코딩된 예시였음.
-    // /tuntun-score/v2를 그대로 써서(참고 탭과 같은 소스) 실제 값으로 표시함.
-    var tuntunIndexValue = mutableStateOf<Int?>(null)
-    var tuntunIndexBand = mutableStateOf<String?>(null)
-    var tuntunIndexPeriodLabel = mutableStateOf<String?>(null)
+    // ⚠️ 2026-09-09 반영: 실모델(또래 백분위, tuntun-score/peer/v2)로 전환. 기존
+    // tuntunIndexBand("관심/보통/양호")·tuntunIndexPeriodLabel(주간 기간)은 새 계약에
+    // 없는 개념이라(bandLabel은 항상 null, 기간 대신 단일 기준일) 제거함 - 서버가 조립해준
+    // compositeDisplay.text("튼튼지수 75.6점")를 그대로 신뢰해서 보여줌.
+    var tuntunIndexDisplayText = mutableStateOf<String?>(null)
     // ⚠️ PR #12 리뷰(P0) 반영: 홈 카드가 배지 없이 상수 Mock 점수를 그대로 보여주고 있었음.
+    // 실모델 전환 후에도 isMock은 항상 false로 오지만, 응답 자체가 안 왔을 때(로드 실패)와
+    // 구분하려고 필드는 유지함.
     var tuntunIndexIsMock = mutableStateOf(false)
 
     // ⚠️ 홈 "최근 7일" 도트 - 예전엔 listOf(true, true, false, true, true, false, null)로
@@ -413,28 +413,20 @@ class CardHomeState {
     suspend fun loadTuntunIndexSummary() {
         tuntunIndexLoadFailed.value = false
         val body = runCatching {
-            val response = ApiClient.tuntunScoreApi.getTuntunScoreV2()
+            val response = ApiClient.tuntunScoreApi.getTuntunScorePeerV2()
             if (response.isSuccessful) response.body() else null
         }.getOrNull()
         if (body == null) {
+            // ⚠️ 2026-09-09 반영: 브릿지 미설정/미가동(503) 등도 이 분기로 옴 - "네트워크
+            // 실패"와 동일하게 취급. 예전 Mock 고정 80점처럼 조용히 대체 값을 보여주지 않음.
             tuntunIndexLoadFailed.value = true
             return
         }
-        val index = body.tuntunIndex
-        if (body.scoreAvailable && index != null) {
-            tuntunIndexValue.value = index.roundToInt()
-            tuntunIndexBand.value = when {
-                index < 40.0 -> "관심"
-                index < 70.0 -> "보통"
-                else -> "양호"
-            }
+        if (body.scoreAvailable) {
+            tuntunIndexDisplayText.value = body.compositeDisplay.text
             tuntunIndexIsMock.value = body.isMock
-            // ⚠️ QA 반영: activityWindowStart/End가 ISO("2026-08-29") 그대로 나가서
-            // 홈 화면 다른 날짜(점 포맷)와 표기가 어긋나 보였음 - 통일된 포맷으로 변환.
-            tuntunIndexPeriodLabel.value =
-                "${isoDateToKoreanLabel(body.activityWindowStart)} ~ ${isoDateToKoreanLabel(body.activityWindowEnd)}"
         } else {
-            tuntunIndexValue.value = null
+            tuntunIndexDisplayText.value = null
         }
     }
 

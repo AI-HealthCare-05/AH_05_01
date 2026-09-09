@@ -9,7 +9,9 @@ from app.dtos.tuntun_score import (
     TuntunScoreOrEligibilityResponse,
     TuntunScoreV2Response,
 )
+from app.dtos.tuntun_score_peer import TuntunScorePeerV2Response
 from app.models.users import User
+from app.services.tuntun_score_peer_service import TuntunScorePeerService
 from app.services.tuntun_score_service import TuntunScoreService
 
 tuntun_score_router = APIRouter(prefix="/tuntun-score", tags=["tuntun-score"])
@@ -59,3 +61,21 @@ async def get_tuntun_score_inputs(
     (FIELDS.csv의 edit-profile-*/edit-activity-* 액션 — 새 입력 화면을 따로 만들지 않음)."""
 
     return await service.get_score_inputs(user)
+
+
+@tuntun_score_router.get("/peer/v2", response_model=TuntunScorePeerV2Response, status_code=status.HTTP_200_OK)
+async def get_tuntun_score_peer_v2(
+    user: Annotated[User, Depends(get_request_user)],
+    service: Annotated[TuntunScorePeerService, Depends(TuntunScorePeerService)],
+) -> TuntunScorePeerV2Response:
+    """⚠️ 2026-09-09 추가 — LOCAL_REVIEW_CANDIDATE, 팀 검토 전용. 별도 Python 3.14.7
+    모델 브릿지(tuntun_peer_bridge/)에 HTTP로 요청해서 실제 모델 추론(또래 백분위) 결과를
+    받아온다. 기존 /tuntun-score, /tuntun-score/v2(둘 다 Mock)는 이 라우트와 전혀
+    무관하며 그대로 유지된다.
+
+    앱 홈/카드 화면에 아직 연결하지 않는다 — 팀이 UI 최종 결정 전까지는 이 경로를 직접
+    호출해서 확인하는 용도로만 쓴다. 운영 서버에는 TUNTUN_PEER_BRIDGE_URL을 절대
+    채우지 않는다(안 채우면 503을 그대로 반환하므로 존재 자체가 운영에 영향 없음).
+    """
+
+    return await service.get_score(user)
