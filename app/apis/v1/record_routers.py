@@ -74,6 +74,33 @@ async def mark_rest_day(
     return await service.mark_rest_day(user, request)
 
 
+@record_router.delete("/rest-day", response_model=StreakResponse, status_code=status.HTTP_200_OK)
+async def cancel_rest_day(
+    service_date: date,
+    user: Annotated[User, Depends(get_request_user)],
+    service: Annotated[RecordService, Depends(RecordService)],
+) -> StreakResponse:
+    """⚠️ 2026-09-07 반영: 백엔드전달_상태전이 문서 G1(P0) - "쉬어가기 취소".
+    쿼리 파라미터로 받음(문서 스펙: DELETE /records/rest-day?service_date=YYYY-MM-DD).
+    T08/T09/T10/T13 전이(화면 C25/C27)를 이걸로 풀어줌."""
+
+    return await service.cancel_rest_day(user, service_date)
+
+
+@record_router.post("/switch-to-give-up", response_model=StreakResponse, status_code=status.HTTP_200_OK)
+async def switch_to_give_up(
+    request: RestDayRequest,
+    user: Annotated[User, Depends(get_request_user)],
+    service: Annotated[RecordService, Depends(RecordService)],
+) -> StreakResponse:
+    """⚠️ 2026-09-07 반영: 백엔드전달_상태전이 문서 REST -> GIVE_UP 전환(T13 계열, 화면
+    C27 "쉼 대신 포기하기"). RestDayRequest를 그대로 재사용 - 필요한 값이 service_date
+    하나뿐이라 별도 DTO를 새로 만들 이유가 없음. "쉬어가기 취소 + 포기 기록"을 원자적으로
+    처리(내부적으로 RecordService.switch_to_give_up 참고)."""
+
+    return await service.switch_to_give_up(user, request.service_date)
+
+
 @record_router.get("/streak", response_model=StreakResponse, status_code=status.HTTP_200_OK)
 async def get_streak(
     user: Annotated[User, Depends(get_request_user)],

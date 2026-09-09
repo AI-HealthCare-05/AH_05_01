@@ -40,7 +40,14 @@ class Config(BaseSettings):
     DB_CONNECT_TIMEOUT: int = 5
     DB_CONNECTION_POOL_MAXSIZE: int = 10
 
-    COOKIE_DOMAIN: str = "localhost"
+    # ⚠️ 2026-09-08: 기본값을 "localhost"에서 빈 문자열로 바꿈.
+    # 값이 있으면 refresh_token 쿠키에 Domain 속성이 붙는데, 요청 호스트와 domain-match
+    # 되지 않으면 클라이언트(OkHttp·브라우저 공통)가 쿠키를 통째로 버림 - ngrok 주소로
+    # 붙는 지금 상황에서 "Domain=localhost"라 리프레시 토큰이 아예 저장되지 않았고,
+    # 액세스 토큰 60분이 끝나는 순간 로그아웃됐음.
+    # 비워두면 host-only 쿠키로 발급돼서 어느 호스트로 붙든 항상 저장됨.
+    # 서브도메인 여러 개에서 세션을 공유해야 할 때만(예: "tmtn.example.com") 채울 것.
+    COOKIE_DOMAIN: str = ""
 
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

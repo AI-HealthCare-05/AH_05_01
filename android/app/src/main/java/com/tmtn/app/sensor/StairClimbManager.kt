@@ -44,6 +44,15 @@ class StairClimbManager(private val context: Context) : SensorEventListener {
     private var referenceSetAt: Long = 0L
     private val referenceResetIntervalMs = 5 * 60 * 1000L  // 5분
 
+    // ⚠️ 2026-09-07 반영: 최근 걸음 감지 시각 - "지금 이 순간 움직이고 있나"를
+    // 화면에 정확히 보여주려고 추가(전에는 SENSOR_FLOORS_CLIMBED가 항상 true로
+    // 고정돼 있어서 가만히 있어도 "움직임을 확인했어요"가 계속 떴음).
+    private var lastStepDetectedAt: Long = 0L
+    private val recentlyActiveWindowMs = 3000L
+
+    fun isRecentlyActive(nowMs: Long = System.currentTimeMillis()): Boolean =
+        lastStepDetectedAt != 0L && nowMs - lastStepDetectedAt <= recentlyActiveWindowMs
+
     // 지금 기준점 이후로 누적되고 있는 상승 구간 동안 발생한 걸음 수.
     // 기준점이 갱신될 때마다(인정되거나 5분 리셋될 때) 0으로 초기화된다.
     private var stepsSincePendingClimb = 0
@@ -64,8 +73,12 @@ class StairClimbManager(private val context: Context) : SensorEventListener {
     fun isAvailable(): Boolean = pressureSensor != null
 
     fun start() {
-        pressureSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
-        stepDetector?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
+        // ⚠️ 2026-09-07 반영: SENSOR_DELAY_NORMAL(약 200ms지만 기기에 따라 훨씬 느릴 수
+        // 있음, 일부 기기는 기압 센서가 1초에 1번 정도만 갱신)이라 실제로 계단을 오르고
+        // 있는 동안 화면이 한참 안 오르다가 갑자기 몰아서 반영되는 것처럼 보였음
+        // (QA - "7칸 올라갔는데 계속 4칸이야"). GAME으로 폴링 주기를 앞당김.
+        pressureSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+        stepDetector?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
     }
 
     fun stop() {
@@ -78,6 +91,19 @@ class StairClimbManager(private val context: Context) : SensorEventListener {
         floorsClimbed = 0
         altitudeWindow.clear()
         stepsSincePendingClimb = 0
+        lastStepDetectedAt = 0L
+    }
+
+    // ⚠️ 2026-09-06 추가: reset()과 달리 0부터가 아니라 서버가 준 baseline부터 이어서 셈.
+    // floorsClimbed는 상대 증가값(+=)으로 관리되니 초기값만 baseline으로 맞추면 됨 -
+    // 기압 기준점(baselineAltitude)은 그대로 초기화해서 다음 측정값으로 새로 잡음.
+    fun resumeFrom(baseline: Int) {
+        baselineAltitude = null
+        referenceSetAt = 0L
+        floorsClimbed = baseline
+        altitudeWindow.clear()
+        stepsSincePendingClimb = 0
+        lastStepDetectedAt = 0L
     }
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -87,7 +113,11 @@ class StairClimbManager(private val context: Context) : SensorEventListener {
                 val now = System.currentTimeMillis()
                 // 지금 누적 중인 상승 구간에 걸음이 있었다는 걸 기록한다.
                 stepsSincePendingClimb++
+                lastStepDetectedAt = now
                 logRaw(sensorType = "STEP_DETECTOR", timestamp = now, value1 = 1f)
+                // ⚠️ 2026-09-08 QA(계단 오탐) 임시 진단 로그 - 가만히 앉아있을 때도 걸음
+                // 감지 센서가 반응하는지 확인용. 원인 확정되면 지워도 됨.
+                android.util.Log.w("StairClimb", "step detected: stepsSincePendingClimb=$stepsSincePendingClimb")
             }
 
             Sensor.TYPE_PRESSURE -> {
@@ -115,6 +145,17 @@ class StairClimbManager(private val context: Context) : SensorEventListener {
 
                 val climbedFromBaseline = smoothedAltitude - baselineAltitude!!
 
+                // ⚠️ 2026-09-08 QA(계단 오탐 - "의자에 앉았더니 갑자기 3칸 늘었다") 임시
+                // 진단 로그 - 매 압력 이벤트마다 실제 고도값·기준점·판정 재료를 전부 남김.
+                // 원인 확정되면 지워도 됨.
+                android.util.Log.w(
+                    "StairClimb",
+                    "pressure event: rawPressure=$rawPressure rawAltitude=$rawAltitude " +
+                        "smoothedAltitude=$smoothedAltitude baseline=$baselineAltitude " +
+                        "climbedFromBaseline=$climbedFromBaseline stepsSincePendingClimb=$stepsSincePendingClimb " +
+                        "floorsClimbed=$floorsClimbed"
+                )
+
                 // 고도 조건(0.6m 이상 상승) + 전진 이동 조건(그 사이 걸음이 최소 1번)을
                 // 둘 다 만족해야 인정한다. 걸음이 전혀 없다면(폰 들기, 앉아서 흔들림)
                 // 고도가 아무리 올라도 인정되지 않는다.
@@ -122,6 +163,11 @@ class StairClimbManager(private val context: Context) : SensorEventListener {
                     if (stepsSincePendingClimb >= minStepsRequiredForCredit) {
                         val newFloors = (climbedFromBaseline / stepHeightM).toInt().coerceAtLeast(1)
                         floorsClimbed += newFloors
+                        android.util.Log.w(
+                            "StairClimb",
+                            "CREDITED: +$newFloors floors (now $floorsClimbed) - " +
+                                "climbedFromBaseline=$climbedFromBaseline stepsSincePendingClimb=$stepsSincePendingClimb"
+                        )
                         baselineAltitude = smoothedAltitude
                         referenceSetAt = now
                         stepsSincePendingClimb = 0
@@ -129,6 +175,19 @@ class StairClimbManager(private val context: Context) : SensorEventListener {
                     // 걸음 조건을 못 채웠다면, 기준점은 그대로 두고 조금 더 기다린다.
                     // (혹시 이 상승이 순수 노이즈라면 다음에 다시 낮아질 것이고,
                     // 진짜 계단이라면 뒤이어 걸음이 잡히면서 다음 판정에서 인정될 수 있다)
+                } else if (climbedFromBaseline < -climbThresholdM) {
+                    // ⚠️ 2026-09-07 반영: 계단을 "내려간" 경우, 기존엔 5분이 지나야만
+                    // 기준점을 다시 잡았음(referenceResetIntervalMs). 그 사이 기준점이
+                    // 계속 "정상보다 높은 지점"에 고정된 채로 남아있어서, 다시 올라가도
+                    // 상승분이 정확히 안 잡히거나(기준점이 이미 높아서 상승폭이 작게
+                    // 계산됨), 반대로 원래 위치로 "복귀"하는 것 자체가 이전 기준점보다
+                    // 낮았다가 다시 올라오는 구간으로 오인되어 중복 카운트되는 문제가
+                    // 있었음(QA - "내려가는데도 칸수가 올랐다"). 뚜렷하게 내려간 게
+                    // 확인되면(0.6m 이상 하강) 그 지점을 새 기준점으로 즉시 갱신 -
+                    // "지금 서 있는 층"을 기준으로 다시 정확하게 잼.
+                    baselineAltitude = smoothedAltitude
+                    referenceSetAt = now
+                    stepsSincePendingClimb = 0
                 } else if (now - referenceSetAt > referenceResetIntervalMs) {
                     baselineAltitude = smoothedAltitude
                     referenceSetAt = now

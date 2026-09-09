@@ -10,6 +10,7 @@ import com.tmtn.app.network.model.EmailVerificationRequestRequest
 import com.tmtn.app.network.model.ExerciseHabitsRequest
 import com.tmtn.app.network.model.HealthInputRequest
 import com.tmtn.app.network.model.LoginRequest
+import com.tmtn.app.network.model.NotificationSettingResponse
 import com.tmtn.app.network.model.OnboardingScheduleRequest
 import com.tmtn.app.network.model.UserUpdateRequest
 import retrofit2.Response
@@ -104,7 +105,10 @@ class OnboardingState {
     // A07
     var name = mutableStateOf("")
     var nickname = mutableStateOf("")
-    var gender = mutableStateOf("FEMALE")
+    // ⚠️ 2026-09-07 QA(N5) 반영: 기본값이 "FEMALE"로 박혀있어서 사용자가 직접 고르지 않아도
+    // 여성으로 저장되고(허리둘레·틈튼지수 모델 입력값임), 몸 정보에서도 읽기 전용이라 되돌릴 수 없었음 —
+    // 미선택(null)로 시작해서 A07의 "다음" 버튼 enabled 조건에서 직접 고르게 강제함(OnboardingScreensProfile.kt 참고).
+    var gender = mutableStateOf<String?>(null)
     var birthYear = mutableStateOf(1990)
     var birthMonth = mutableStateOf(3)
     // ⚠️ 2026-09-04 추가: 여성일 때만 물어보는 임신 여부. null=아직 안 물어봤거나 응답 안 함
@@ -122,7 +126,13 @@ class OnboardingState {
 
     // A09~A10
     var wakeTime = mutableStateOf("07:00")
+    // ⚠️ 2026-09-08 추가: 점심은 자동 계산(기상+N시간) 대신 사용자가 직접 입력.
+    var lunchTime = mutableStateOf("12:00")
     var sleepTime = mutableStateOf("23:30")
+    // ⚠️ 2026-09-08 추가: submitSchedule() 응답(서버가 계산한 실제 slots)을 저장 - 로컬
+    // 알림 예약 시 클라이언트가 계산식을 따로 다시 계산하다 서버와 어긋나는 걸 방지하려고
+    // 서버가 준 값을 그대로 씀.
+    var scheduleNotificationSetting = mutableStateOf<NotificationSettingResponse?>(null)
 
     private fun clearError() {
         errorMessage.value = null
@@ -164,6 +174,10 @@ class OnboardingState {
             errorMessage.value = "비밀번호가 서로 달라요. 다시 확인해주세요."
             return
         }
+        // ⚠️ 2026-09-08 QA 반영: 화면에서는 trim해서 검증만 통과시키고, 실제 서버로 보내는
+        // 값은 여전히 공백이 낀 원본이면 서버(EmailStr)에서 다시 튕길 수 있음 - 검증에 쓴
+        // 값과 실제로 보내는 값을 일치시킴.
+        email.value = email.value.trim()
         runStep(
             block = {
                 runCatching {
@@ -302,9 +316,12 @@ class OnboardingState {
             block = {
                 runCatching {
                     val response = ApiClient.onboardingApi.submitSchedule(
-                        OnboardingScheduleRequest(wake_time = wakeTime.value, sleep_time = sleepTime.value)
+                        OnboardingScheduleRequest(
+                            wake_time = wakeTime.value, lunch_time = lunchTime.value, sleep_time = sleepTime.value
+                        )
                     )
                     if (!response.isSuccessful) error(parseErrorMessage(response))
+                    scheduleNotificationSetting.value = response.body()
                 }
             },
             // ⚠️ FLOWS.md 갱신: A10 "이 시간으로 맞추기"는 이제 바로 끝나는 게 아니라

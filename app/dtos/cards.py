@@ -21,6 +21,10 @@ class CardWindowResponse(BaseSerializerModel):
     challenge_state: str | None = None
     is_rest_day: bool = False  # ⚠️ 2026-09-01 추가: daily_record_notes에만 있고 여기 없어서,
     # 앱 재시작하면 쉬어가기 표시가 사라지던 버그를 고치려고 넣음.
+    # ⚠️ 2026-09-07 반영: 상태전이 정책(G3) - 카드를 아직 안 뽑아 challenge가 없는 날의
+    # "포기"는 daily_record_notes.is_given_up에만 있어서, is_rest_day와 똑같은 이유로
+    # 여기도 노출해야 앱 재시작 후에도 포기 표시가 유지됨.
+    is_given_up: bool = False
 
 
 class CardRevealResponse(BaseSerializerModel):
@@ -46,6 +50,11 @@ class CardRevealResponse(BaseSerializerModel):
     # 반영이 안 됐음. 서버가 accumulated_duration_seconds + (지금 - started_at)을 계산해서
     # 내려주면, 클라이언트는 이 값부터 이어서 세면 됨. ACTIVE가 아니면(READY 등) 0.
     elapsed_seconds: int = 0
+    # ⚠️ 2026-09-06 추가: COUNT형(걸음수·계단·거리) 전용 - 서버에 마지막으로 보고된
+    # 누적 측정치. TIMER형의 elapsed_seconds와 짝을 이룸 - 안드로이드가 "진행 중인 미션
+    # 확인"으로 재진입할 때 이 값부터 로컬 센서 매니저가 이어서 세게 함(0부터 다시 세지
+    # 않도록).
+    accumulated_count: int = 0
     fortune_text: str | None = None  # "오늘의 운세" (CSV fortune_text 그대로)
     lucky_location: str | None = None  # "행운의 위치" (location_candidates 중 하나)
     line_text: str | None = None  # "오늘의 한 줄" (line_text_template의 {place}/{num}/{unit} 채운 결과)

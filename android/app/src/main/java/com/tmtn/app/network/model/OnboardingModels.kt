@@ -44,7 +44,9 @@ data class UserInfoResponse(
     val birth_month: Int?,
     val gender: String?,
     val is_pregnant: Boolean?,
-    val created_at: String
+    val created_at: String,
+    // ⚠️ 2026-09-07 추가: 걷기/조깅 케이던스 임계값(신장 구간표) 계산용.
+    val height_cm: Float? = null
 )
 
 // ===== A07: 키/몸무게 (health-input, 유연한 key-value 구조) =====
@@ -86,6 +88,7 @@ data class ExerciseHabitsResponse(
 // ===== A09~A10: 생활시간 =====
 data class OnboardingScheduleRequest(
     val wake_time: String,   // "HH:MM"
+    val lunch_time: String,  // ⚠️ 2026-09-08 추가: 점심은 자동 계산 대신 직접 입력.
     val sleep_time: String
 )
 

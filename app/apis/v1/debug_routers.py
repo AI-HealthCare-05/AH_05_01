@@ -4,6 +4,9 @@
 있는 값이라 재시작하면 0으로 초기화되고, DB에는 전혀 안 남는다. 실제 날짜(datetime.now)는
 안 건드리고, app.core.time_utils.service_today()가 돌려주는 값에만 오프셋을 더한다 -
 로그·JWT 만료 시각 등 다른 모든 시스템 시각은 정상적인 실제 시각 그대로 흐른다.
+
+⚠️ 2026-09-08 QA(N3) 반영: 오프셋을 계정(user_id)별로 따로 관리함 - 여러 사람이 같은 dev
+서버로 QA하면서 한 명이 "다음 날"을 누르면 다른 계정까지 같이 밀리던 문제를 없앰.
 """
 
 from typing import Annotated
@@ -25,25 +28,28 @@ def _reject_in_prod() -> None:
 
 
 @debug_router.post("/advance-day", status_code=status.HTTP_200_OK)
-async def advance_day(_user: Annotated[User, Depends(get_request_user)]) -> dict:
-    """ "오늘"을 하루 앞당김. 카드·연속기록·캘린더·틈튼지수 기간이 전부 이 새 날짜
-    기준으로 일관되게 동작함(새 daily_card_set이 그 날짜로 새로 생성됨)."""
+async def advance_day(user: Annotated[User, Depends(get_request_user)]) -> dict:
+    """ "오늘"을 하루 앞당김(내 계정만). 카드·연속기록·캘린더·틈튼지수 기간이 전부 이 새
+    날짜 기준으로 일관되게 동작함(새 daily_card_set이 그 날짜로 새로 생성됨)."""
 
     _reject_in_prod()
-    offset = _set_debug_day_offset(_get_debug_day_offset() + 1)
-    return {"debug_day_offset": offset, "simulated_today": service_today().isoformat()}
+    offset = _set_debug_day_offset(user.id, _get_debug_day_offset(user.id) + 1)
+    return {"debug_day_offset": offset, "simulated_today": service_today(user.id).isoformat()}
 
 
 @debug_router.post("/reset-day", status_code=status.HTTP_200_OK)
-async def reset_day(_user: Annotated[User, Depends(get_request_user)]) -> dict:
-    """시뮬레이션한 날짜를 실제 오늘로 되돌림."""
+async def reset_day(user: Annotated[User, Depends(get_request_user)]) -> dict:
+    """시뮬레이션한 날짜를 실제 오늘로 되돌림(내 계정만)."""
 
     _reject_in_prod()
-    offset = _set_debug_day_offset(0)
-    return {"debug_day_offset": offset, "simulated_today": service_today().isoformat()}
+    offset = _set_debug_day_offset(user.id, 0)
+    return {"debug_day_offset": offset, "simulated_today": service_today(user.id).isoformat()}
 
 
 @debug_router.get("/current-day", status_code=status.HTTP_200_OK)
-async def get_current_day(_user: Annotated[User, Depends(get_request_user)]) -> dict:
+async def get_current_day(user: Annotated[User, Depends(get_request_user)]) -> dict:
     _reject_in_prod()
-    return {"debug_day_offset": _get_debug_day_offset(), "simulated_today": service_today().isoformat()}
+    return {
+        "debug_day_offset": _get_debug_day_offset(user.id),
+        "simulated_today": service_today(user.id).isoformat(),
+    }

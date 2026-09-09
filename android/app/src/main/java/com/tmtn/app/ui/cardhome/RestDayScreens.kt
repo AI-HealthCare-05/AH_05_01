@@ -89,16 +89,19 @@ fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
                 )
             }
             Text("오늘은 쉬어갈까요?", style = TmtnType.title, color = colors.onSurface)
-            Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.bodyLarge, color = colors.onSurface)
+            Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.bodyLarge, color = colors.onSurface)
 
             Row(
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("이번 주 남은 쉼", style = TmtnType.body, color = colors.onSurface)
+                // ⚠️ 2026-09-07 반영: 상태전이 문서 G5 - 라벨은 "남은 쉼"인데 값은 쓴
+                // 횟수(usedThisWeek)를 보여줘서 서로 모순됐음(QA N6). "이번 주 쉬어가기
+                // N회 중 M회 남음" 형식으로 통일 - 이 값이 실제로 남은 횟수(remaining)임.
+                Text("이번 주 쉬어가기", style = TmtnType.body, color = colors.onSurface)
                 Text(
-                    "${state.restDaysUsedThisWeek.value}회 / 2회",
+                    "2회 중 ${state.restDaysRemainingThisWeek.value}회 남음",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
             }
@@ -134,7 +137,7 @@ fun RestDayDoneScreen(state: CardHomeState, scope: kotlinx.coroutines.CoroutineS
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("틈튼", style = TmtnType.title, color = colors.onSurface)
-        Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
         Column(
             modifier = Modifier

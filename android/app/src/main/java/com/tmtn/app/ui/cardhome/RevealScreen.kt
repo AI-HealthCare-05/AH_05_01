@@ -80,10 +80,22 @@ fun RevealScreen(
     state: CardHomeState,
     scope: CoroutineScope,
     onStartAction: () -> Unit,
+    // ⚠️ 2026-09-07 반영(G4): SKIPPED(포기)에서 "다시 도전하기"를 눌렀을 때 - onStartAction과
+    // 별도로 둔 이유는 onStartAction은 "아직 시작 전/진행 중" 카드 기준 판단이라, SKIPPED
+    // 카드를 그대로 넣으면 stepForRevealedCard가 곧장 REVEALED로 되돌려서(현재 화면) 아무
+    // 일도 안 일어남 - 실제로 서버에 재시작을 요청하는 별도 경로가 필요함.
+    onRestartFromGiveUp: () -> Unit = {},
 ) {
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value ?: return
-    val isFinished = card.state == "COMPLETED" || card.state == "SKIPPED"
+    // ⚠️ 2026-09-07 반영(G4): COMPLETED와 SKIPPED(포기)를 똑같이 "끝난 미션"으로 묶어서
+    // 시작 버튼을 통째로 숨기고 있었음. 그런데 start()는 이미 SKIPPED에서도 재시작을
+    // 허용하도록 고쳐져 있었음(G2, 정책 P1 "자정 전에는 어떤 선택도 영구 확정되지
+    // 않는다") - 정작 그걸 실제로 누를 방법이 안드로이드 어디에도 없었던 게 이 버그의
+    // 본체. COMPLETED만 진짜로 끝난 것으로 취급하고, SKIPPED는 "다시 도전하기"를 보여줌.
+    val isCompleted = card.state == "COMPLETED"
+    val isSkipped = card.state == "SKIPPED"
+    val isFinished = isCompleted || isSkipped
 
     Column(modifier = Modifier.fillMaxSize()) {
         // ⚠️ 2026-09-06 QA(레이아웃) 반영: 몰입 모드(하단 탭 숨김)인 건 의도된 것인데,
@@ -96,7 +108,7 @@ fun RevealScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
-            NoteCard(card)
+            NoteCard(card, state.displayDateLabel())
         }
 
         // 하단 CTA
@@ -120,10 +132,33 @@ fun RevealScreen(
             // ⚠️ 2026-09-04 멘토링 반영: "오늘은 쉬어가기"는 홈 화면에만 남기고 다른 화면
             // 전부에서 없애기로 방향이 정해짐 - 이 화면(카드/B06)의 버튼도 제거.
             val isInProgress = card.state == "ACTIVE" || card.state == "PAUSED"
-            if (!isFinished) {
+            // ⚠️ 2026-09-07 반영: 쉬어가기(REST) 중에 "오늘 카드 다시 보기"로 들어와서
+            // 여기서 곧장 "이 행동 시작하기"를 누르면, 서버에 쉬어가기 취소 절차
+            // (cancel_rest_day, C25) 없이 그냥 시작돼버려서 완료해도 쓴 쉬어가기 1회가
+            // 안 돌아오는 문제가 있었음. READY 상태(아직 시작 전)에서만 숨기고, 이미
+            // 시작된 미션(ACTIVE/PAUSED)은 계속 확인할 수 있어야 하니 그대로 둠 - "새로
+            // 시작"만 반드시 홈의 "뽑아둔 카드로 도전하기"(C25, 쉬어가기 취소를 같이 처리)를
+            // 거치게 함.
+            val isRestingBeforeStart = state.isTodayRestDay.value && !isInProgress && !isFinished
+            if (!isFinished && !isRestingBeforeStart) {
                 TmtnPrimaryButton(
                     text = if (isInProgress) "진행 중인 미션 확인" else "이 행동 시작하기",
                     onClick = onStartAction,
+                )
+            } else if (isRestingBeforeStart) {
+                Text(
+                    "오늘은 쉬어가기로 표시돼 있어요. 시작하려면 홈에서 " +
+                        "\"뽑아둔 카드로 도전하기\"를 눌러 주세요 - 쓴 쉬어가기 1회가 함께 돌아와요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
+            } else if (isSkipped) {
+                // ⚠️ 2026-09-07 반영(G4/G2): "포기"는 완료와 달리 되돌릴 수 있음 - 오늘 안에는
+                // 언제든 다시 도전할 수 있다는 걸 실제 버튼으로 보여줌.
+                TmtnPrimaryButton(text = "다시 도전하기", onClick = onRestartFromGiveUp)
+                Text(
+                    "오늘 자정 전이면 언제든 다시 시작할 수 있어요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
             // ⚠️ 2026-09-06 반영: 완료/쉬어감 정보를 이 화면 하단에 보여주던 블록을
@@ -142,7 +177,7 @@ fun RevealScreen(
 }
 
 @Composable
-private fun NoteCard(card: CardRevealResponse) {
+private fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
     val material = MATERIAL_NAMES[card.five_element]
 
     Column(
@@ -160,7 +195,7 @@ private fun NoteCard(card: CardRevealResponse) {
         ) {
             Column {
                 Text("오늘의 틈", style = TmtnType.bodyLarge, color = NoteCream)
-                Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = NoteCream.copy(alpha = 0.76f))
+                Text(displayDate.toKoreanDateLabel(), style = TmtnType.caption, color = NoteCream.copy(alpha = 0.76f))
                 if (material != null) {
                     Text(
                         "${material.first} · ${card.domain ?: material.second}",

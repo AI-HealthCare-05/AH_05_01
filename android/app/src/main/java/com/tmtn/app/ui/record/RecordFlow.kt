@@ -29,13 +29,9 @@ fun RecordFlow(onGoPickCard: () -> Unit) {
         state.loadMonthly()
     }
 
-    // 시스템 뒤로가기 - 열린 바텀시트가 있으면 그것부터 닫음(D06 → D03 → 목록).
-    BackHandler(enabled = state.showRestSheet.value || state.showDaySheet.value) {
-        if (state.showRestSheet.value) {
-            state.closeRestSheet()
-        } else {
-            state.closeDaySheet()
-        }
+    // 시스템 뒤로가기 - 열린 바텀시트가 있으면 닫음(D03 → 목록).
+    BackHandler(enabled = state.showDaySheet.value) {
+        state.closeDaySheet()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

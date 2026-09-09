@@ -4,13 +4,18 @@ from fastapi import HTTPException, status
 from tortoise.exceptions import IntegrityError
 from tortoise.transactions import in_transaction
 
+from app.core.logger import default_logger
 from app.dtos.cards import CardRevealResponse, CardWindowResponse
 from app.models.cards import DailyCardSet
 from app.models.users import User
 from app.repositories.card_repository import CardRepository
 from app.repositories.challenge_repository import ChallengeRepository
 from app.repositories.mission_repository import MissionTemplateRepository
-from app.services.challenge_service import _effective_duration_seconds
+from app.services.challenge_service import (
+    ChallengeService,
+    _effective_duration_seconds,
+    _target_duration_seconds,
+)
 
 
 class CardService:
@@ -18,9 +23,20 @@ class CardService:
         self.card_repo = CardRepository()
         self.mission_repo = MissionTemplateRepository()
         self.challenge_repo = ChallengeRepository()
+        # ⚠️ 2026-09-08 추가: 자정 정산(settle_past_days)을 홈 진입에서 부르기 위해 필요.
+        self.challenge_service = ChallengeService()
 
     async def get_or_create_today(self, user: User, service_date: date) -> CardWindowResponse:
         """문서 §6: "카드 세트 생성 — daily_card_sets · card_options 3건 (일부 실패 시 전체 롤백)"."""
+
+        # ⚠️ 2026-09-08 추가(자정 정산): 홈에 들어올 때마다 지난 날짜의 안 끝난 챌린지를 먼저
+        # 마감함. 스케줄러가 없어서 "어제 시작하고 안 끝낸 것"이 계속 ACTIVE로 남아 오늘도
+        # 시간을 쌓고 있었음(challenge_service.settle_past_days 주석 참고). 정산이 실패해도
+        # 오늘 카드를 못 보여줄 이유는 없으므로 조용히 넘어가고 로그만 남김.
+        try:
+            await self.challenge_service.settle_past_days(user, service_date)
+        except Exception:  # noqa: BLE001 - 정산 실패가 홈 진입을 막지 않게 함
+            default_logger.exception("자정 정산 실패: user_id=%s service_date=%s", user.id, service_date)
 
         card_set = await self.card_repo.get_set_by_date(user.id, service_date)
         if card_set is None:
@@ -52,6 +68,16 @@ class CardService:
             async with in_transaction():
                 selection = await self.card_repo.create_selection(card_set.id, option.id)
                 challenge = await self.challenge_repo.create_from_selection(selection, option.mission_template_version)
+                # ⚠️ 2026-09-07 반영: 상태전이 정책(G3) - "포기(카드 미선택 상태)" 후 마음을
+                # 바꿔 카드를 뽑으면(B19 -> "그래도 진행"), 이제부터는 challenge.state가
+                # "포기" 표시를 대신하므로 note.is_given_up을 그대로 두면 challenge는
+                # 정상 진행 중인데 홈 화면엔 여전히 "포기"로 남는 모순이 생김 - 여기서 같이 끔.
+                from app.models.records import DailyRecordNote
+
+                note = await DailyRecordNote.get_or_none(user_id=user.id, service_date=card_set.service_date)
+                if note is not None and note.is_given_up:
+                    note.is_given_up = False
+                    await note.save(update_fields=["is_given_up", "updated_at"])
         except IntegrityError as exc:
             # uq_winner_per_set 위반 — 이미 다른 옵션이 확정된 상태 (동시 확정 경합)
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 확정된 카드가 있습니다.") from exc
@@ -82,6 +108,24 @@ class CardService:
         # 그대로 재사용 - 두 곳에서 각자 구현하면 타임존 등이 어긋날 위험이 있음.
         elapsed_seconds = _effective_duration_seconds(challenge)
 
+        # ⚠️ 2026-09-07 QA(N2/타이머 리셋) 진단 로그 - "화면 다시 들어가면 1초로 바뀐다"는
+        # 재현 보고 확인용. 원인은 확정됐음: target_duration_seconds에 "분" 숫자가 그대로
+        # 저장돼서(1분짜리가 1) 여기 elapsed_seconds가 min(실제경과, 1) = 1로 잘렸던 것
+        # (models/challenges.py의 duration_seconds_from_target() 주석에 전체 설명).
+        # 고친 뒤 확인용으로 target도 같이 찍어둠 - 1분짜리면 target_seconds=60이 나와야 정상.
+        # 며칠 굴려보고 문제 없으면 이 로그는 지워도 됨.
+        default_logger.warning(
+            "[TIMER-DEBUG] reveal: challenge_id=%s state=%s accumulated=%s started_at=%s "
+            "target_column=%s target_seconds=%s -> elapsed_seconds=%s",
+            challenge.id,
+            challenge.state,
+            challenge.accumulated_duration_seconds,
+            challenge.started_at,
+            challenge.target_duration_seconds,
+            _target_duration_seconds(challenge),
+            elapsed_seconds,
+        )
+
         return CardRevealResponse(
             challenge_id=challenge.id,
             exec_type=challenge.exec_type,
@@ -93,6 +137,7 @@ class CardService:
             unit=template.unit,
             state=challenge.state,
             elapsed_seconds=elapsed_seconds,
+            accumulated_count=challenge.accumulated_count,
             fortune_text=template.fortune_text,
             lucky_location=lucky_location,
             line_text=line_text,
@@ -121,6 +166,8 @@ class CardService:
 
         note = await DailyRecordNote.get_or_none(user_id=card_set.user_id, service_date=card_set.service_date)
         is_rest_day = note.is_rest_day if note else False
+        # ⚠️ 2026-09-07 반영: 상태전이 정책(G3) - is_rest_day와 같은 자리에서 같이 읽음.
+        is_given_up = note.is_given_up if note else False
 
         if selection is None:
             return CardWindowResponse(
@@ -132,6 +179,7 @@ class CardService:
                 challenge_id=None,
                 challenge_state=None,
                 is_rest_day=is_rest_day,
+                is_given_up=is_given_up,
             )
 
         from app.models.challenges import Challenge
@@ -147,4 +195,5 @@ class CardService:
             challenge_id=challenge.id if challenge else None,
             challenge_state=challenge.state if challenge else None,
             is_rest_day=is_rest_day,
+            is_given_up=is_given_up,
         )

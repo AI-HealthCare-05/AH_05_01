@@ -54,7 +54,7 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
+            Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
             Text(
                 // ⚠️ 2026-09-06 QA(P1-1) 반영: "가운데 카드로 정할까?"가 리터럴로 박혀
                 // 있어서, 첫/세 번째를 골라도 항상 "가운데"라고 말했음(바로 아래 칩은

@@ -20,6 +20,11 @@ class DailyRecordNote(models.Model):
     user = fields.ForeignKeyField("models.User", related_name="daily_record_notes")
     service_date = fields.DateField()
     is_rest_day = fields.BooleanField(default=False)  # D05: "쉼" 표시 여부
+    # ⚠️ 2026-09-07 반영: 상태전이 정책(G3) - 카드를 아직 뽑지 않아 challenge 자체가
+    # 없는 날(B18 등)은 "포기"를 기록할 곳이 challenge.state=SKIPPED 말고는 없었음.
+    # is_rest_day와 대칭되는 이 필드로, challenge 유무와 무관하게 "그날을 포기함"을
+    # 표시할 수 있게 함. REST<->GIVE_UP 상호 전환 시 record_service에서 관리.
+    is_given_up = fields.BooleanField(default=False)  # 카드 미선택 상태에서의 "포기" 표시 여부
     memo = fields.TextField(null=True)  # D03: "내 메모"
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)

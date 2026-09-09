@@ -19,6 +19,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.tmtn.app.notification.NotificationScheduler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -91,7 +93,9 @@ fun A09ScheduleIntroScreen(state: OnboardingState) {
 @Composable
 fun A10ScheduleScreen(state: OnboardingState, scope: CoroutineScope) {
     val colors = LocalTmtnColors.current
+    val context = LocalContext.current
     var wakeTime by state.wakeTime
+    var lunchTime by state.lunchTime
     var sleepTime by state.sleepTime
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -113,7 +117,7 @@ fun A10ScheduleScreen(state: OnboardingState, scope: CoroutineScope) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("몇 시에 자고 일어나?", style = TmtnType.headline, color = colors.onSurface)
+            Text("몇 시에 자고, 점심은 언제, 일어나?", style = TmtnType.headline, color = colors.onSurface)
             Text(
                 // ⚠️ 2026-09-06 QA(P2) 반영: "마이"는 CLAUDE.md가 금지한 표현 - "내 정보"가 맞음.
                 "이 시간에 맞춰 알림을 보낼게. 나중에 내 정보에서 고칠 수 있어.",
@@ -123,10 +127,13 @@ fun A10ScheduleScreen(state: OnboardingState, scope: CoroutineScope) {
             Text("일어나는 시각", style = TmtnType.label, color = colors.onSurface)
             TimeWheelPicker(timeString = wakeTime, onTimeChange = { wakeTime = it })
 
+            Text("점심 시각", style = TmtnType.label, color = colors.onSurface)
+            TimeWheelPicker(timeString = lunchTime, onTimeChange = { lunchTime = it })
+
             Text("잠자리에 드는 시각", style = TmtnType.label, color = colors.onSurface)
             TimeWheelPicker(timeString = sleepTime, onTimeChange = { sleepTime = it })
 
-            // 알림 미리보기 - 실제 계산된 시각을 그대로 보여줌 (기상+6시간, 취침-1시간)
+            // 알림 미리보기 - 계산 규칙을 그대로 보여줌 (기상+2시간, 점심 직접입력, 취침-2시간)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -138,14 +145,29 @@ fun A10ScheduleScreen(state: OnboardingState, scope: CoroutineScope) {
                 Text("이렇게 알림이 갑니다", style = TmtnType.label, color = colors.onSurface)
                 Text(
                     "아침 준비 · ${formatTimeKorean(wakeTime)} · 일어난 직후\n" +
-                        "점심 뒤 · ${formatTimeKorean(shiftTime(wakeTime, 6))} · 기상 6시간 뒤\n" +
-                        "자기 전 · ${formatTimeKorean(shiftTime(sleepTime, -1))} · 잠들기 1시간 전",
+                        "점심 뒤 · ${formatTimeKorean(shiftTime(lunchTime, 1))} · 점심 1시간 후\n" +
+                        "자기 전 · ${formatTimeKorean(shiftTime(sleepTime, -2))} · 잠들기 2시간 전",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            TmtnPrimaryButton(text = "이 시간으로 맞추기", onClick = { scope.launch { state.submitSchedule() } })
+            TmtnPrimaryButton(
+                text = "이 시간으로 맞추기",
+                onClick = {
+                    scope.launch {
+                        state.submitSchedule()
+                        // ⚠️ 2026-09-08 반영: 서버 저장만으로는 실제 알림이 안 옴(로컬
+                        // 스케줄링 방식이라) - 온보딩에서 처음 설정할 때도 기기에 바로
+                        // 예약해둠(동의가 아직 없으면 Worker 실행 시점에 조용히 스킵됨).
+                        // 서버가 계산해서 돌려준 slots를 그대로 씀(클라이언트가 계산식을
+                        // 따로 다시 계산하면 서버와 어긋날 위험이 있음).
+                        state.scheduleNotificationSetting.value?.slots?.let { newSlots ->
+                            NotificationScheduler.scheduleAllExact(context.applicationContext, newSlots)
+                        }
+                    }
+                },
+            )
             TmtnTextButton(text = "건너뛰고 바로 시작하기", onClick = { state.skipSchedule() })
         }
     }

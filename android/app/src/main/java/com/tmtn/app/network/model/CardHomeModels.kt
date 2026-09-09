@@ -9,7 +9,10 @@ data class CardWindowResponse(
     val selected_option_id: String?,
     val challenge_id: String?,
     val challenge_state: String?,
-    val is_rest_day: Boolean = false
+    val is_rest_day: Boolean = false,
+    // ⚠️ 2026-09-07 반영: 상태전이 정책(G3) - 카드를 아직 안 뽑아 challenge가 없는 날의
+    // "포기" 표시. is_rest_day와 대칭 필드 (서버 CardWindowResponse와 동일 이름).
+    val is_given_up: Boolean = false
 )
 
 // ===== 카드 확정 -> 공개 (B06) =====
@@ -27,6 +30,9 @@ data class CardRevealResponse(
     // 이번 구간에서 흐른 시간까지 포함해서 내려줌 - CardHomeState.stepForRevealedCard()가
     // 타이머 화면 진입 시 이 값으로 timerElapsedSeconds를 맞춤.
     val elapsed_seconds: Int = 0,
+    // ⚠️ 2026-09-06 추가: COUNT형(걸음수·계단·거리) 전용 - 서버에 마지막으로 보고된
+    // 누적 측정치. 재진입 시 이 값부터 로컬 센서 매니저가 이어서 세게 함.
+    val accumulated_count: Int = 0,
     val fortune_text: String?,     // 오늘의 운세
     val lucky_location: String?,   // 행운의 위치
     val line_text: String?,        // 오늘의 한 줄
@@ -42,7 +48,10 @@ data class CompleteChallengeResponse(
 )
 
 data class CompleteChallengeRequestBody(
-    val occurred_at: String? = null
+    val occurred_at: String? = null,
+    // ⚠️ 2026-09-08 반영: SENSOR형 미션을 "직접 체크로 할래요"로 완료할 때 실측값 검증을
+    // 건너뛰라고 서버에 알리는 플래그.
+    val manual_check: Boolean = false
 )
 
 // ===== 댐(재료·단계) =====

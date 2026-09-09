@@ -81,9 +81,9 @@ fun ReasonDetailScreen(state: CardHomeState, onBack: () -> Unit, onStartAction: 
             // ⚠️ 2026-09-06 QA(P2) 반영: "추천 기준 v1.2 · 미션 규칙 v1.0"이 사용자에게
             // 뜻 없는 내부 버전 식별자라 그냥 제거함.
 
-            if (!isCompleted) {
-                TmtnPrimaryButton(text = "이 행동 시작하기", onClick = onStartAction)
-            }
+            // ⚠️ 2026-09-08 QA 반영: "추천 이유 보기"는 정보만 보여주는 화면인데, 실제
+            // 시작/거절 액션(RevealScreen에 이미 있음)이 여기도 중복으로 있어서 헷갈렸음 -
+            // 제거하고, 완료된 미션일 때의 안내 문구만 남김.
             if (isCompleted) {
                 Text(
                     // ⚠️ 2026-09-03 리뷰 반영: SKIPPED(중단)를 "쉬어가기"로 표현하면 REST와
@@ -91,8 +91,6 @@ fun ReasonDetailScreen(state: CardHomeState, onBack: () -> Unit, onStartAction: 
                     if (card?.state == "SKIPPED") "오늘 카드는 여기서 멈췄어요." else "오늘 몫은 이미 완료했어요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
-            } else {
-                TmtnTextButton(text = "오늘은 하기 어려워요", onClick = { state.step.value = CardHomeStep.ALTERNATIVE_REQUEST })
             }
         }
     }

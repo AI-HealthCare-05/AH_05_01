@@ -51,6 +51,10 @@ class UserInfoResponse(BaseSerializerModel):
     gender: Gender | None = None
     is_pregnant: bool | None = None
     created_at: datetime
+    # ⚠️ 2026-09-07 추가: 안드로이드가 걷기/조깅 케이던스 임계값(신장 구간표)을 계산할 때
+    # 씀. User 모델엔 없고 health_input_snapshots(온보딩 입력, append-only)에서 최신값을
+    # 조회해서 채움 - 없으면 null(안드로이드는 기본값으로 대체).
+    height_cm: float | None = None
 
 
 class PasswordChangeRequest(BaseModel):

@@ -52,6 +52,22 @@ fun RetrospectScreen(state: CardHomeState, scope: CoroutineScope) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            // ⚠️ 2026-09-08 QA(N10) 반영: "완료하기 → 확인 → 회고 → 홈" 어디에도 보상이
+            // 안 보이고 홈에 가서야 재료가 늘어난 걸 볼 수 있었음 - 여기서 바로 보여줌.
+            val awardedElement = state.awardedFiveElement.value
+            val material = MATERIAL_NAMES[awardedElement]
+            if (material != null) {
+                Row(
+                    modifier = Modifier
+                        .background(colors.woodContainer, RoundedCornerShape(999.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    MaterialIcon(element = awardedElement!!, size = 20.dp)
+                    Text("${material.first} 1개를 얻었어요", style = TmtnType.label, color = colors.onSurface)
+                }
+            }
+
             Text("오늘 어땠어?", style = TmtnType.headline, color = colors.onSurface)
             Text(
                 "한 줄만 남겨도 좋아요. 나중에 기록에서 다시 볼 수 있습니다.",

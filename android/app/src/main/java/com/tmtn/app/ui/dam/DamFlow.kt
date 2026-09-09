@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -204,7 +205,14 @@ private fun DamHomeScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text("모은 재료", style = TmtnType.label, color = colors.onSurface)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    // ⚠️ 2026-09-08 QA 반영: 재료 5종(나뭇가지·받침돌·다짐흙·새잎·물길)을
+                    // 가로로 나열하는데 스크롤이 전혀 없었음 - 화면 너비를 넘는 나머지
+                    // (보통 새잎·물길)가 그냥 잘려서 안 보이고, 스크롤도 안 돼서 볼 방법이
+                    // 없었음(QA - "모은 재료에 나뭇가지·받침돌·다짐흙만 표기, 스크롤도 안 됨").
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     // ⚠️ 2026-09-06 QA(P2) 반영: count > 0인 것만 걸러서 보여줬더니 5종
                     // 중 일부만 보여서 "무엇을 더 모아야 하는지" 전체 그림이 안 잡혔음
                     // (리포트: "나뭇가지·물길 칩이 렌더되지 않음, 둘 다 획득한 적이 있는데도").

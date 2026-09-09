@@ -20,6 +20,7 @@ private fun previousScreenFor(screen: ProfileScreenKey): ProfileScreenKey? = whe
     ProfileScreenKey.HOME -> null
     ProfileScreenKey.NOTIFICATION -> ProfileScreenKey.HOME
     ProfileScreenKey.NOTIFICATION_TIME -> ProfileScreenKey.NOTIFICATION
+    ProfileScreenKey.WAKE_SLEEP -> ProfileScreenKey.NOTIFICATION
     ProfileScreenKey.PERMISSIONS -> ProfileScreenKey.HOME
     ProfileScreenKey.ACCOUNT -> ProfileScreenKey.HOME
     ProfileScreenKey.HEALTH -> ProfileScreenKey.HOME
@@ -43,7 +44,9 @@ fun ProfileFlow(
     onOpenDam: () -> Unit,
     onOpenSettings: () -> Unit,
     onLoggedOut: () -> Unit,
-    onEditWakeSleep: () -> Unit,
+    // ⚠️ 2026-09-08 QA 반영: onEditWakeSleep 파라미터를 없앰. MainActivity가 빈 람다({})를
+    // 넘기고 있어서 "자고 일어나는 시각"이 눌러도 반응이 없었는데, 이제 내 정보 탭 안의
+    // WAKE_SLEEP 화면으로 직접 이동하므로 바깥에서 받을 이유가 없어짐.
     onSaveCsv: (fileName: String, content: String) -> Unit,
     // ⚠️ 참고(틈튼지수) 탭의 "계산에 쓰인 값"에서 몸 정보/운동 정보 행을 눌렀을 때,
     // "내 정보" 홈이 아니라 그 항목 편집 화면으로 바로 들어가게 하기 위한 진입점.
@@ -84,9 +87,12 @@ fun ProfileFlow(
             ProfileScreenKey.NOTIFICATION -> NotificationSettingScreen(
                 state, scope,
                 onBack = { state.screen.value = ProfileScreenKey.HOME },
-                onEditWakeSleep = onEditWakeSleep,
             )
             ProfileScreenKey.NOTIFICATION_TIME -> NotificationTimeEditScreen(
+                state, scope,
+                onBack = { state.screen.value = ProfileScreenKey.NOTIFICATION },
+            )
+            ProfileScreenKey.WAKE_SLEEP -> WakeSleepEditScreen(
                 state, scope,
                 onBack = { state.screen.value = ProfileScreenKey.NOTIFICATION },
             )

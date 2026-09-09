@@ -134,7 +134,7 @@ class TuntunScoreService:
         return recorded
 
     async def get_score(self, user: User) -> TuntunScoreOrEligibilityResponse:
-        today = service_today()  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정
+        today = service_today(user.id)  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정. 2026-09-08: 계정별 오프셋 적용
         recorded_days = await self._count_recorded_days(user.id, today)
 
         if recorded_days < REQUIRED_RECORDED_DAYS:
@@ -226,7 +226,7 @@ class TuntunScoreService:
         환산·coverage 정책이 승인되기 전까지 점수에 더하지 않는다.
         """
 
-        today = service_today()  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정
+        today = service_today(user.id)  # ⚠️ 리뷰 반영: 서버 로컬 타임존 대신 KST 고정. 2026-09-08: 계정별 오프셋 적용
         start = today - timedelta(days=LOOKBACK_DAYS - 1)
         recorded_days = await self._count_recorded_days(user.id, today)
         health = await self.health_repo.get_latest(user.id)

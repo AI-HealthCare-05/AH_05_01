@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +40,7 @@ import kotlinx.coroutines.launch
 
 /** Figma B01·B01b · 홈 (오늘 카드 미선택/선택됨은 draw_state로 구분) */
 @Composable
-fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope) {
+fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScore: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
     val isSelected = state.drawState.value == "SELECTED"
 
@@ -65,34 +66,17 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope) {
                     .wrapContentSize(Alignment.Center),
             )
         }
-        Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
-        // ⚠️ 테스트 전용 - 미션 10개를 이어서 테스트하려면 실제로 10일이 걸리니, 서버가
-        // 인식하는 "오늘"을 하루씩 앞당겨서 바로 다음 미션을 받을 수 있게 함. 디버그
-        // 빌드에서만 보임(release APK에는 안 보임 + 서버도 PROD면 404로 막아둠 - 이중 안전장치).
-        if (com.tmtn.app.BuildConfig.DEBUG) {
-            Row(
-                modifier = Modifier.fillMaxWidth().background(colors.errorContainer, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("테스트: 시뮬레이션 오늘 = ${state.debugSimulatedToday.value ?: "-"}", style = TmtnType.caption, color = colors.error)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "초기화", style = TmtnType.caption, color = colors.error,
-                        modifier = Modifier.clickable { scope.launch { state.resetDebugDay() } },
-                    )
-                    Text(
-                        "다음 날 ›", style = TmtnType.label, color = colors.error,
-                        modifier = Modifier.clickable { scope.launch { state.advanceDebugDay() } },
-                    )
-                }
-            }
-        }
+        // ⚠️ 2026-09-07 반영: 상태전이 정책 신규 홈 화면(B18~B26, HomeStateScreens.kt)에는
+        // 이 배너가 아예 없어서, 쉼/포기/중단 상태에서 미션을 고르면 배너가 통째로 사라져
+        // "비활성화됐다"는 QA로 이어졌음(팀원 계정이 예전 테스트로 쉼/포기 상태에 남아있던
+        // 채로 다시 미션을 고르면 그 특수 화면으로 넘어가면서 배너가 사라졌던 것). 공용
+        // 함수(DebugDayBanner)로 뽑아서 모든 홈 화면이 같이 쓰게 함.
+        DebugDayBanner(state, scope)
 
         MascotCard(state, isSelected, scope)
-        TmtnIndexSummaryCard(state)
+        TmtnIndexSummaryCard(state, onOpenTuntunScore)
         RecentSummaryListCard(state)
     }
 }
@@ -105,7 +89,18 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
     // ⚠️ "중단"으로 끝낸 미션(SKIPPED)도 draw_state는 계속 SELECTED라 isSelected가 true로
     // 남는데, 그대로 두면 "미션 이어하기"가 보여서 다시 시작할 수 있는 것처럼 보임(실제로는
     // 서버가 재시작을 막아 에러가 남). isCompleted 다음으로 먼저 체크해서 우선함.
-    val isSkipped = state.todayChallengeState.value == "SKIPPED"
+    //
+    // ⚠️ 2026-09-07 반영: 백엔드전달_상태전이 문서 기준으로 "중단"과 "포기"의 이름이
+    // 거꾸로 쓰이고 있었음 - 서버 SKIPPED(오늘을 접은 것, 문서의 "포기"·GIVE_UP)를 화면에
+    // "중단"이라고 부르고 있었고, 정작 서버 PAUSED(진행값 보존, 문서의 "중단")는 별도
+    // 표시가 아예 없이 그냥 "진행 중"으로 뭉뚱그려졌음. 문서 용어에 맞게 정리:
+    // SKIPPED → "포기", PAUSED → "중단"(신규).
+    val isGivenUp = state.todayChallengeState.value == "SKIPPED"
+    val isPaused = state.todayChallengeState.value == "PAUSED"
+    // ⚠️ 2026-09-08 QA(N5) 반영: isSelected(카드 확정됨) 하나로만 뱃지를 정해서, 아직
+    // "시작하기"도 안 누른 READY 상태까지 "진행 중"으로 잘못 보였음(리포트: "카드를 뽑기만
+    // 했는데 뱃지가 진행 중"). READY만 따로 구분 - ACTIVE일 때만 진짜 "진행 중".
+    val isReady = state.todayChallengeState.value == "READY"
 
     Column(
         modifier = Modifier
@@ -127,7 +122,8 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
                 painter = painterResource(
                     when {
                         isCompleted -> com.tmtn.app.R.drawable.beaver_cheer
-                        isSkipped -> com.tmtn.app.R.drawable.beaver_empty
+                        isGivenUp -> com.tmtn.app.R.drawable.beaver_empty
+                        isPaused -> com.tmtn.app.R.drawable.beaver_tilt
                         isSelected -> com.tmtn.app.R.drawable.beaver_cheer
                         isRestDay -> com.tmtn.app.R.drawable.beaver_rest
                         else -> com.tmtn.app.R.drawable.beaver_card
@@ -137,7 +133,8 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
                 // 사용자에게 이 화면 상태를 알려주는 그림 자체가 안 읽혔음.
                 contentDescription = when {
                     isCompleted -> "오늘 미션을 완료한 비버"
-                    isSkipped -> "미션을 중단한 비버"
+                    isGivenUp -> "미션을 포기한 비버"
+                    isPaused -> "잠시 멈춰서 갸웃하는 비버"
                     isSelected -> "미션을 응원하는 비버"
                     isRestDay -> "쉬고 있는 비버"
                     else -> "카드를 든 비버"
@@ -148,13 +145,22 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
 
         if (isCompleted) {
             StatusBadge(text = "완료")
-        } else if (isSkipped) {
-            // ⚠️ 2026-09-03 리뷰 반영: SKIPPED(중단)를 REST(쉼)와 같은 "쉼" 뱃지로 보여주고
+        } else if (isGivenUp) {
+            // ⚠️ 2026-09-03 리뷰 반영: SKIPPED를 REST(쉼)와 같은 "쉼" 뱃지로 보여주고
             // 있었음. 서버 기준(record_service.py)으로 REST는 연속 기록이 안 끊기고 주 2회
             // 한도가 차감되지만, SKIPPED는 COMPLETED가 아니라서 그대로 INCOMPLETE로 집계되고
             // 연속 기록이 끊김. 홈에서는 "쉼"이라 안심시켜놓고 기록 탭 가면 연속 기록이 끊겨
-            // 있는 모순이라, "중단"으로 명확히 구분함.
+            // 있는 모순이라, 명확히 구분함.
+            //
+            // ⚠️ 2026-09-07 반영: 백엔드전달_상태전이 문서 기준 - 이 상태(SKIPPED)는 문서의
+            // "포기(GIVE_UP)"에 해당함. 예전엔 여기를 "중단"이라고 불렀는데, 진짜 중단
+            // (PAUSED, 진행값 보존)은 따로 표시가 없어서 용어가 서로 바뀌어 있었음.
+            StatusBadge(text = "포기")
+        } else if (isPaused) {
             StatusBadge(text = "중단")
+        } else if (isReady) {
+            // ⚠️ 2026-09-08 QA(N5) 반영: 시작 전(READY)에는 "카드 뽑음"으로.
+            StatusBadge(text = "카드 뽑음")
         } else if (isSelected) {
             StatusBadge(text = "진행 중")
         } else if (isRestDay) {
@@ -166,7 +172,9 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
             // 한 화면 안에서 말투가 섞여 보였음 - 존댓말로 통일.
             when {
                 isCompleted -> "오늘 몫은 다 했어요. 잘했어요!"
-                isSkipped -> "오늘 카드는 여기서 멈췄어요."
+                isGivenUp -> "오늘 카드는 여기서 멈췄어요."
+                isPaused -> "잠깐 멈춰뒀어요. 이어서 하면 돼요."
+                isReady -> "오늘 고른 미션, 시작할 준비가 됐어요."
                 isSelected -> "오늘 고른 미션이 기다리고 있어요."
                 isRestDay -> "오늘은 쉬어가는 날이에요."
                 else -> "안녕하세요! 오늘 카드 세 장 가져왔어요."
@@ -177,7 +185,7 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
         TmtnPrimaryButton(
             text = when {
                 isCompleted -> "오늘 카드 다시 보기"
-                isSkipped -> "오늘 카드 다시 보기"
+                isGivenUp -> "오늘 카드 다시 보기"
                 // ⚠️ 2026-09-04 반영: "미션 이어하기"라는 별도 문구 대신 다른 선택된 상태와
                 // 똑같이 "오늘 카드 다시 보기"로 통일 - 눌렀을 때 곧장 진행 화면으로 안 들어가고
                 // 카드 화면부터 보여주는 걸로 바뀌어서, 문구도 그 결과와 맞춰야 헷갈리지 않음.
@@ -202,7 +210,7 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
                 style = TmtnType.caption, color = colors.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
-        } else if (isSkipped) {
+        } else if (isGivenUp) {
             // 별다른 캡션 없음 - 이미 위 상태 문구로 충분히 설명됨.
         } else if (!isRestDay || isSelected) {
             // ⚠️ 2026-09-06 반영: 캡션 텍스트 한 줄만 클릭 영역이라 좁아서 정확히 그
@@ -227,8 +235,37 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
     }
 }
 
+// ⚠️ 2026-09-07 반영: 테스트 전용 - 미션 10개를 이어서 테스트하려면 실제로 10일이 걸리니,
+// 서버가 인식하는 "오늘"을 하루씩 앞당겨서 바로 다음 미션을 받을 수 있게 함. 디버그
+// 빌드에서만 보임(release APK에는 안 보임 + 서버도 PROD면 404로 막아둠 - 이중 안전장치).
+// 예전엔 CardHomeScreen(B01/B01b) 안에만 있어서, 상태전이 정책 신규 홈 화면(B18~B26)으로
+// 넘어가면 배너가 통째로 사라졌음 - 공용 함수로 뽑아서 모든 홈 화면이 같이 씀.
 @Composable
-private fun StatusBadge(text: String) {
+internal fun DebugDayBanner(state: CardHomeState, scope: CoroutineScope) {
+    if (!com.tmtn.app.BuildConfig.DEBUG) return
+    val colors = LocalTmtnColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth().background(colors.errorContainer, RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("테스트: 시뮬레이션 오늘 = ${state.debugSimulatedToday.value ?: "-"}", style = TmtnType.caption, color = colors.error)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                "초기화", style = TmtnType.caption, color = colors.error,
+                modifier = Modifier.clickable { scope.launch { state.resetDebugDay() } },
+            )
+            Text(
+                "다음 날 ›", style = TmtnType.label, color = colors.error,
+                modifier = Modifier.clickable { scope.launch { state.advanceDebugDay() } },
+            )
+        }
+    }
+}
+
+@Composable
+internal fun StatusBadge(text: String) {
     val colors = LocalTmtnColors.current
     Box(
         modifier = Modifier
@@ -246,7 +283,7 @@ private fun StatusBadge(text: String) {
  * 아직 계산할 수 없는 상태(신체정보·운동습관 미입력 등)면 "68" 대신 안내 문구를 보여줌.
  */
 @Composable
-private fun TmtnIndexSummaryCard(state: CardHomeState) {
+internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
     val value = state.tuntunIndexValue.value
     val band = state.tuntunIndexBand.value
@@ -269,7 +306,15 @@ private fun TmtnIndexSummaryCard(state: CardHomeState) {
                     MockBadge()
                 }
             }
-            Text("자세히 ›", style = TmtnType.caption, color = colors.onSurfaceVariant) // TODO: 참고 탭으로 이동(탭 전환 콜백 필요)
+            // ⚠️ 2026-09-08 QA 반영: TODO만 남긴 채 클릭 핸들러가 아예 없었음(그냥 Text) -
+            // 틈튼지수 탭으로 전환하는 클릭 영역 추가.
+            Text(
+                "자세히 ›", style = TmtnType.caption, color = colors.onSurfaceVariant,
+                modifier = Modifier.clickable { onOpenTuntunScore() }
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .wrapContentSize(Alignment.CenterEnd)
+                    .padding(4.dp),
+            )
         }
         if (state.tuntunIndexLoadFailed.value) {
             // ⚠️ PR #12 리뷰(P1) 반영: 네트워크 실패를 "정보를 입력하세요"로 잘못 안내하던
@@ -323,7 +368,7 @@ private fun TmtnIndexSummaryCard(state: CardHomeState) {
  * /companion 데이터를 그대로 씀.
  */
 @Composable
-private fun RecentSummaryListCard(state: CardHomeState) {
+internal fun RecentSummaryListCard(state: CardHomeState) {
     val colors = LocalTmtnColors.current
     val recentWeek = state.recentWeek.value
     val completedCount = recentWeek.count { it.status == "COMPLETED" }
@@ -375,7 +420,12 @@ private fun RecentSummaryListCard(state: CardHomeState) {
             // ⚠️ 이 행 오른쪽에 빈 공간이 있길래, 오행별 재료 개수를 여기 보여주기로 함.
             // "댐" 탭(G01)에서 이미 쓰는 companion.materials를 홈에서도 재사용 - 새 API 없음.
             if (state.companionMaterials.value.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // ⚠️ 2026-09-08 QA 반영: 댐 탭과 같은 문제(가로 스크롤 없음) 예방 차원에서
+                // 여기도 같이 추가 - 작은 화면·큰 글씨 모드에서 5개가 다 안 들어갈 수 있음.
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     MATERIAL_NAMES.keys.forEach { element ->
                         val count = state.companionMaterials.value.firstOrNull { it.element == element }?.count ?: 0
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
