@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,7 +54,8 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "필수 입력", onBack = { state.step.value = OnboardingStep.A06_CONSENT })
+        TmtnTopBar(title = "신체 정보", onBack = { state.step.value = OnboardingStep.SIGNUP_COMPLETE })
+        StepProgressHeader(1, 2, "신체 정보")
 
         Column(
             modifier = Modifier
@@ -63,13 +65,7 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Column {
-                TmtnEqualProgressBar(totalSteps = 2, currentStep = 1)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("1 / 2단계 · 모두 필요한 값이에요", style = TmtnType.caption, color = colors.onSurfaceVariant)
-            }
 
-            Text("시작하기 전에\n몇 가지만 알려 주세요", style = TmtnType.headline, color = colors.onSurface)
 
             // 이름 · 닉네임
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -91,22 +87,21 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
             Text("닉네임을 비우면 이름을 그대로 씁니다.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             // 생년월일 - 드롭다운(항목 90개) 대신 컴팩트 스테퍼로 변경 (너무 길다는 피드백 반영)
-            SectionHeader(title = "생년월일", hint = "연·월만")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SectionHeader(title = "생년월", hint = "태어난 연도와 월")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TmtnCompactStepper(
                     value = birthYear, unit = "년",
                     onDecrement = { if (birthYear > 1930) birthYear-- },
                     onIncrement = { if (birthYear < 2020) birthYear++ },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 TmtnCompactStepper(
                     value = birthMonth, unit = "월",
                     onDecrement = { birthMonth = if (birthMonth > 1) birthMonth - 1 else 12 },
                     onIncrement = { birthMonth = if (birthMonth < 12) birthMonth + 1 else 1 },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Text("정확한 날짜는 받지 않습니다. 연·월만 있으면 충분해요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             // 성별
             SectionHeader(title = "성별", hint = "또래 참고 범위용")
@@ -184,13 +179,11 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
 private fun SectionHeader(title: String, hint: String) {
     val colors = LocalTmtnColors.current
     Row(
-        modifier = Modifier.fillMaxWidth().height(22.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.size(8.dp).background(colors.secondary, CircleShape))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(title, style = TmtnType.label, color = colors.onSurface)
-        Spacer(modifier = Modifier.weight(1f))
-        Text(hint, style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Text(title, style = TmtnType.label, color = colors.onSurface, modifier = Modifier.weight(1f))
+        Text(hint, style = TmtnType.caption, color = colors.onSurfaceVariant,
+            modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }

@@ -60,7 +60,7 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
                 // 있어서, 첫/세 번째를 골라도 항상 "가운데"라고 말했음(바로 아래 칩은
                 // "${ordinal} 번째"로 정확한데 제목만 틀림). 같은 서수 매핑을 재사용.
                 if (picked == null) {
-                    "마음 가는 카드로\n한 장만 골라 줘."
+                    "카드 한 장을 골라 주세요"
                 } else {
                     "${listOf("첫", "두", "세").getOrElse(picked) { "그" }} 번째 카드로 정할까?"
                 },
@@ -95,7 +95,7 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
                     // ⚠️ 2026-09-06 QA(P1-2) 반영: 이미 고른 뒤 다른 카드를 눌러도 선택이
                     // 안 바뀌는 것 자체는 의도된 동작인데(하루 한 장 확정 전 실수 방지),
                     // 그 안내가 없어서 "눌렀는데 반응이 없다"로 오해했음.
-                    "확정하면 오늘은 바꿀 수 없습니다. 고르지 않은 두 장은 공개되지 않습니다.\n다른 카드를 고르려면 아래 \"다시 고르기\"를 눌러주세요.",
+                    "확정한 카드는 오늘 바꿀 수 없어요. 고르지 않은 카드는 공개되지 않아요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
                 TmtnPrimaryButton(text = "이 카드로 확정", onClick = { state.openConfirmDialog() })

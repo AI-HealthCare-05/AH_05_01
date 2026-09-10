@@ -115,7 +115,7 @@ private fun statusLabel(status: String): String = when (status) {
 
 private fun completionCaption(detail: DayDetailResponse): String {
     val parts = mutableListOf<String>()
-    detail.completed_at?.let { parts.add("$it 완료") }
+    detail.completed_at?.let { raw -> parts.add(recordCompletionTime(raw)?.let { "$it 완료" } ?: "완료") }
     detail.duration_seconds?.let { parts.add("${it / 60}분 ${it % 60}초") }
     detail.count_achieved?.let { parts.add("${it}회") }
     return parts.joinToString(" · ")

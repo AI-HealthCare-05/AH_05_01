@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.cardhome
 
+import com.tmtn.app.ui.common.TmtnHomeHero
+import com.tmtn.app.ui.onboarding.TmtnTextButton
 import com.tmtn.app.ui.common.toKoreanDateLabel
 import java.time.LocalDate
 import androidx.compose.foundation.background
@@ -71,31 +73,7 @@ private fun DateCaption(label: String = LocalDate.now().toKoreanDateLabel()) {
     Text(label, style = TmtnType.caption, color = colors.onSurfaceVariant)
 }
 
-/** Figma "이미지 자리" — 일러스트가 아직 없어서 자리와 설명만 표시하는 placeholder. */
-@Composable
-private fun IllustrationPlaceholder(tag: String, description: String) {
-    val colors = LocalTmtnColors.current
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.background, RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .background(colors.disabledContainer, RoundedCornerShape(999.dp))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        ) {
-            Text("일러스트 자리 · $tag", style = TmtnType.caption, color = colors.onSurfaceVariant)
-        }
-        Text(
-            description, style = TmtnType.caption, color = colors.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
+
 
 private data class HomeLink(val text: String, val emphasized: Boolean, val onClick: () -> Unit)
 
@@ -106,17 +84,7 @@ private data class HomeLink(val text: String, val emphasized: Boolean, val onCli
  */
 @Composable
 private fun HomeLinkRow(link: HomeLink) {
-    val colors = LocalTmtnColors.current
-    Text(
-        link.text,
-        style = if (link.emphasized) TmtnType.label else TmtnType.caption,
-        color = if (link.emphasized) colors.onSurface else colors.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp)
-            .clickable(onClick = link.onClick),
-    )
+    TmtnTextButton(link.text, onClick = link.onClick)
 }
 
 /** "비버 · 오늘의 카드" 박스 하나 — B18~B26 전부 이 뼈대 위에서 내용만 바뀜. */
@@ -130,18 +98,16 @@ private fun HomeStateMascotCard(
     onPrimaryClick: () -> Unit,
     links: List<HomeLink>,
 ) {
-    val colors = LocalTmtnColors.current
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(24.dp))
-            .padding(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        IllustrationPlaceholder(illustrationTag, illustrationDescription)
-        StatusBadge(text = badgeText)
-        Text(message, style = TmtnType.bodyLarge, color = colors.onSurface, textAlign = TextAlign.Center)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        TmtnHomeHero(
+            image = when {
+                badgeText == "쉼" -> com.tmtn.app.R.drawable.beaver_rest
+                badgeText == "포기" -> com.tmtn.app.R.drawable.beaver_empty
+                badgeText == "중단" -> com.tmtn.app.R.drawable.beaver_tilt
+                else -> com.tmtn.app.R.drawable.beaver_card
+            },
+            description = illustrationTag, status = badgeText, title = message,
+        )
         TmtnPrimaryButton(text = primaryLabel, onClick = onPrimaryClick)
         links.forEach { HomeLinkRow(it) }
     }
@@ -152,6 +118,7 @@ private fun HomeStateMascotCard(
 private fun HomeStateScreenShell(
     state: CardHomeState,
     onNotificationsClick: () -> Unit,
+    onOpenTuntunScore: () -> Unit = {},
     topBanner: (@Composable () -> Unit)? = null,
     // ⚠️ 2026-09-08 QA(N11) 반영: LocalDate.now()(기기 진짜 오늘)를 그대로 써서, 시뮬레이션
     // 날짜와 상단 표시가 어긋났음.
@@ -174,7 +141,7 @@ private fun HomeStateScreenShell(
         DebugDayBanner(state, scope)
         topBanner?.invoke()
         mascotCard()
-        TmtnIndexSummaryCard(state)
+        TmtnIndexSummaryCard(state, onOpenTuntunScore)
         RecentSummaryListCard(state)
     }
 }
@@ -184,20 +151,19 @@ private fun HomeStateScreenShell(
 fun HomeRestNoCardScreen(
     state: CardHomeState,
     onNotificationsClick: () -> Unit,
-    onChallengeFromRest: () -> Unit, // "마음 바꾸기 · 오늘 미션 도전하기" -> C25(쉬어가기 취소)
-    onPreviewTodayCard: () -> Unit,  // "오늘 카드 미리 보기" -> B06
+    onOpenTuntunScore: () -> Unit = {},
+    onChallengeFromRest: () -> Unit, // "오늘 미션 도전하기" -> C25(쉬어가기 취소)
     onGiveUp: () -> Unit,            // "오늘 포기" -> C27(쉬어가기 -> 포기 전환)
 ) {
-    HomeStateScreenShell(state, onNotificationsClick) {
+    HomeStateScreenShell(state, onNotificationsClick, onOpenTuntunScore) {
         HomeStateMascotCard(
             illustrationTag = "쉬는 비버",
             illustrationDescription = "그루터기에 기대 눈 감은 비버. 도구는 옆에 가지런히.",
             badgeText = "쉼",
-            message = "오늘은 쉬어가는 날이야. 푹 쉬어.",
-            primaryLabel = "마음 바꾸기 · 오늘 미션 도전하기",
+            message = "편하게 쉬어요",
+            primaryLabel = "오늘 미션 도전하기",
             onPrimaryClick = onChallengeFromRest,
             links = listOf(
-                HomeLink("오늘 카드 미리 보기", emphasized = true, onClick = onPreviewTodayCard),
                 HomeLink("오늘 포기", emphasized = false, onClick = onGiveUp),
             ),
         )
@@ -209,16 +175,17 @@ fun HomeRestNoCardScreen(
 fun HomeGiveUpNoCardScreen(
     state: CardHomeState,
     onNotificationsClick: () -> Unit,
-    onPickCardAgain: () -> Unit, // "마음 바꾸기 · 카드 뽑기" -> B03(새로 뽑기 - 카드 미선택 상태였으므로)
+    onOpenTuntunScore: () -> Unit = {},
+    onPickCardAgain: () -> Unit, // "오늘 카드 고르기" -> B03(새로 뽑기 - 카드 미선택 상태였으므로)
     onRestInstead: () -> Unit,   // "오늘은 쉬어가기" -> C23
 ) {
-    HomeStateScreenShell(state, onNotificationsClick) {
+    HomeStateScreenShell(state, onNotificationsClick, onOpenTuntunScore) {
         HomeStateMascotCard(
             illustrationTag = "연장을 내려놓은 비버",
             illustrationDescription = "연장을 내려놓고 하늘을 보는 비버. 지친 표정은 아니다.",
             badgeText = "포기",
-            message = "오늘은 여기까지 하기로 했어. 그래도 괜찮아.",
-            primaryLabel = "마음 바꾸기 · 카드 뽑기",
+            message = "오늘은 여기까지",
+            primaryLabel = "오늘 카드 고르기",
             onPrimaryClick = onPickCardAgain,
             links = listOf(
                 HomeLink("오늘은 쉬어가기", emphasized = true, onClick = onRestInstead),
@@ -232,17 +199,18 @@ fun HomeGiveUpNoCardScreen(
 fun HomeRestCardDrawnScreen(
     state: CardHomeState,
     onNotificationsClick: () -> Unit,
-    onChallengeFromRest: () -> Unit, // "뽑아둔 카드로 도전하기" -> C25
+    onOpenTuntunScore: () -> Unit = {},
+    onChallengeFromRest: () -> Unit, // "고른 미션 도전하기" -> C25
     onPreviewTodayCard: () -> Unit,  // "오늘 카드 다시 보기" -> B06
     onGiveUp: () -> Unit,            // "오늘 포기" -> C27
 ) {
-    HomeStateScreenShell(state, onNotificationsClick) {
+    HomeStateScreenShell(state, onNotificationsClick, onOpenTuntunScore) {
         HomeStateMascotCard(
             illustrationTag = "카드를 품고 쉬는 비버",
             illustrationDescription = "뽑은 카드를 가슴에 안고 눈 감은 비버.",
             badgeText = "쉼",
-            message = "카드는 남겨뒀어. 하고 싶어지면 말해.",
-            primaryLabel = "뽑아둔 카드로 도전하기",
+            message = "카드는 남아 있어요",
+            primaryLabel = "고른 미션 도전하기",
             onPrimaryClick = onChallengeFromRest,
             links = listOf(
                 HomeLink("오늘 카드 다시 보기", emphasized = true, onClick = onPreviewTodayCard),
@@ -257,16 +225,17 @@ fun HomeRestCardDrawnScreen(
 fun HomeGiveUpCardDrawnScreen(
     state: CardHomeState,
     onNotificationsClick: () -> Unit,
-    onChallenge: () -> Unit,   // "뽑아둔 카드로 도전하기" -> C02(타이머 시작 전)
+    onOpenTuntunScore: () -> Unit = {},
+    onChallenge: () -> Unit,   // "고른 미션 도전하기" -> C02(타이머 시작 전)
     onRestInstead: () -> Unit, // "오늘은 쉬어가기" -> C23
 ) {
-    HomeStateScreenShell(state, onNotificationsClick) {
+    HomeStateScreenShell(state, onNotificationsClick, onOpenTuntunScore) {
         HomeStateMascotCard(
             illustrationTag = "카드를 옆에 둔 비버",
             illustrationDescription = "카드를 옆에 두고 먼 곳을 보는 비버.",
             badgeText = "포기",
-            message = "카드는 남겨뒀어. 하고 싶어지면 말해.",
-            primaryLabel = "뽑아둔 카드로 도전하기",
+            message = "카드는 남아 있어요",
+            primaryLabel = "고른 미션 도전하기",
             onPrimaryClick = onChallenge,
             links = listOf(
                 HomeLink("오늘은 쉬어가기", emphasized = true, onClick = onRestInstead),
@@ -280,12 +249,13 @@ fun HomeGiveUpCardDrawnScreen(
 fun HomePausedScreen(
     state: CardHomeState,
     onNotificationsClick: () -> Unit,
+    onOpenTuntunScore: () -> Unit = {},
     elapsedLabel: String,       // "6분 20초까지 했어. 이어서 하면 돼." 처럼 실제 경과시간이 들어갈 자리
     onResume: () -> Unit,       // "미션 이어서 하기" -> C03
     onRestInstead: () -> Unit,  // "오늘은 쉬어가기" -> C23
     onGiveUp: () -> Unit,       // "오늘 포기" -> C26
 ) {
-    HomeStateScreenShell(state, onNotificationsClick) {
+    HomeStateScreenShell(state, onNotificationsClick, onOpenTuntunScore) {
         HomeStateMascotCard(
             illustrationTag = "숨 고르는 비버",
             illustrationDescription = "그루터기에 앉아 숨 고르는 비버. 도구는 내려놓지 않았다.",
@@ -306,17 +276,18 @@ fun HomePausedScreen(
 fun HomeRestInProgressScreen(
     state: CardHomeState,
     onNotificationsClick: () -> Unit,
-    onChallengeFromRest: () -> Unit, // "뽑아둔 카드로 이어서 하기" -> C25
+    onOpenTuntunScore: () -> Unit = {},
+    onChallengeFromRest: () -> Unit, // "고른 미션 이어서 하기" -> C25
     onPreviewTodayCard: () -> Unit,  // "오늘 카드 다시 보기" -> B06
     onGiveUp: () -> Unit,            // "오늘 포기" -> C27
 ) {
-    HomeStateScreenShell(state, onNotificationsClick) {
+    HomeStateScreenShell(state, onNotificationsClick, onOpenTuntunScore) {
         HomeStateMascotCard(
             illustrationTag = "카드를 품고 쉬는 비버",
             illustrationDescription = "하던 걸 멈추고 카드를 안은 채 쉬는 비버.",
             badgeText = "쉼",
-            message = "여기까지 한 것도 남겨뒀어.",
-            primaryLabel = "뽑아둔 카드로 이어서 하기",
+            message = "잠시 쉬어가요",
+            primaryLabel = "고른 미션 이어서 하기",
             onPrimaryClick = onChallengeFromRest,
             links = listOf(
                 HomeLink("오늘 카드 다시 보기", emphasized = true, onClick = onPreviewTodayCard),
@@ -331,15 +302,16 @@ fun HomeRestInProgressScreen(
 fun HomeGiveUpInProgressScreen(
     state: CardHomeState,
     onNotificationsClick: () -> Unit,
+    onOpenTuntunScore: () -> Unit = {},
     onRetryChallenge: () -> Unit, // "미션 다시 도전하기" -> C03
     onRestInstead: () -> Unit,    // "오늘은 쉬어가기" -> C23
 ) {
-    HomeStateScreenShell(state, onNotificationsClick) {
+    HomeStateScreenShell(state, onNotificationsClick, onOpenTuntunScore) {
         HomeStateMascotCard(
             illustrationTag = "연장을 내려놓은 비버",
             illustrationDescription = "연장을 내려놓고 하늘을 보는 비버. 지친 표정은 아니다.",
             badgeText = "포기",
-            message = "오늘은 여기까지. 내일 또 하면 돼.",
+            message = "다시 도전해 볼까요?",
             primaryLabel = "미션 다시 도전하기",
             onPrimaryClick = onRetryChallenge,
             links = listOf(
@@ -354,6 +326,7 @@ fun HomeGiveUpInProgressScreen(
 fun HomeNextDayEntryScreen(
     state: CardHomeState,
     onNotificationsClick: () -> Unit,
+    onOpenTuntunScore: () -> Unit = {},
     yesterdayDateLabel: String,      // "9월 7일"
     restDaysRemainingLabel: String,  // "2회"
     onPickCard: () -> Unit,          // "오늘의 카드 고르기" -> B03
@@ -364,6 +337,7 @@ fun HomeNextDayEntryScreen(
     HomeStateScreenShell(
         state = state,
         onNotificationsClick = onNotificationsClick,
+        onOpenTuntunScore = onOpenTuntunScore,
         dateLabel = state.displayDateLabel().toKoreanDateLabel(),
         topBanner = {
             Column(
@@ -378,11 +352,11 @@ fun HomeNextDayEntryScreen(
                     style = TmtnType.label, color = colors.onSurface,
                 )
                 Text(
-                    "연속 기록이 0일로 초기화됐습니다. 이번 주 쉬어가기 $restDaysRemainingLabel 는 그대로 남아 있어요.",
+                    "연속 기록은 다시 시작해요. 이번 주 쉬어가기 $restDaysRemainingLabel 남았어요.",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
                 Text(
-                    "오늘 하나만 하면 다시 1일째부터 쌓입니다.",
+                    "오늘의 작은 행동부터 다시 쌓아봐요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
             }
@@ -392,7 +366,7 @@ fun HomeNextDayEntryScreen(
             illustrationTag = "카드를 든 비버",
             illustrationDescription = "카드 세 장을 부채처럼 펴 든 비버.",
             badgeText = "오늘",
-            message = "어제는 많이 피곤했어? 오늘 카드 세 장 가져왔어.",
+            message = "오늘의 카드",
             primaryLabel = "오늘의 카드 고르기",
             onPrimaryClick = onPickCard,
             links = listOf(

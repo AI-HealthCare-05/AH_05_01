@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -110,7 +112,7 @@ fun DamFlow() {
 
 /** Figma G01 · 댐 홈 */
 @Composable
-private fun DamHomeScreen(
+internal fun DamHomeScreen(
     companion: CompanionResponse?,
     onOpenEncyclopedia: () -> Unit,
     onOpenStageGuide: () -> Unit,
@@ -122,17 +124,16 @@ private fun DamHomeScreen(
         // ⚠️ 2026-09-06 QA(레이아웃) 반영: 스크롤 하단 패딩이 하단 탭바 높이(104dp)만큼
         // 없어서 마지막 콘텐츠(댐 카드 등)가 탭바 뒤로 잘려 들어갔음.
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 12.dp).padding(bottom = 92.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp).padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("집 · 댐", style = TmtnType.title, color = colors.onSurface)
+        Text("나의 댐", style = TmtnType.title, color = colors.onSurface)
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp)
-                .background(colors.surface, RoundedCornerShape(16.dp))
-                .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
+                .height(240.dp)
+,
             contentAlignment = Alignment.Center,
         ) {
             // ⚠️ 2026-09-06 반영: 홍주님이 전달한 댐 5단계 그림을 실제로 붙임(문서
@@ -151,10 +152,10 @@ private fun DamHomeScreen(
                         else -> com.tmtn.app.R.drawable.dam_stage_5
                     },
                 ),
-                contentDescription = "댐 성장 ${stage}단계",
+                contentDescription = null, // The current stage is announced by the text below.
                 contentScale = ContentScale.Fit,
                 alignment = Alignment.BottomCenter,
-                modifier = Modifier.fillMaxWidth().height(180.dp),
+                modifier = Modifier.fillMaxWidth().height(240.dp),
             )
         }
 
@@ -163,9 +164,7 @@ private fun DamHomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
-                    .padding(20.dp),
+                    .padding(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -199,9 +198,7 @@ private fun DamHomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
-                    .padding(20.dp),
+                    .padding(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text("모은 재료", style = TmtnType.label, color = colors.onSurface)
@@ -235,7 +232,6 @@ private fun DamHomeScreen(
                         }
                     }
                 }
-                Text("지금까지 모은 재료 ${companion.total_materials}개", style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
         }
 
@@ -291,7 +287,7 @@ private fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (Stri
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(16.dp),
             ) {
                 Text(
-                    "어떤 재료든 하나씩 쌓이면 댐은 자라.\n골고루 아니어도 괜찮아.",
+                    "어떤 재료든 쌓이면 댐이 자라요.",
                     style = TmtnType.body, color = colors.onSurface,
                 )
             }
@@ -433,6 +429,7 @@ private fun MaterialDetailScreen(element: String, scope: kotlinx.coroutines.Coro
 }
 
 /** Figma G06 · 틈튼 카드첩 */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CardCollectionScreen(scope: kotlinx.coroutines.CoroutineScope, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
@@ -452,7 +449,11 @@ private fun CardCollectionScreen(scope: kotlinx.coroutines.CoroutineScope, onBac
         ) {
             Text("모은 카드 ${collection?.total_count ?: 0}장", style = TmtnType.label, color = colors.onSurface)
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 CollectionFilterChip(label = "전체", selected = selectedFilter == null) { selectedFilter = null }
                 ELEMENT_ORDER.forEach { element ->
                     val label = when (element) {
@@ -492,7 +493,7 @@ private fun CollectionFilterChip(label: String, selected: Boolean, onClick: () -
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        Text(label, style = TmtnType.label, color = colors.onSurface)
+        Text(label, style = TmtnType.label, color = colors.onSurface, maxLines = 1, softWrap = false)
     }
 }
 

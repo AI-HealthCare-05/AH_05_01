@@ -160,8 +160,19 @@ class StairClimbManager(private val context: Context) : SensorEventListener {
                 // 둘 다 만족해야 인정한다. 걸음이 전혀 없다면(폰 들기, 앉아서 흔들림)
                 // 고도가 아무리 올라도 인정되지 않는다.
                 if (climbedFromBaseline > climbThresholdM) {
-                    if (stepsSincePendingClimb >= minStepsRequiredForCredit) {
-                        val newFloors = (climbedFromBaseline / stepHeightM).toInt().coerceAtLeast(1)
+                    // ⚠️ 2026-09-09 QA 반영: "그냥 걸으면서 폰을 위아래로 흔드니까 카운트가
+                    // 됐다"는 실사용 보고 - 원인은 minStepsRequiredForCredit이 상승폭과
+                    // 무관하게 고정 1이었던 것. climbThresholdM(0.6m)은 계단 3~4칸에
+                    // 해당하는 높이인데, 정상 보행 중엔 자연스럽게 걸음이 계속 잡히고
+                    // 있으니 "최소 1걸음"은 사실상 거의 항상 이미 충족된 상태였음 - 그
+                    // 상태에서 손으로 폰을 팔 길이만큼 들어올리기만 해도(실제 기압 변화가
+                    // 있으니) 계단으로 인정돼버렸음. 인정하려는 칸 수(newFloors)만큼은
+                    // 최소한 걸음도 있어야 한다는 물리적 제약(계단 한 칸에 최소 한 걸음)을
+                    // 추가함 - 완전히 막을 수는 없지만(몇 걸음 걸으면서도 흔들 수는 있으니),
+                    // 정지 상태에서의 순간적인 흔들기 부정계수는 확실히 막음.
+                    val newFloors = (climbedFromBaseline / stepHeightM).toInt().coerceAtLeast(1)
+                    val requiredSteps = maxOf(minStepsRequiredForCredit, newFloors)
+                    if (stepsSincePendingClimb >= requiredSteps) {
                         floorsClimbed += newFloors
                         android.util.Log.w(
                             "StairClimb",

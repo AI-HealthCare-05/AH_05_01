@@ -103,11 +103,11 @@ fun TMTNv1Theme(content: @Composable () -> Unit) {
     val seniorMode = AccessibilitySettingsHolder.seniorMode.value
     val textScale = textScaleHintToFactor(AccessibilitySettingsHolder.textScaleHint.value)
 
-    MaterialTheme(colorScheme = TmtnLightColorScheme) {
-        CompositionLocalProvider(
+    CompositionLocalProvider(
             LocalTmtnColors provides (if (seniorMode) HighContrastTmtnColors else DefaultTmtnColors),
             LocalTmtnTextScale provides textScale,
-        ) {
+    ) {
+        MaterialTheme(colorScheme = TmtnLightColorScheme, typography = tmtnTypography()) {
             content()
         }
     }

@@ -542,7 +542,7 @@ fun ChallengeProcessingScreen(state: CardHomeState) {
             }
             Text("목표를 모두 채웠어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
         }
-        Text("기록을 저장하고 있어요…\n잠시만 기다려 주세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+        Text("기록을 저장하고 있어요…", style = TmtnType.body, color = colors.onSurfaceVariant)
     }
 }
 

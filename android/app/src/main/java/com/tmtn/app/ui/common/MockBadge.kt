@@ -22,7 +22,7 @@ import com.tmtn.app.ui.theme.TmtnType
 fun MockBadge() {
     val colors = LocalTmtnColors.current
     Text(
-        "Mock", style = TmtnType.caption, color = colors.onSurfaceVariant,
+        "예시", style = TmtnType.caption, color = colors.onSurfaceVariant,
         modifier = Modifier.background(colors.disabledContainer, RoundedCornerShape(999.dp))
             .padding(horizontal = 8.dp, vertical = 3.dp),
     )

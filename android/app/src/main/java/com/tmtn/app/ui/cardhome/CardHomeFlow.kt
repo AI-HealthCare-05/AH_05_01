@@ -96,7 +96,7 @@ fun CardHomeFlow(
     hasSensorPermissions: () -> Boolean,
     // ⚠️ 2026-09-08 QA(N6) 반영: SensorIntroScreen 참고.
     onRequestSensorPermissions: () -> Unit = {},
-    onStartSensorTracking: (challengeId: String, execType: String, resumeCount: Int) -> Unit,
+    onStartSensorTracking: (challengeId: String, execType: String, resumeCount: Int, targetValue: Int) -> Unit,
     onStopSensorTracking: () -> Unit,
     // ⚠️ 2026-09-04 추가: 센서 측정 일시정지/재개 - TIMER형과 같은 일시정지 개념을 센서형에도 적용.
     onPauseSensorTracking: () -> Unit = {},
@@ -437,17 +437,15 @@ private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpen
         // B18 · 카드 미선택 · 쉬어가기
         !isSelected && isRestDay -> HomeRestNoCardScreen(
             state, onNotifications,
+            onOpenTuntunScore = onOpenTuntunScore,
             onChallengeFromRest = { state.showRestCancelSheet.value = true },
-            // ⚠️ "미리 보기"라 해도 실제로 볼 카드 내용이 없는 상태(카드 미선택 -> 확정 전엔
-            // 내용 자체가 서버에 없음, B03~B05의 "미선택 카드 앞면 노출 금지" 원칙과 동일)라
-            // 주 버튼과 같은 동작(쉼 취소 확인)으로 통일함.
-            onPreviewTodayCard = { state.showRestCancelSheet.value = true },
             onGiveUp = { state.showRestToGiveUpSheet.value = true },
         )
 
         // B19 · 카드 미선택 · 포기(G3)
         !isSelected && isGivenUp -> HomeGiveUpNoCardScreen(
             state, onNotifications,
+            onOpenTuntunScore = onOpenTuntunScore,
             onPickCardAgain = { state.step.value = CardHomeStep.DECK_PICK },
             onRestInstead = { scope.launch { state.openRestDaySheet() } },
         )
@@ -469,6 +467,7 @@ private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpen
         isSelected && isRestDay && (challengeState == "READY" || challengeState == "SKIPPED") ->
             HomeRestCardDrawnScreen(
                 state, onNotifications,
+            onOpenTuntunScore = onOpenTuntunScore,
                 onChallengeFromRest = { state.showRestCancelSheet.value = true },
                 onPreviewTodayCard = { scope.launch { state.continueTodayMission() } },
                 onGiveUp = { state.showRestToGiveUpSheet.value = true },
@@ -477,6 +476,7 @@ private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpen
         // B23 · 카드 뽑고 진행하다가(ACTIVE/PAUSED) · 쉬어가기
         isSelected && isRestDay -> HomeRestInProgressScreen(
             state, onNotifications,
+            onOpenTuntunScore = onOpenTuntunScore,
             onChallengeFromRest = { state.showRestCancelSheet.value = true },
             onPreviewTodayCard = { scope.launch { state.continueTodayMission() } },
             onGiveUp = { state.showRestToGiveUpSheet.value = true },
@@ -485,6 +485,7 @@ private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpen
         // B21(+ B24 통합) · 카드 뽑음 · 포기 (쉬어가기로 바꾸지 않은 경우만 - 위 분기 참고)
         isSelected && isSkipped -> HomeGiveUpCardDrawnScreen(
             state, onNotifications,
+            onOpenTuntunScore = onOpenTuntunScore,
             onChallenge = { scope.launch { state.restartFromGiveUp() } },
             onRestInstead = { scope.launch { state.openRestDaySheet() } },
         )
@@ -492,7 +493,8 @@ private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpen
         // B22 · 진행하다 일시정지(쉼도 포기도 아님)
         isSelected && isPaused -> HomePausedScreen(
             state, onNotifications,
-            elapsedLabel = "지금까지 한 만큼은 그대로 남아 있어. 이어서 하면 돼.",
+            onOpenTuntunScore = onOpenTuntunScore,
+            elapsedLabel = "이어서 해볼까요?",
             onResume = { scope.launch { state.enterInProgressMission() } },
             onRestInstead = { scope.launch { state.openRestDaySheet() } },
             onGiveUp = { state.showGiveUpConfirmSheet.value = true },

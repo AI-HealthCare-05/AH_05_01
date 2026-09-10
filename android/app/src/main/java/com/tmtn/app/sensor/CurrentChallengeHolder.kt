@@ -11,9 +11,14 @@ package com.tmtn.app.sensor
 object CurrentChallengeHolder {
     var challengeId: String? = null
     var execType: String? = null  // "SENSOR_STEPS" / "SENSOR_FLOORS_CLIMBED" / ... 6종류 중 하나
+    // ⚠️ 2026-09-09 QA 반영: 측정 중 백그라운드 알림 문구("N계단 · 자동 측정 중")가 목표를
+    // 넘겨서 표시되는 문제 - 알림을 그리는 코드(서비스)는 목표값 자체를 몰랐음. 시작할 때
+    // 같이 채워서 알림에서도 캡을 씌울 수 있게 함.
+    var targetValue: Int? = null
 
     fun clear() {
         challengeId = null
         execType = null
+        targetValue = null
     }
 }

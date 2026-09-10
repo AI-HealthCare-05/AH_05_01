@@ -76,6 +76,14 @@ class MissionSensorService : Service() {
                 val challengeId = intent.getStringExtra(EXTRA_CHALLENGE_ID)
                 val execType = intent.getStringExtra(EXTRA_EXEC_TYPE)
                 val resumeCount = intent.getIntExtra(EXTRA_RESUME_COUNT, 0)
+                // ⚠️ 2026-09-09 QA 반영: 백그라운드 알림 문구가 목표를 넘겨서 표시되던
+                // 문제 - 서비스가 목표값 자체를 몰랐음. 없으면(옛 버전 호출 등) null로 두고
+                // 알림에서는 캡 없이(그대로) 표시함.
+                val targetValue = if (intent.hasExtra(EXTRA_TARGET_VALUE)) {
+                    intent.getIntExtra(EXTRA_TARGET_VALUE, 0)
+                } else {
+                    null
+                }
                 val heightCm = if (intent.hasExtra(EXTRA_HEIGHT_CM)) {
                     intent.getFloatExtra(EXTRA_HEIGHT_CM, 0f)
                 } else {
@@ -103,7 +111,7 @@ class MissionSensorService : Service() {
                         "duplicate START ignored: challengeId=$challengeId execType=$execType"
                     )
                 } else if (challengeId != null && execType != null) {
-                    startTrackingChallenge(challengeId, execType, resumeCount, heightCm, ageYears)
+                    startTrackingChallenge(challengeId, execType, resumeCount, heightCm, ageYears, targetValue)
                 }
             }
 
@@ -285,9 +293,11 @@ class MissionSensorService : Service() {
         resumeCount: Int = 0,
         heightCm: Float? = null,
         ageYears: Int? = null,
+        targetValue: Int? = null,
     ) {
         CurrentChallengeHolder.challengeId = challengeId
         CurrentChallengeHolder.execType = execType
+        CurrentChallengeHolder.targetValue = targetValue
 
         // ⚠️ 2026-09-07 반영(신장×연령 이중 보정): 걷기/조깅은 신장에 따라 케이던스
         // 임계값이 달라지고, 나이가 들수록 더 낮게 잡아야 함(연구 데이터: 60대 이상부터
@@ -542,7 +552,11 @@ class MissionSensorService : Service() {
             "SENSOR_WALKING_DURATION" -> "${mmss(walkingCadenceManager.getCurrentTotalSeconds())} · 자동 측정 중"
             "SENSOR_RUNNING_DISTANCE" -> "%.2fkm · 자동 측정 중".format(runningManager.totalDistanceMeters / 1000f)
             "SENSOR_RUNNING_DURATION" -> "${mmss(runningCadenceManager.getCurrentTotalSeconds())} · 자동 측정 중"
-            "SENSOR_FLOORS_CLIMBED" -> "${stairClimbManager.floorsClimbed}계단 · 자동 측정 중"
+            "SENSOR_FLOORS_CLIMBED" -> {
+                val target = CurrentChallengeHolder.targetValue
+                val floors = if (target != null) stairClimbManager.floorsClimbed.coerceAtMost(target) else stairClimbManager.floorsClimbed
+                "${floors}계단 · 자동 측정 중"
+            }
             else -> "오늘의 미션을 측정하고 있어요"
         }
     }
@@ -563,6 +577,8 @@ class MissionSensorService : Service() {
         // ⚠️ 2026-09-06 추가: 서버가 이미 배치 동기화로 갖고 있던 누적치 - 재개 시 이 값부터
         // 이어서 셈. 0이면 새로 시작하는 것과 동일(내부적으로 reset과 같은 결과).
         const val EXTRA_RESUME_COUNT = "EXTRA_RESUME_COUNT"
+        // ⚠️ 2026-09-09 QA 반영: 백그라운드 알림 문구 캡용.
+        const val EXTRA_TARGET_VALUE = "EXTRA_TARGET_VALUE"
         // ⚠️ 2026-09-07 추가: 걷기/조깅 케이던스 임계값(신장 구간표) 계산용. 없으면
         // 매니저가 만들어질 때 쓴 기본값(170cm/176cm) 그대로 유지.
         const val EXTRA_HEIGHT_CM = "EXTRA_HEIGHT_CM"

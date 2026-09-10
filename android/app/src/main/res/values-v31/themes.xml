@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TMTNv1.Launch" parent="Theme.TMTNv1">
+        <item name="android:windowBackground">@drawable/tmtn_launch_window</item>
+        <item name="android:windowSplashScreenBackground">#3F5D4B</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/tmtn_splash_mark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">#3F5D4B</item>
+        <item name="android:navigationBarColor">#3F5D4B</item>
+    </style>
+</resources>

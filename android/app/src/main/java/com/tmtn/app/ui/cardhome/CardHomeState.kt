@@ -9,8 +9,10 @@ import com.tmtn.app.network.model.MaterialItem
 import com.tmtn.app.network.model.MemoUpdateRequest
 import com.tmtn.app.network.model.RestDayRequest
 import com.tmtn.app.ui.common.currentServiceDateString
+import com.tmtn.app.ui.common.isoDateToKoreanLabel
 import com.tmtn.app.ui.onboarding.parseErrorMessage
 import java.util.UUID
+import kotlin.math.roundToInt
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -85,14 +87,13 @@ class CardHomeState {
     // loadLocationConsent()가 false로 갱신함.
     var locationConsentGranted = mutableStateOf(true)
 
-    // ⚠️ 2026-09-09 반영: 실모델(또래 백분위, tuntun-score/peer/v2)로 전환. 기존
+    // ⚠️ 2026-09-10 반영: 실모델(또래 백분위, tuntun-score/peer/v2) 연동. 기존
     // tuntunIndexBand("관심/보통/양호")·tuntunIndexPeriodLabel(주간 기간)은 새 계약에
-    // 없는 개념이라(bandLabel은 항상 null, 기간 대신 단일 기준일) 제거함 - 서버가 조립해준
-    // compositeDisplay.text("튼튼지수 75.6점")를 그대로 신뢰해서 보여줌.
-    var tuntunIndexDisplayText = mutableStateOf<String?>(null)
+    // 없는 개념이라 제거함 - ScorePercentilePresentation이 tuntunIndexPresentationValue를
+    // "0~100, 높을수록 건강한 쪽" 백분위로 해석해서 "100명 중 N번째쯤"을 그려줌.
+    var tuntunIndexValue = mutableStateOf<Int?>(null)
+    var tuntunIndexPresentationValue = mutableStateOf<Double?>(null)
     // ⚠️ PR #12 리뷰(P0) 반영: 홈 카드가 배지 없이 상수 Mock 점수를 그대로 보여주고 있었음.
-    // 실모델 전환 후에도 isMock은 항상 false로 오지만, 응답 자체가 안 왔을 때(로드 실패)와
-    // 구분하려고 필드는 유지함.
     var tuntunIndexIsMock = mutableStateOf(false)
 
     // ⚠️ 홈 "최근 7일" 도트 - 예전엔 listOf(true, true, false, true, true, false, null)로
@@ -418,15 +419,18 @@ class CardHomeState {
         }.getOrNull()
         if (body == null) {
             // ⚠️ 2026-09-09 반영: 브릿지 미설정/미가동(503) 등도 이 분기로 옴 - "네트워크
-            // 실패"와 동일하게 취급. 예전 Mock 고정 80점처럼 조용히 대체 값을 보여주지 않음.
+            // 실패"와 동일하게 취급. Mock 고정값을 조용히 대신 보여주지 않음.
             tuntunIndexLoadFailed.value = true
             return
         }
-        if (body.scoreAvailable) {
-            tuntunIndexDisplayText.value = body.compositeDisplay.text
+        val index = body.peerCompositeScore
+        if (body.scoreAvailable && index != null) {
+            tuntunIndexPresentationValue.value = index
+            tuntunIndexValue.value = index.roundToInt()
             tuntunIndexIsMock.value = body.isMock
         } else {
-            tuntunIndexDisplayText.value = null
+            tuntunIndexPresentationValue.value = null
+            tuntunIndexValue.value = null
         }
     }
 

@@ -16,8 +16,8 @@ interface TuntunScoreApi {
     @GET("tuntun-score/v2")
     suspend fun getTuntunScoreV2(): Response<TuntunScoreV2Response>
 
-    // ⚠️ 2026-09-09 추가 - 실모델(또래 백분위) 연동. 위 getTuntunScoreV2()는 이제 이 화면에서
-    // 안 씀(Mock이라 안 씀) - 다만 서버 쪽 기존 계약을 다른 데서 쓸 수도 있어서 그대로 둠.
+    // ⚠️ 2026-09-09 추가 - 실모델(또래 백분위) 연동. 위 getTuntunScoreV2()는 이제 안
+    // 씀(Mock).
     @GET("tuntun-score/peer/v2")
     suspend fun getTuntunScorePeerV2(): Response<TuntunScorePeerV2Response>
 
@@ -26,4 +26,8 @@ interface TuntunScoreApi {
 
     @GET("tuntun-score/inputs")
     suspend fun getTuntunScoreInputs(): Response<ScoreInputsResponse>
+
+    // The server returns only publicly approved results. Never call prediction write/approval APIs here.
+    @GET("prediction-results/latest")
+    suspend fun getLatestPredictionResults(): Response<List<com.tmtn.app.network.model.PredictionResultResponse>>
 }

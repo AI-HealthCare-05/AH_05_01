@@ -72,7 +72,7 @@ fun A09ScheduleIntroScreen(state: OnboardingState) {
             }
 
             Text(
-                "자는 시간이랑\n일어나는 시간만 알려줘", style = TmtnType.headline,
+                "하루 일정을 알려 주세요", style = TmtnType.headline,
                 color = colors.onSurface, textAlign = TextAlign.Center,
             )
             Text(

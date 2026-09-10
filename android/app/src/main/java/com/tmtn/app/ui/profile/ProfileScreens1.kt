@@ -1,7 +1,14 @@
 package com.tmtn.app.ui.profile
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.Role
+import com.tmtn.app.ui.common.TmtnMascot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import com.tmtn.app.ui.theme.tmtnClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,64 +39,64 @@ import java.time.temporal.ChronoUnit
 fun ProfileHomeScreen(state: ProfileState, onNavigate: (ProfileScreenKey) -> Unit, onOpenDam: () -> Unit) {
     val colors = LocalTmtnColors.current
     val user = state.userInfo.value
-    val companionMaterials = state.companionMaterials.value
-
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("내 정보", style = TmtnType.title, color = colors.onSurface)
-
-        Column(
-            modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text("${user?.nickname ?: user?.name ?: ""} 님", style = TmtnType.title, color = colors.onSurface)
-            Text("${user?.email ?: ""} · 이메일 로그인", style = TmtnType.caption, color = colors.onSurfaceVariant)
-            Text(
-                "함께한 지 ${daysSince(user?.created_at)}일 · 재료 ${companionMaterials ?: 0}개",
-                style = TmtnType.body, color = colors.onSurfaceVariant,
-            )
+        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(user?.nickname?.takeIf { it.isNotBlank() }?.let { "$it 님" }
+                    ?: user?.name?.takeIf { it.isNotBlank() }?.let { "$it 님" } ?: "반가워요",
+                    style = TmtnType.headline, color = colors.onSurface)
+                user?.email?.let { Text(it, style = TmtnType.caption, color = colors.onSurfaceVariant) }
+                user?.created_at?.let { Text("틈튼과 함께 ${daysSince(it)}일째", style = TmtnType.caption, color = colors.onSurfaceVariant) }
+            }
+            TmtnMascot(com.tmtn.app.R.drawable.beaver_wave, null, Modifier.size(88.dp))
         }
-
-        Column(
-            modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
-        ) {
-            ProfileListItem("생활시간 · 알림", "아침 준비 · 점심 뒤 · 자기 전") { onNavigate(ProfileScreenKey.NOTIFICATION) }
-            ProfileListItem("연동 · 권한", "걸음 수 허용 · 알림 허용") { onNavigate(ProfileScreenKey.PERMISSIONS) }
-            ProfileListItem("캐릭터 · 댐", "비버 · 댐") { onOpenDam() }
-            ProfileListItem(
-                "몸 정보",
-                if (user?.birth_year != null) "생년월 ${user.birth_year}년 ${user.birth_month}월" else "입력 안 함",
-            ) { onNavigate(ProfileScreenKey.HEALTH) }
-            ProfileListItem("운동 정보", "") { onNavigate(ProfileScreenKey.EXERCISE) }
-        }
-
-        Column(
-            modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
-        ) {
-            ProfileListItem("계정", null) { onNavigate(ProfileScreenKey.ACCOUNT) }
-            ProfileListItem("개인정보 · 내 데이터", null) { onNavigate(ProfileScreenKey.PRIVACY_DATA) }
-            ProfileListItem("동의 관리", null) { onNavigate(ProfileScreenKey.CONSENT) }
-            ProfileListItem("접근성", null) { onNavigate(ProfileScreenKey.ACCESSIBILITY) }
-            ProfileListItem("도움말 · 문의", null) { onNavigate(ProfileScreenKey.HELP_DETAIL) }
-            ProfileListItem("앱 정보", "버전 1.0.0") { onNavigate(ProfileScreenKey.APP_INFO) }
-        }
+        ProfileSectionLabel("나의 생활")
+        ProfileListItem("신체 정보", null) { onNavigate(ProfileScreenKey.HEALTH) }
+        ProfileListItem("운동 정보", null) { onNavigate(ProfileScreenKey.EXERCISE) }
+        ProfileListItem("생활시간 · 알림", null) { onNavigate(ProfileScreenKey.NOTIFICATION) }
+        ProfileSectionLabel("앱 설정")
+        ProfileListItem("접근성", "글자 크기 · 동작 줄이기 · 고대비") { onNavigate(ProfileScreenKey.ACCESSIBILITY) }
+        ProfileListItem("연동 · 권한", null) { onNavigate(ProfileScreenKey.PERMISSIONS) }
+        ProfileListItem("계정", null) { onNavigate(ProfileScreenKey.ACCOUNT) }
+        ProfileListItem("개인정보 · 내 데이터", null) { onNavigate(ProfileScreenKey.PRIVACY_DATA) }
+        ProfileListItem("동의 관리", null) { onNavigate(ProfileScreenKey.CONSENT) }
+        ProfileSectionLabel("도움이 필요할 때")
+        ProfileListItem("도움말 · 문의", null) { onNavigate(ProfileScreenKey.HELP_DETAIL) }
+        ProfileListItem("앱 정보", null) { onNavigate(ProfileScreenKey.APP_INFO) }
+        Spacer(Modifier.height(12.dp))
     }
 }
 
 @Composable
-internal fun ProfileListItem(title: String, sub: String?, onClick: () -> Unit) {
+private fun ProfileSectionLabel(text: String) {
     val colors = LocalTmtnColors.current
-    Column(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 20.dp, vertical = 14.dp),
-    ) {
-        Text(title, style = TmtnType.label, color = colors.onSurface)
-        if (!sub.isNullOrBlank()) {
-            Text(sub, style = TmtnType.caption, color = colors.onSurfaceVariant)
+    Text(text, style = TmtnType.caption, color = colors.onSurfaceVariant,
+        modifier = Modifier.padding(top = 20.dp, bottom = 4.dp))
+}
+
+@Composable
+internal fun ProfileListItem(title: String, sub: String?, onClick: (() -> Unit)? = null) {
+    val colors = LocalTmtnColors.current
+    Column {
+        Row(
+            Modifier.fillMaxWidth().then(if (onClick != null) Modifier.tmtnClickable(role = Role.Button, onClick = onClick) else Modifier)
+                .heightIn(min = 60.dp).padding(vertical = 14.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = TmtnType.body, color = colors.onSurface)
+                if (!sub.isNullOrBlank()) Text(sub, style = TmtnType.caption, color = colors.onSurfaceVariant)
+            }
+            if (onClick != null) Text("›", style = TmtnType.title, color = colors.onSurfaceVariant)
         }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
     }
 }
+
 
 private fun daysSince(createdAt: String?): Long {
     if (createdAt == null) return 0
@@ -115,8 +122,8 @@ fun PermissionsScreen(onBack: () -> Unit, onOpenSettings: () -> Unit) {
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             ) {
-                ProfileListItem("걸음 수 읽기", "걷기 미션 자동 기록") { }
-                ProfileListItem("알림", "") { }
+                ProfileListItem("걸음 수 읽기", "걷기 미션 자동 기록")
+                ProfileListItem("알림", null)
             }
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(20.dp),
@@ -124,7 +131,8 @@ fun PermissionsScreen(onBack: () -> Unit, onOpenSettings: () -> Unit) {
             ) {
                 Text("무엇을 읽고 무엇을 읽지 않나요", style = TmtnType.label, color = colors.onSurface)
                 Text("읽습니다: 걸음 수 · 걸은 시간", style = TmtnType.body, color = colors.onSurfaceVariant)
-                Text("읽지 않습니다: 위치 · 심박 · 연락처 · 사진", style = TmtnType.body, color = colors.onSurfaceVariant)
+                Text("위치는 거리 측정을 허용했을 때만 사용해요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+                Text("읽지 않습니다: 심박 · 연락처 · 사진", style = TmtnType.body, color = colors.onSurfaceVariant)
             }
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(16.dp),
@@ -160,7 +168,7 @@ fun AccountScreen(
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             ) {
-                ProfileListItem("로그인 방식", "이메일") { }
+                ProfileListItem("로그인 방식", "이메일")
                 ProfileListItem("이메일", userInfo?.email ?: "") { onChangeEmail() }
                 ProfileListItem("비밀번호 변경", null) { onChangePassword() }
                 ProfileListItem("로그아웃", null) { onLogout() }

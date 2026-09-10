@@ -27,7 +27,7 @@ private fun previousStepFor(step: OnboardingStep): OnboardingStep? = when (step)
     OnboardingStep.A04_VERIFY -> OnboardingStep.A03_SIGNUP
     OnboardingStep.A05_LOGIN -> OnboardingStep.A02_START
     OnboardingStep.A06_CONSENT -> OnboardingStep.A04_VERIFY
-    OnboardingStep.A07_PROFILE -> OnboardingStep.A06_CONSENT
+    OnboardingStep.A07_PROFILE -> OnboardingStep.SIGNUP_COMPLETE
     OnboardingStep.A08_EXERCISE -> OnboardingStep.A07_PROFILE
     OnboardingStep.A09_SCHEDULE_INTRO -> OnboardingStep.A08_EXERCISE
     OnboardingStep.A10_SCHEDULE -> OnboardingStep.A09_SCHEDULE_INTRO
@@ -37,6 +37,7 @@ private fun previousStepFor(step: OnboardingStep): OnboardingStep? = when (step)
     OnboardingStep.A14_TERMS_DETAIL -> OnboardingStep.A06_CONSENT
     OnboardingStep.A15_COMPLETE -> null // 온보딩 마지막 요약 - 더 되돌아갈 곳 없음
     OnboardingStep.A16_PERMISSIONS -> OnboardingStep.A08_EXERCISE
+    OnboardingStep.SIGNUP_COMPLETE -> null
     OnboardingStep.DONE -> null
 }
 
@@ -56,6 +57,7 @@ fun OnboardingFlow(
     hasSensorPermissions: () -> Boolean = { true },
     onRequestPermissions: () -> Unit = {},
     startAtLogin: Boolean = false,
+    systemSplashShown: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalTmtnColors.current
@@ -63,6 +65,7 @@ fun OnboardingFlow(
         OnboardingState().apply {
             // H07(세션 만료)에서 넘어온 경우 - 온보딩 처음이 아니라 바로 로그인 화면부터
             if (startAtLogin) step.value = OnboardingStep.A05_LOGIN
+            else if (systemSplashShown && step.value == OnboardingStep.A01_SPLASH) step.value = OnboardingStep.A02_START
         }
     }
     val scope = rememberCoroutineScope()
@@ -77,7 +80,10 @@ fun OnboardingFlow(
 
     // ⚠️ 예전엔 화면 안의 "←" 버튼만 단계를 되돌렸고, 폰의 시스템 뒤로가기(제스처/버튼)는
     // 아예 안 걸려있어서 그냥 앱이 종료(바탕화면으로 이동)돼버렸음. 여기서 같이 처리.
-    val previousStep = previousStepFor(state.step.value)
+    LaunchedEffect(state.accountCreated) {
+        state.restoreProfileForResume()
+    }
+    val previousStep = if (state.accountCreated && state.step.value == OnboardingStep.A06_CONSENT) null else previousStepFor(state.step.value)
     BackHandler(enabled = previousStep != null) {
         previousStep?.let { state.step.value = it }
     }
@@ -90,6 +96,10 @@ fun OnboardingFlow(
             OnboardingStep.A04_VERIFY -> A04VerifyScreen(state, scope)
             OnboardingStep.A05_LOGIN -> A05LoginScreen(state, scope, onLoginSuccess = onOnboardingComplete)
             OnboardingStep.A06_CONSENT -> A06ConsentScreen(state, scope)
+            OnboardingStep.SIGNUP_COMPLETE -> SignupCompleteScreen {
+                OnboardingCheckpoint.save(OnboardingStep.A07_PROFILE)
+                state.step.value = OnboardingStep.A07_PROFILE
+            }
             OnboardingStep.A07_PROFILE -> A07ProfileScreen(state, scope)
             OnboardingStep.A08_EXERCISE -> A08ExerciseScreen(state, scope, hasSensorPermissions)
             OnboardingStep.A09_SCHEDULE_INTRO -> A09ScheduleIntroScreen(state)
@@ -98,11 +108,13 @@ fun OnboardingFlow(
             OnboardingStep.A12_PASSWORD_RESET_REQUEST -> A12PasswordResetRequestScreen(state)
             OnboardingStep.A13_NEW_PASSWORD -> A13NewPasswordScreen(state)
             OnboardingStep.A14_TERMS_DETAIL -> A14TermsDetailScreen(state)
-            OnboardingStep.A15_COMPLETE -> A15CompleteScreen(state, onOnboardingComplete)
+            OnboardingStep.A15_COMPLETE -> A15CompleteScreen(state) {
+                OnboardingCheckpoint.clear()
+                onOnboardingComplete()
+            }
             OnboardingStep.A16_PERMISSIONS -> A16PermissionsScreen(state, onRequestPermissions)
             OnboardingStep.DONE -> {
-                Text("온보딩 완료!")
-                onOnboardingComplete()
+                LaunchedEffect(Unit) { OnboardingCheckpoint.clear(); onOnboardingComplete() }
             }
         }
 

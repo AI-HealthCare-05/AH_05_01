@@ -56,19 +56,28 @@ fun ProfileFlow(
     // 뒤로가기를 누르면 "내 정보" 홈이 아니라 원래 있던 탭(참고)으로 돌아가야 함.
     // null이면(=하단 탭에서 직접 진입) 평소처럼 previousScreenFor()로 동작.
     onBackToOrigin: (() -> Unit)? = null,
+    state: ProfileState = remember { ProfileState().apply { screen.value = initialScreen } },
+    onLoad: suspend () -> Unit = { state.loadAll() },
 ) {
     val colors = LocalTmtnColors.current
-    val state = remember { ProfileState().apply { screen.value = initialScreen } }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        state.loadAll()
+        onLoad()
     }
 
     val previousScreen = previousScreenFor(state.screen.value)
     // 딥링크로 들어온 화면에 아직 그대로 있을 때만 "원래 탭으로 돌아가기"를 씀 - Profile
     // 안에서 다른 화면으로 이미 이동했다면 평소처럼 Profile 안의 이전 화면으로 돌아감.
     val isAtDeepLinkEntry = state.screen.value == initialScreen && initialScreen != ProfileScreenKey.HOME
+    // Successful saves already route to HOME in ProfileState. For a score deep link, return to its caller.
+    LaunchedEffect(state.screen.value) {
+        if (initialScreen != ProfileScreenKey.HOME && state.screen.value == ProfileScreenKey.HOME) onBackToOrigin?.invoke()
+    }
+    val backFromEditor: () -> Unit = {
+        if (isAtDeepLinkEntry && onBackToOrigin != null) onBackToOrigin()
+        else state.screen.value = ProfileScreenKey.HOME
+    }
     BackHandler(enabled = previousScreen != null || (isAtDeepLinkEntry && onBackToOrigin != null)) {
         if (isAtDeepLinkEntry && onBackToOrigin != null) {
             onBackToOrigin()
@@ -122,8 +131,8 @@ fun ProfileFlow(
                     )
                 }
             }
-            ProfileScreenKey.HEALTH -> HealthEditScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.HOME })
-            ProfileScreenKey.EXERCISE -> ExerciseEditScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.HOME })
+            ProfileScreenKey.HEALTH -> HealthEditScreen(state, scope, onBack = backFromEditor)
+            ProfileScreenKey.EXERCISE -> ExerciseEditScreen(state, scope, onBack = backFromEditor)
             ProfileScreenKey.CONSENT -> ConsentScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.HOME })
             ProfileScreenKey.ACCESSIBILITY -> AccessibilityScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.HOME })
             ProfileScreenKey.EMAIL_CHANGE -> EmailChangeScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.ACCOUNT })

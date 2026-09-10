@@ -5,6 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,7 +33,7 @@ import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** Figma F08 · 몸 정보 수정 */
+/** Figma F08 · 신체 정보 수정 */
 @Composable
 fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
@@ -52,21 +55,22 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
     var isPregnant by remember(user) { mutableStateOf(user?.is_pregnant) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "몸 정보", onBack = onBack)
+        TmtnTopBar(title = "신체 정보", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
-            ) {
-                ProfileListItem("생년월일", if (user?.birth_year != null) "${user.birth_year}년 ${user.birth_month}월" else "-") { }
+            Text("기본 정보", style = TmtnType.title, color = colors.onSurface)
+            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("생년월", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text(if (user?.birth_year != null && user.birth_month != null) "${user.birth_year}년 ${user.birth_month}월" else "등록된 정보가 없어요",
+                    style = TmtnType.bodyLarge, color = colors.onSurface)
             }
-
+            androidx.compose.material3.HorizontalDivider(color = colors.outlineVariant)
             Text("성별", style = TmtnType.label, color = colors.onSurface)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TmtnChip(text = "남성", selected = gender == "MALE", onClick = { gender = "MALE" })
-                TmtnChip(text = "여성", selected = gender == "FEMALE", onClick = { gender = "FEMALE" })
+            Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.tmtn.app.ui.onboarding.TmtnIntensityCard("남성", "", gender == "MALE", { gender = "MALE" }, Modifier.weight(1f).fillMaxHeight())
+                com.tmtn.app.ui.onboarding.TmtnIntensityCard("여성", "", gender == "FEMALE", { gender = "FEMALE" }, Modifier.weight(1f).fillMaxHeight())
             }
 
             if (gender == "FEMALE") {
@@ -92,12 +96,7 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
                 label = "몸무게 (kg)", keyboardType = KeyboardType.Number,
             )
 
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(20.dp),
-            ) {
-                Text("값을 고치면 틈튼지수를 다시 계산합니다. 지난 기록은 그대로 남습니다.", style = TmtnType.body, color = colors.onSurface)
-            }
-            Text("생년월일은 연·월까지만 받습니다.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            Text("저장하면 틈튼지수에 반영돼요. 지난 기록은 그대로 남아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             val saveBlockedReason = when {
                 heightText.toIntOrNull() == null -> "키를 입력해 주세요."
@@ -146,44 +145,16 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "운동 정보", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("근력운동", style = TmtnType.label, color = colors.onSurface)
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text("주 횟수", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(0, 1, 2, 3, 4, 5).forEach { n ->
-                        TmtnChip(
-                            text = if (n == 0) "안 함" else "주 ${n}회", selected = strengthCount == n,
-                            onClick = { strengthCount = n },
-                        )
-                    }
-                }
-                if (strengthCount > 0) {
-                    Text("강도", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("LIGHT" to "가볍게", "MODERATE" to "적당히", "HARD" to "힘들게").forEach { (value, label) ->
-                            TmtnChip(text = label, selected = strengthIntensity == value, onClick = { strengthIntensity = value })
-                        }
-                    }
-                }
-            }
-
-            Text("유산소 · 주당 시간", style = TmtnType.label, color = colors.onSurface)
-            AerobicStepperRow("저강도", aerobicLow) { aerobicLow = it }
-            AerobicStepperRow("중강도", aerobicModerate) { aerobicModerate = it }
-            AerobicStepperRow("고강도", aerobicHigh) { aerobicHigh = it }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(20.dp),
-            ) {
-                Text("0분도 정상입니다. 값을 비워 두는 것과는 다르게 셉니다.", style = TmtnType.body, color = colors.onSurface)
-            }
-            Text("값을 고치면 틈튼지수를 다시 계산합니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            com.tmtn.app.ui.common.TmtnExerciseFields(
+                strengthCount, { strengthCount = it }, strengthIntensity, { strengthIntensity = it },
+                aerobicLow, { aerobicLow = it.coerceAtMost(1000) },
+                aerobicModerate, { aerobicModerate = it.coerceAtMost(1000) },
+                aerobicHigh, { aerobicHigh = it.coerceAtMost(1000) },
+            )
+            Text("저장하면 틈튼지수에 반영돼요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             TmtnPrimaryButton(
                 text = "저장하고 다시 계산",
@@ -194,21 +165,5 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
                 },
             )
         }
-    }
-}
-
-@Composable
-private fun AerobicStepperRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
-    val colors = LocalTmtnColors.current
-    Column(
-        modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(label, style = TmtnType.label, color = colors.onSurface)
-        TmtnStepper(
-            value = minutes, unit = "분",
-            onDecrement = { onChange((minutes - 10).coerceAtLeast(0)) },
-            onIncrement = { onChange((minutes + 10).coerceAtMost(1000)) },
-        )
     }
 }

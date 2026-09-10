@@ -49,7 +49,7 @@ fun SensorIntroScreen(
     state: CardHomeState,
     scope: kotlinx.coroutines.CoroutineScope,
     hasSensorPermissions: () -> Boolean,
-    onStartSensorTracking: (challengeId: String, execType: String, resumeCount: Int) -> Unit,
+    onStartSensorTracking: (challengeId: String, execType: String, resumeCount: Int, targetValue: Int) -> Unit,
     // ⚠️ 2026-09-08 QA(N6) 반영: 여기서 처음으로 시스템 권한 다이얼로그를 띄움(앱 시작
     // 시점이 아니라).
     onRequestPermissions: () -> Unit = {},
@@ -168,13 +168,13 @@ fun SensorIntroScreen(
                                 // ⚠️ 2026-09-06 반영: 서버가 이미 갖고 있던 최신 진행값을
                                 // 같이 넘겨서, 로컬 센서가 0부터 리셋되지 않고 그 값부터
                                 // 이어서 세게 함 - "5초로 되돌아간 것처럼 보이던" 버그의 실제 수정.
-                                onStartSensorTracking(card.challenge_id, card.exec_type, resumeValue)
+                                onStartSensorTracking(card.challenge_id, card.exec_type, resumeValue, card.target_value)
                                 state.step.value = CardHomeStep.SENSOR_MEASURING
                                 return@launch
                             }
                             val response = ApiClient.cardHomeApi.startChallenge(card.challenge_id)
                             if (response.isSuccessful) {
-                                onStartSensorTracking(card.challenge_id, card.exec_type, resumeValue)
+                                onStartSensorTracking(card.challenge_id, card.exec_type, resumeValue, card.target_value)
                                 state.step.value = CardHomeStep.SENSOR_MEASURING
                             } else {
                                 state.errorMessage.value = "측정을 시작하지 못했어요."
@@ -238,8 +238,14 @@ private fun computeSensorDisplay(
         }
         // ⚠️ 2026-09-07 반영: isActive를 하드코딩 true로 둬서, 가만히 있어도 "움직임을
         // 확인했어요"가 계속 떴음(QA). 실시간 감지 여부로 교체.
+        //
+        // ⚠️ 2026-09-09 QA 반영: 기압 센서 배치 인정 방식 특성상 한 번에 여러 칸이
+        // 몰아서 올라가면서 목표치를 훌쩍 넘어버리는 경우가 있었음("13/10칸" 식으로
+        // 넘어가 보임) - 실제 측정값(floors, 서버 동기화·완료 판정용)은 그대로 두고,
+        // 화면에 보여주는 숫자만 목표치에서 캡을 씌움.
         "SENSOR_FLOORS_CLIMBED" -> {
-            SensorDisplay("$floors 계단", "목표 ${targetValue}계단", (floors.toFloat() / targetValue).coerceIn(0f, 1f), isFloorsClimbedDetectedNow)
+            val displayFloors = floors.coerceAtMost(targetValue)
+            SensorDisplay("$displayFloors 계단", "목표 ${targetValue}계단", (floors.toFloat() / targetValue).coerceIn(0f, 1f), isFloorsClimbedDetectedNow)
         }
         else -> SensorDisplay("$steps 걸음", "목표 ${targetValue}보", 0f, isStepDetectedNow)
     }
@@ -533,7 +539,9 @@ fun SensorResultScreen(state: CardHomeState, scope: CoroutineScope) {
         "SENSOR_WALKING_DURATION" -> "오늘 ${formatMmSs(walkingSeconds)} 움직였어요"
         "SENSOR_RUNNING_DISTANCE" -> "오늘 %.2fkm 달렸어요".format(distanceM / 1000f)
         "SENSOR_RUNNING_DURATION" -> "오늘 ${formatMmSs(runningSeconds)} 달렸어요"
-        "SENSOR_FLOORS_CLIMBED" -> "오늘 ${floors}계단 올랐어요"
+        // ⚠️ 2026-09-09 QA 반영: 실제 측정값이 목표를 넘어가는 경우("13계단 올랐어요"인데
+        // 목표는 10칸) 표시가 어색해서, 완료 요약도 목표치에서 캡을 씌움.
+        "SENSOR_FLOORS_CLIMBED" -> "오늘 ${floors.coerceAtMost(card.target_value)}계단 올랐어요"
         else -> "오늘 ${steps}걸음 걸었어요"
     }
 

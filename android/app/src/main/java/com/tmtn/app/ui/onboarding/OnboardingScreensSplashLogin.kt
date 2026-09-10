@@ -43,95 +43,30 @@ import androidx.compose.foundation.verticalScroll
 /** Figma A01 · 스플래시 (node 99:2). 잠깐 보여주고 자동으로 A02로 넘어감. */
 @Composable
 fun A01SplashScreen(state: OnboardingState) {
-    val colors = LocalTmtnColors.current
-
-    LaunchedEffect(Unit) {
-        delay(1200)
-        state.step.value = OnboardingStep.A02_START
-    }
-
-    Box(modifier = Modifier.fillMaxSize().background(colors.background), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            // 로고 자리 (Figma 원본도 미확정 이미지 슬롯)
-            Box(
-                modifier = Modifier
-                    .size(152.dp)
-                    .background(colors.secondaryContainer, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.secondary, RoundedCornerShape(16.dp))
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("로고\n(미확정)", style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
-            }
-
-            Text("틈튼", fontSize = 44.sp, fontWeight = FontWeight.Bold, color = colors.onSurface)
-            Text("하루 한 장, 오늘의 작은 행동", style = TmtnType.bodyLarge, color = colors.onSurfaceVariant)
-
-            Box(
-                modifier = Modifier
-                    .width(160.dp)
-                    .height(4.dp)
-                    .background(colors.outlineVariant, RoundedCornerShape(2.dp)),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(64.dp)
-                        .height(4.dp)
-                        .background(colors.primary, RoundedCornerShape(2.dp)),
-                )
-            }
-            Text("오늘 상태를 불러오는 중이에요", style = TmtnType.caption, color = colors.onSurfaceVariant)
-        }
-
-        Text(
-            "교육·연구 목적 프로토타입입니다. 의료기기가 아닙니다.",
-            style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp).fillMaxWidth(),
-        )
-    }
+    com.tmtn.app.ui.launch.TmtnLaunchOverlay(
+        ready = true,
+        onFinished = { state.step.value = OnboardingStep.A02_START },
+    )
 }
 
 /** Figma A02 · 시작 (로그인·가입) (node 99:21) */
 @Composable
 fun A02StartScreen(state: OnboardingState) {
     val colors = LocalTmtnColors.current
-
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(180.dp)
-                .background(colors.secondaryContainer, RoundedCornerShape(16.dp))
-                .border(1.dp, colors.secondary, RoundedCornerShape(16.dp))
-                .padding(16.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            // ⚠️ 2026-09-06 반영: A02(시작 · 로그인·가입) 배치표 그대로 - "첫인사" beaver_standing.
-            Image(
-                painter = painterResource(com.tmtn.app.R.drawable.beaver_standing),
-                contentDescription = "인사하는 비버",
-                modifier = Modifier.size(148.dp),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Text("하루 한 장이면 충분해", style = TmtnType.headline, color = colors.onSurface, textAlign = TextAlign.Center)
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            "카드 한 장을 고르고, 오늘 할 수 있는 작은 행동 하나만 하면 돼. 나머지는 내가 기록해 둘게.",
-            style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
-        )
-
-        Spacer(modifier = Modifier.height(48.dp))
-        TmtnPrimaryButton(text = "이메일로 시작하기", onClick = { state.step.value = OnboardingStep.A03_SIGNUP })
-        Spacer(modifier = Modifier.height(8.dp))
-        TmtnOutlinedButton(text = "이미 계정이 있어요", onClick = { state.step.value = OnboardingStep.A05_LOGIN })
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("TMTN — Tiny Moves, Tomorrow's Normal.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Spacer(Modifier.height(24.dp))
+        com.tmtn.app.ui.common.TmtnMascot(com.tmtn.app.R.drawable.beaver_standing, "인사하는 비버",
+            Modifier.fillMaxWidth().height(240.dp))
+        Text("하루 한 장의 실천", style = TmtnType.headline, color = colors.onSurface, textAlign = TextAlign.Center)
+        Text("작은 실천이 쌓여 비버의 댐이 자라요.",
+            style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(16.dp))
+        TmtnPrimaryButton("이메일로 시작하기", onClick = { state.step.value = OnboardingStep.A03_SIGNUP })
+        TmtnTextButton("이미 계정이 있어요", onClick = { state.step.value = OnboardingStep.A05_LOGIN })
     }
 }
 
@@ -165,7 +100,7 @@ fun A05LoginScreen(state: OnboardingState, scope: CoroutineScope, onLoginSuccess
             )
             TmtnTextField(
                 value = password, onValueChange = { password = it }, label = "비밀번호",
-                supportingText = "8자 이상, 대/소문자·숫자·특수문자를 각각 포함해 주세요.", isPassword = true,
+                isPassword = true,
                 imeAction = androidx.compose.ui.text.input.ImeAction.Done,
                 onImeAction = { keyboardController?.hide() },
                 modifier = Modifier.focusRequester(passwordFocus),
@@ -195,8 +130,6 @@ fun A05LoginScreen(state: OnboardingState, scope: CoroutineScope, onLoginSuccess
 @Composable
 fun A12PasswordResetRequestScreen(state: OnboardingState) {
     val colors = LocalTmtnColors.current
-    var email by remember { mutableStateOf("") }
-    var notice by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -210,38 +143,14 @@ fun A12PasswordResetRequestScreen(state: OnboardingState) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text("가입한 메일 주소를\n알려 주세요", style = TmtnType.headline, color = colors.onSurfaceVariant)
+            Text("지금은 비밀번호를\n재설정할 수 없어요", style = TmtnType.headline, color = colors.onSurface)
             Text(
-                "그 주소로 비밀번호를 다시 정할 수 있는 링크를 보내드립니다.",
+                "재설정 링크를 보낼 수 없어요. 기존 비밀번호로 로그인해 주세요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
-            TmtnTextField(
-                value = email, onValueChange = { email = it }, label = "이메일",
-                supportingText = "가입할 때 사용한 주소를 입력해 주세요.", keyboardType = KeyboardType.Email,
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    "계정이 있는지는 알려드리지 않습니다. 등록되지 않은 주소를 넣어도 같은 안내가 표시됩니다.",
-                    style = TmtnType.body, color = colors.onSurfaceVariant,
-                )
-                Text("링크는 30분 동안만 쓸 수 있습니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
-            }
-
-            notice?.let {
-                Text("⚠️ $it", style = TmtnType.caption, color = colors.error)
-            }
-
             TmtnPrimaryButton(
-                text = "재설정 링크 받기",
-                onClick = { notice = "이 기능은 아직 준비 중이에요. 백엔드 연동 후에 이용할 수 있어요." },
+                text = "로그인으로 돌아가기",
+                onClick = { state.step.value = OnboardingStep.A05_LOGIN },
             )
         }
     }
@@ -273,7 +182,7 @@ fun A13NewPasswordScreen(state: OnboardingState) {
             Text("새 비밀번호를 정해 주세요", style = TmtnType.headline, color = colors.onSurfaceVariant)
             TmtnTextField(
                 value = newPassword, onValueChange = { newPassword = it }, label = "새 비밀번호",
-                supportingText = "8자 이상, 대/소문자·숫자·특수문자를 각각 포함해 주세요.", isPassword = true,
+                isPassword = true,
             )
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("· 8자 이상", style = TmtnType.label, color = colors.onSurfaceVariant)
@@ -304,7 +213,7 @@ fun A13NewPasswordScreen(state: OnboardingState) {
 
             TmtnPrimaryButton(
                 text = "비밀번호 바꾸기",
-                onClick = { notice = "이 기능은 아직 준비 중이에요. 백엔드 연동 후에 이용할 수 있어요." },
+                onClick = { notice = "아직 비밀번호를 재설정할 수 없어요." },
             )
         }
     }

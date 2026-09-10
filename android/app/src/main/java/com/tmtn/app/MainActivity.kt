@@ -33,7 +33,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.tmtn.app.network.ApiClient
@@ -56,11 +59,17 @@ import com.tmtn.app.ui.record.RecordFlow
 import com.tmtn.app.ui.reference.ReferenceFlow
 import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
 import com.tmtn.app.ui.theme.TMTNv1Theme
+import com.tmtn.app.ui.launch.TmtnLaunchOverlay
+import androidx.core.view.WindowCompat
+import androidx.core.view.doOnPreDraw
+import androidx.compose.ui.graphics.graphicsLayer
 
 /** 앱의 최상위 화면 흐름. 각 단계는 Navigation Compose 없이 상태값으로만 전환함. */
 private enum class AppScreen { ONBOARDING, MAIN }
 
 class MainActivity : ComponentActivity() {
+
+    private var launchReady by mutableStateOf(false)
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -73,11 +82,26 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setTheme(R.style.Theme_TMTNv1)
+        window.setBackgroundDrawableResource(R.drawable.tmtn_launch_window)
+        // Avoid a previous home/profile snapshot flashing before the branded launch surface.
+        // User screenshots remain available; this only changes the system's task preview.
+        if (Build.VERSION.SDK_INT >= 33) setRecentsScreenshotEnabled(false)
+        launchReady = Build.VERSION.SDK_INT < 31 || savedInstanceState != null
+        if (Build.VERSION.SDK_INT >= 31) {
+            splashScreen.setOnExitAnimationListener { splash ->
+                window.decorView.doOnPreDraw {
+                    splash.remove()
+                    launchReady = true
+                }
+                window.decorView.invalidate()
+            }
+        }
         // ⚠️ HANDOFF.md: "다크 모드 정의 없음, 항상 라이트" — 배경이 밝은 크림색이라
         // 상태바 아이콘(시계·배터리)도 어두운색으로 강제 지정 안 하면 흰 배경에 묻혀서 안 보임.
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT),
+            statusBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
         )
 
         // ⚠️ 2026-09-08 QA(N6) 반영: 여기서(앱을 처음 열자마자, 가입도 온보딩도 시작하기
@@ -88,6 +112,7 @@ class MainActivity : ComponentActivity() {
         // ⚠️ setContent보다 먼저 불러야 함 — 저장된 토큰이 있는지 이 시점에 확인해서
         // 초기 화면(screen)을 정할 때 바로 써야 하기 때문.
         TokenHolder.init(applicationContext)
+        com.tmtn.app.ui.onboarding.OnboardingCheckpoint.init(applicationContext)
         // ⚠️ 2026-09-08 추가: refresh_token 쿠키도 암호화 저장소에서 복원함. 이걸 안 부르면
         // 쿠키가 메모리 전용으로만 동작해서, 앱을 껐다 켜면 액세스 토큰 만료(1시간) 뒤에
         // 재로그인해야 함(PersistentCookieJar 주석 참고).
@@ -95,11 +120,29 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TMTNv1Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                // Startup belongs to the app root, including returning signed-in users.
+                // Do not replay it for a configuration change or an editor/login round trip.
+                var launchFinished by rememberSaveable { mutableStateOf(savedInstanceState != null) }
+                var launchExiting by remember { mutableStateOf(false) }
+                LaunchedEffect(launchFinished) {
+                    if (launchFinished) window.setBackgroundDrawableResource(android.R.color.white)
+                }
+                SideEffect {
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = launchFinished
+                        isAppearanceLightNavigationBars = launchFinished
+                    }
+                }
+                Box(Modifier.fillMaxSize()) {
+                Scaffold(modifier = Modifier.fillMaxSize().graphicsLayer {
+                    alpha = if (launchFinished || launchExiting) 1f else 0f
+                }.then(
+                    if (!launchFinished) Modifier.clearAndSetSemantics { } else Modifier,
+                )) { innerPadding ->
                     // 저장된 토큰이 있으면(=예전에 로그인/온보딩 완료한 적 있으면) 온보딩을
                     // 건너뛰고 바로 메인으로 시작.
                     var screen by remember {
-                        mutableStateOf(if (TokenHolder.accessToken != null) AppScreen.MAIN else AppScreen.ONBOARDING)
+                        mutableStateOf(if (TokenHolder.accessToken != null && com.tmtn.app.ui.onboarding.OnboardingCheckpoint.pendingStep() == null) AppScreen.MAIN else AppScreen.ONBOARDING)
                     }
                     // ⚠️ 2026-09-04 QA(P0-6) 반영: 접근성 설정(글자 크기·고대비)이 서버엔 저장돼도
                     // 화면에 반영되는 코드가 없었음. 불러와서 AccessibilitySettingsHolder에 채워두면
@@ -119,6 +162,7 @@ class MainActivity : ComponentActivity() {
                             .getOrNull()?.let { response ->
                                 if (response.isSuccessful) {
                                     response.body()?.let {
+                                        AccessibilitySettingsHolder.reducedMotion.value = it.reduced_motion
                                         AccessibilitySettingsHolder.apply(
                                             it.large_controls, it.senior_mode, it.preferred_text_scale_hint,
                                         )
@@ -153,6 +197,8 @@ class MainActivity : ComponentActivity() {
                     // 중이던 타이머 값 포함)가 매번 새로 생겨 사라졌음 - 여기(탭 전환과 무관하게
                     // 계속 살아있는 자리)로 끌어올려서 탭을 오가도 같은 인스턴스가 유지되게 함.
                     val cardHomeState = remember { CardHomeState() }
+                    val referenceState = remember(screen) { com.tmtn.app.ui.reference.ReferenceState() }
+                    val referencePages = androidx.compose.runtime.key(screen) { androidx.compose.runtime.saveable.rememberSaveableStateHolder() }
                     // B06(카드 공개)·C그룹(챌린지 진행)처럼 하단 내비가 없어야 하는 몰입 단계인지
                     var isImmersive by remember { mutableStateOf(false) }
                     // H07(세션 만료)에서 "로그인하기" 눌러서 넘어온 경우 - 온보딩 처음(A01)이
@@ -193,6 +239,7 @@ class MainActivity : ComponentActivity() {
                             hasSensorPermissions = { hasSensorPermissions() },
                             onRequestPermissions = { checkPermissionsAndStart() },
                             startAtLogin = enterOnboardingAtLogin,
+                            systemSplashShown = true,
                             modifier = Modifier.padding(innerPadding),
                         )
                         AppScreen.MAIN -> {
@@ -211,8 +258,8 @@ class MainActivity : ComponentActivity() {
                                             state = cardHomeState,
                                             hasSensorPermissions = { hasSensorPermissions() },
                                             onRequestSensorPermissions = { checkPermissionsAndStart() },
-                                            onStartSensorTracking = { challengeId, execType, resumeCount ->
-                                                startTrackingChallenge(challengeId, execType, resumeCount)
+                                            onStartSensorTracking = { challengeId, execType, resumeCount, targetValue ->
+                                                startTrackingChallenge(challengeId, execType, resumeCount, targetValue)
                                             },
                                             onStopSensorTracking = { stopMissionService() },
                                             onPauseSensorTracking = { pauseMissionService() },
@@ -228,7 +275,8 @@ class MainActivity : ComponentActivity() {
                                     MainTab.RECORD -> RecordFlow(
                                         onGoPickCard = { currentTab = MainTab.HOME },
                                     )
-                                    MainTab.REFERENCE -> ReferenceFlow(
+                                    MainTab.REFERENCE -> referencePages.SaveableStateProvider("reference") { ReferenceFlow(
+                                        state = referenceState,
                                         onGoPickCard = { currentTab = MainTab.HOME },
                                         onOpenMyInfo = { currentTab = MainTab.MY },
                                         onOpenHealthInfo = {
@@ -240,7 +288,7 @@ class MainActivity : ComponentActivity() {
                                             currentTab = MainTab.MY
                                         },
                                         onImmersiveChange = { isImmersive = it },
-                                    )
+                                    ) }
                                     MainTab.DAM -> DamFlow()
                                     MainTab.MY -> {
                                         // ⚠️ profileTargetScreen을 여기서 매번 그대로 읽으면, 아래
@@ -286,8 +334,18 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                if (!launchFinished) {
+                    TmtnLaunchOverlay(ready = launchReady, onFinished = { launchFinished = true }, onExitStarted = { launchExiting = true })
+                }
+                }
             }
         }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Some entry points (e.g. an existing task) have no system splash callback.
+        if (hasFocus) launchReady = true
     }
 
     private fun requiredSensorPermissions(): List<String> {
@@ -321,7 +379,7 @@ class MainActivity : ComponentActivity() {
     // 응답에 있어서 키처럼 새로 배선할 필요 없이 같이 계산.
     private var cachedAgeYears: Int? = null
 
-    private fun startTrackingChallenge(challengeId: String, execType: String, resumeCount: Int = 0) {
+    private fun startTrackingChallenge(challengeId: String, execType: String, resumeCount: Int = 0, targetValue: Int = 0) {
         // ⚠️ 2026-09-07 QA(걷기 미감지) 임시 진단 로그 - 이 함수 자체가 몇 번 호출되는지
         // 확인용(WalkingCadenceManager.start()가 반복 호출되던 문제의 호출부 추적).
         android.util.Log.w(
@@ -357,6 +415,8 @@ class MainActivity : ComponentActivity() {
                 // ⚠️ 2026-09-06 추가: 서버가 이미 배치 동기화로 갖고 있던 누적치. 0이면
                 // 새로 시작하는 것과 동일(리셋), 0보다 크면 그 값부터 이어서 세게 함.
                 putExtra(MissionSensorService.EXTRA_RESUME_COUNT, resumeCount)
+                // ⚠️ 2026-09-09 QA 반영: 백그라운드 알림 문구 캡용.
+                putExtra(MissionSensorService.EXTRA_TARGET_VALUE, targetValue)
                 // ⚠️ 2026-09-07 추가: 못 가져왔으면(신규 가입 등 아직 키 입력 전) extra
                 // 자체를 안 실어서, 서비스 쪽 매니저가 기본값을 쓰게 함.
                 if (heightCm != null) putExtra(MissionSensorService.EXTRA_HEIGHT_CM, heightCm!!)

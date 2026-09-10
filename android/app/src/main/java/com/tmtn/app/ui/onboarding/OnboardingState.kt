@@ -19,7 +19,7 @@ enum class OnboardingStep {
     A01_SPLASH, A02_START, A03_SIGNUP, A04_VERIFY, A05_LOGIN,
     A06_CONSENT, A07_PROFILE, A08_EXERCISE, A09_SCHEDULE_INTRO, A10_SCHEDULE,
     A11_VERIFY_RETRY, A12_PASSWORD_RESET_REQUEST, A13_NEW_PASSWORD, A14_TERMS_DETAIL,
-    A15_COMPLETE, A16_PERMISSIONS,
+    A15_COMPLETE, A16_PERMISSIONS, SIGNUP_COMPLETE,
     DONE
 }
 
@@ -73,6 +73,17 @@ fun parseErrorMessage(response: Response<*>): String {
 class OnboardingState {
     var step = mutableStateOf(OnboardingStep.A01_SPLASH)
     var isLoading = mutableStateOf(false)
+    private var registration = RegistrationProgress()
+    val accountCreated get() = registration.accountCreated
+
+    init {
+        if (TokenHolder.accessToken != null) {
+            OnboardingCheckpoint.pendingStep()?.let { pending ->
+                registration = RegistrationProgress(accountAlreadyCreated = true)
+                step.value = pending
+            }
+        }
+    }
     var errorMessage = mutableStateOf<String?>(null)
 
     // A03
@@ -164,7 +175,16 @@ class OnboardingState {
                     TokenHolder.accessToken = token
                 }
             },
-            onSuccess = { onSuccess() }
+            onSuccess = {
+                val pending = OnboardingCheckpoint.pendingStep()
+                if (pending != null && OnboardingCheckpoint.belongsTo(email.value)) {
+                    registration = RegistrationProgress(accountAlreadyCreated = true)
+                    step.value = if (pending == OnboardingStep.A06_CONSENT) pending else OnboardingStep.A07_PROFILE
+                } else {
+                    OnboardingCheckpoint.clear()
+                    onSuccess()
+                }
+            }
         )
     }
 
@@ -193,59 +213,96 @@ class OnboardingState {
         )
     }
 
-    // ===== A04 =====
-    // A11(오류 화면) 표시용 — 몇 번 틀렸는지, 만료됐는지
+    // The confirmation endpoint creates an account, so call it only after explicit consent.
     var verifyAttemptCount = mutableStateOf(0)
 
-    suspend fun confirmVerificationCode() {
+    fun continueToConsent() {
+        if (verificationCode.length == 6 && verificationCode.all(Char::isDigit)) {
+            step.value = OnboardingStep.A06_CONSENT
+        }
+    }
+
+    suspend fun submitConsents() {
+        if (isLoading.value) return
+        if (!allMandatoryAgreed) {
+            errorMessage.value = "필수 약관을 확인해 주세요."
+            return
+        }
+        val purposes = buildList {
+            add("TERMS_OF_SERVICE"); add("PRIVACY_POLICY"); add("AGE_OVER_14"); add("HEALTH_DATA_USAGE")
+            if (agreeLocationUsage.value) add("LOCATION_DATA_USAGE")
+            if (agreeHealthDataAnalysis.value) add("HEALTH_REFERENCE_ANALYSIS")
+            if (agreeMarketingPush.value) add("NOTIFICATION")
+        }
         runStep(
             block = {
                 runCatching {
-                    val response = ApiClient.onboardingApi.confirmEmailVerification(
-                        EmailVerificationConfirmRequest(
-                            email = email.value, code = verificationCode, password = password.value
-                        )
+                    registration.complete(
+                        requiredAgreed = allMandatoryAgreed,
+                        purposes = purposes,
+                        createAccount = {
+                            val response = ApiClient.onboardingApi.confirmEmailVerification(
+                                EmailVerificationConfirmRequest(email.value, verificationCode, password.value)
+                            )
+                            if (!response.isSuccessful) error(parseErrorMessage(response))
+                            val token = response.body()?.access_token ?: error("로그인 정보를 받지 못했어요. 다시 시도해 주세요.")
+                            // Save the pending screen before persisting the returned login token.
+                            OnboardingCheckpoint.save(OnboardingStep.A06_CONSENT, email.value)
+                            TokenHolder.accessToken = token
+                        },
+                        saveConsent = { purpose ->
+                            val response = ApiClient.onboardingApi.agreeConsent(ConsentRequest(purpose, "v1"))
+                            if (!response.isSuccessful) error(parseErrorMessage(response))
+                        },
                     )
-                    // ⚠️ 이 요청이 422로 실패하는 이유는 "인증번호"가 아니라 "비밀번호 조건 미달"인
-                    // 경우가 실제로 많았음 (요청 시점의 비밀번호를 여기서 같이 다시 검증하기 때문).
-                    // 그래서 고정 문구 대신 parseErrorMessage로 서버가 알려준 진짜 이유를 그대로 보여줌.
-                    if (!response.isSuccessful) error(parseErrorMessage(response))
-                    val token = response.body()?.access_token ?: error("토큰을 받지 못했어요")
-                    TokenHolder.accessToken = token
                 }
             },
-            onSuccess = { step.value = OnboardingStep.A06_CONSENT },
+            onSuccess = {
+                password.value = ""; passwordConfirm.value = ""
+                codeDigits.value = List(6) { "" }; devOnlyCode.value = null
+                OnboardingCheckpoint.save(OnboardingStep.SIGNUP_COMPLETE)
+                step.value = OnboardingStep.SIGNUP_COMPLETE
+            },
             onFailureExtra = {
-                // A11(인증번호 오류 · 재발송) 화면으로 보냄 — 비밀번호 문제일 수도 있지만
-                // 사용자 입장에선 "인증번호 다시 받기" 화면에서 원인 메시지를 같이 보여주면 됨.
-                verifyAttemptCount.value += 1
-                step.value = OnboardingStep.A11_VERIFY_RETRY
-            }
+                // A consent failure retains the account and retries only remaining requests.
+                if (!accountCreated) {
+                    verifyAttemptCount.value += 1
+                    step.value = OnboardingStep.A11_VERIFY_RETRY
+                }
+            },
         )
     }
 
-    // ===== A06 =====
-    suspend fun submitConsents() {
-        runStep(
-            block = {
-                runCatching {
-                    val purposes = buildList {
-                        add("TERMS_OF_SERVICE")
-                        add("PRIVACY_POLICY")
-                        add("AGE_OVER_14")
-                        add("HEALTH_DATA_USAGE") // 필수 - 키·몸무게·운동습관 수집·이용 자체
-                        if (agreeLocationUsage.value) add("LOCATION_DATA_USAGE")
-                        if (agreeHealthDataAnalysis.value) add("HEALTH_REFERENCE_ANALYSIS")
-                        if (agreeMarketingPush.value) add("NOTIFICATION")
-                    }
-                    for (purpose in purposes) {
-                        val response = ApiClient.onboardingApi.agreeConsent(ConsentRequest(purpose, "v1"))
-                        if (!response.isSuccessful) error(parseErrorMessage(response))
-                    }
+    /** Rehydrate already saved fields after reopening an unfinished signup. */
+    suspend fun restoreProfileForResume() {
+        if (!accountCreated || OnboardingCheckpoint.pendingStep() == null) return
+        if (step.value in listOf(OnboardingStep.A06_CONSENT, OnboardingStep.SIGNUP_COMPLETE)) return
+        runStep(block = {
+            runCatching {
+                val response = ApiClient.profileApi.getMe()
+                if (!response.isSuccessful) error(parseErrorMessage(response))
+                response.body()?.let {
+                    name.value = it.name.orEmpty(); nickname.value = it.nickname.orEmpty()
+                    email.value = it.email; gender.value = it.gender
+                    birthYear.value = it.birth_year ?: birthYear.value; birthMonth.value = it.birth_month ?: birthMonth.value
+                    isPregnant.value = it.is_pregnant
                 }
-            },
-            onSuccess = { step.value = OnboardingStep.A07_PROFILE }
-        )
+                val health = ApiClient.profileApi.getLatestHealthInput()
+                if (health.isSuccessful) health.body()?.input_values?.let {
+                    heightCm.value = (it["height_cm"] as? Number)?.toInt()?.toString().orEmpty()
+                    weightKg.value = (it["weight_kg"] as? Number)?.toInt()?.toString().orEmpty()
+                }
+                val exercise = ApiClient.profileApi.getLatestExerciseHabits()
+                if (exercise.isSuccessful) exercise.body()?.let {
+                    strengthWeeklyCount.value = it.strength_weekly_count; strengthIntensity.value = it.strength_intensity
+                    aerobicLowMinutes.value = it.aerobic_low_minutes; aerobicModerateMinutes.value = it.aerobic_moderate_minutes
+                    aerobicHighMinutes.value = it.aerobic_high_minutes
+                }
+            }
+        }, onSuccess = {}, onFailureExtra = {
+            // Keep required fields visible if restoration failed, rather than bypassing them.
+            step.value = OnboardingStep.A07_PROFILE
+        })
     }
 
     // ===== A07 — 프로필 + 키/몸무게(health-input) 같이 처리 =====
@@ -282,7 +339,7 @@ class OnboardingState {
                     }
                 }
             },
-            onSuccess = { step.value = OnboardingStep.A08_EXERCISE }
+            onSuccess = { OnboardingCheckpoint.save(OnboardingStep.A08_EXERCISE); step.value = OnboardingStep.A08_EXERCISE }
         )
     }
 
@@ -336,6 +393,7 @@ class OnboardingState {
 
     // ===== A16 =====
     fun goToPermissionsOrSchedule(hasSensorPermissions: Boolean) {
+        OnboardingCheckpoint.save(OnboardingStep.A09_SCHEDULE_INTRO)
         step.value = if (hasSensorPermissions) OnboardingStep.A09_SCHEDULE_INTRO else OnboardingStep.A16_PERMISSIONS
     }
 

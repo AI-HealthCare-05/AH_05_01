@@ -37,6 +37,11 @@ data class PeerComponent(
     val label: String,
     val available: Boolean,
     val absoluteReferenceScore: Double?,
+    // ⚠️ 2026-09-10 추가 - ScorePercentilePresentation(팀장님 UI)이 기대하는 "0~100,
+    // 높을수록 건강한 쪽" 값. absoluteReferenceScore(모델 원시 절대점수)와는 다른 값 -
+    // 서버 응답 예시로 확인함: peerPercentile=30.19일 때 rankDisplay.text="70등"이었고,
+    // ScorePercentilePresentation.position = ceil(100-30.19) = 70으로 정확히 일치.
+    val peerPercentile: Double?,
     val rankDisplay: PeerRankDisplay,
     val unavailableReason: String?,
 )

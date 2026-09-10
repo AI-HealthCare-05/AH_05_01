@@ -98,7 +98,7 @@ fun HelpDetailScreen(onBack: () -> Unit, onInquiry: () -> Unit) {
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("카드는 어떻게\n정해지나요?", style = TmtnType.headline, color = colors.onSurface)
+            Text("카드는 어떻게 정해지나요?", style = TmtnType.headline, color = colors.onSurface)
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
                     "매일 아침 세 장을 준비합니다. 세 장은 뒷면이 모두 같아서 고르기 전에는 내용을 알 수 없습니다.",

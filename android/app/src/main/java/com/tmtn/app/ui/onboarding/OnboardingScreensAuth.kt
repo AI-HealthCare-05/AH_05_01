@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -81,6 +82,7 @@ fun A03SignupScreen(state: OnboardingState, scope: CoroutineScope) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "이메일로 시작하기", onBack = { state.step.value = OnboardingStep.A02_START })
+        StepProgressHeader(1, 3, "계정 정보")
 
         Column(
             modifier = Modifier
@@ -93,7 +95,7 @@ fun A03SignupScreen(state: OnboardingState, scope: CoroutineScope) {
                 .padding(horizontal = 20.dp, vertical = 16.dp).padding(bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text("이메일 인증을 마치면 바로 시작할 수 있습니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            Text("이메일 인증과 약관 동의로 계정을 만들어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
 
             // ⚠️ 2026-09-08 QA 반영: 이메일 형식·비밀번호 규칙을 앱에서 전혀 안 막고 있었음.
             // 서버(app/dtos/auth.py)는 EmailStr과 validate_password로 이미 거르고 있어서 결국
@@ -166,13 +168,7 @@ fun A03SignupScreen(state: OnboardingState, scope: CoroutineScope) {
                 disabledReason = blockedReason,
             )
 
-            Column {
-                TmtnStepBars(totalSteps = 3, currentStep = 1)
-                Spacer(modifier = Modifier.height(8.dp))
-                // ⚠️ 2026-09-06 QA(P2) 반영: 온보딩 다른 화면들은 "1 / 2단계" 형식인데
-                // 여기만 "1단계 / 3"으로 순서가 달라서 표기 방식이 안 맞았음 - 형식 통일.
-                Text("1 / 3단계 · 계정 정보", style = TmtnType.caption, color = colors.onSurfaceVariant)
-            }
+
         }
     }
 }
@@ -185,6 +181,7 @@ fun A04VerifyScreen(state: OnboardingState, scope: CoroutineScope) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "이메일 인증", onBack = { state.step.value = OnboardingStep.A03_SIGNUP })
+        StepProgressHeader(2, 3, "이메일 인증")
 
         Column(
             modifier = Modifier
@@ -194,11 +191,11 @@ fun A04VerifyScreen(state: OnboardingState, scope: CoroutineScope) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text("메일로 보낸\n6자리 숫자를 입력해 주세요.", style = TmtnType.title, color = colors.onSurface)
+            Text("인증번호 6자리를 입력해 주세요", style = TmtnType.title, color = colors.onSurface)
 
             // ⚠️ 개발용 — 실제 이메일 발송 전까지만 보이는 임시 배너. 운영 환경에서는
             // devOnlyCode가 항상 null이라 이 블록 자체가 안 그려짐.
-            state.devOnlyCode.value?.let { code ->
+            (if (com.tmtn.app.BuildConfig.DEBUG) state.devOnlyCode.value else null)?.let { code ->
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -212,12 +209,12 @@ fun A04VerifyScreen(state: OnboardingState, scope: CoroutineScope) {
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .height(40.dp)
-                        .background(color = colors.secondaryContainer, shape = RoundedCornerShape(999.dp))
-                        .padding(horizontal = 12.dp),
+                        .weight(1f).heightIn(min = 40.dp)
+                        .background(color = colors.surface, shape = RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(state.email.value, style = TmtnType.caption, color = colors.onSurface)
@@ -243,14 +240,14 @@ fun A04VerifyScreen(state: OnboardingState, scope: CoroutineScope) {
                                 focusRequesters[index + 1].requestFocus()
                             }
                         },
-                        modifier = Modifier.focusRequester(focusRequesters[index]),
+                        modifier = Modifier.weight(1f).focusRequester(focusRequesters[index]),
                     )
                 }
             }
 
             TmtnPrimaryButton(
-                text = "확인하고 가입 완료",
-                onClick = { scope.launch { state.confirmVerificationCode() } },
+                text = "약관 확인하기",
+                onClick = { state.continueToConsent() },
                 enabled = state.verificationCode.length == 6,
             )
             // ⚠️ FLOWS.md 갱신: 예전엔 이 버튼이 바로 재요청했는데, 이제 A11(오류 화면)로
@@ -258,7 +255,7 @@ fun A04VerifyScreen(state: OnboardingState, scope: CoroutineScope) {
             TmtnTextButton(text = "인증번호 다시 받기", onClick = { state.step.value = OnboardingStep.A11_VERIFY_RETRY })
 
             Text(
-                "인증번호가 만료되거나 틀리면 계정을 만들지 않고 다시 시도할 수 있는 경로만 보여드립니다. 메일이 오지 않으면 스팸함도 확인해 주세요.",
+                "약관에 동의하면 인증번호를 확인하고 가입해요.",
                 style = TmtnType.caption, color = colors.onSurfaceVariant,
             )
         }
@@ -272,19 +269,18 @@ fun A11VerifyRetryScreen(state: OnboardingState, scope: CoroutineScope) {
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .imePadding(),
+            .fillMaxSize(),
     ) {
         TmtnTopBar(title = "이메일 인증", onBack = { state.step.value = OnboardingStep.A04_VERIFY })
+        StepProgressHeader(2, 3, "이메일 인증")
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text("인증번호를\n다시 확인해 주세요", style = TmtnType.headline, color = colors.onSurface)
+            Text("인증을 마치지 못했어요", style = TmtnType.headline, color = colors.onSurface)
             Text(
-                "입력하신 번호가 맞지 않거나 유효 시간이 지났습니다. 새 번호를 받아 다시 입력해 주세요.",
+                "인증번호와 연결 상태를 확인해 주세요. 번호가 만료됐다면 새로 받을 수 있어요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
 

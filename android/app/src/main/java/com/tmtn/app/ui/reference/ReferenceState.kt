@@ -15,12 +15,15 @@ enum class ReferenceStep {
     DETAIL,        // E02
     FACTORS,       // E03
     INPUTS,        // E04
+    WAIST,         // Read-only waist estimate, separate from the composite score.
     ABOUT,         // E06 - 이 플로우 밖 F그룹에서 진입 예정, 여기선 미연결
 }
 
 /** E그룹 전체 상태. CardHomeState/RecordState와 같은 패턴 — 백스택은 E04가
  * E01(요약)·E03(반영 항목) 양쪽에서 들어올 수 있어서 맵 대신 실제 스택으로 관리함. */
 class ReferenceState {
+    internal val editorial = ScoreEditorialState()
+    internal val factorOpenRequest = androidx.compose.runtime.mutableIntStateOf(0)
     private val backStack = mutableListOf(ReferenceStep.LOADING)
     val step = mutableStateOf(backStack.last())
 
@@ -45,9 +48,8 @@ class ReferenceState {
         return true
     }
 
-    // ⚠️ 2026-09-09 반영: 실모델(또래 백분위) 연동. 기존 v2(Mock)는 "최근 7일 기록 일수"로
-    // 산출 가능 여부를 판정했는데, 새 계약엔 그 개념이 없음(availableComponentCount로만
-    // 판정) - 그대로 재사용하지 않음.
+    // ⚠️ 2026-09-10 반영: 실모델(또래 백분위) 연동. 기존 v2(Mock)는 "최근 7일 기록 일수"로
+    // 산출 가능 여부를 판정했는데, 새 계약엔 그 개념이 없음(availableComponentCount로만 판정).
     suspend fun loadScore() {
         isLoading.value = true
         errorMessage.value = null
@@ -79,7 +81,12 @@ class ReferenceState {
     fun openDetail() = push(ReferenceStep.DETAIL)
 
     // E02 "이번 계산에 반영된 항목 보기" -> E03
-    fun openFactors() = push(ReferenceStep.FACTORS)
+    fun openFactors() {
+        factorOpenRequest.intValue++
+        push(ReferenceStep.FACTORS)
+    }
+
+    fun openWaist() = push(ReferenceStep.WAIST)
 
     // E01 "계산에 쓰인 값 보기" 또는 E03 "값 다시 입력하기" -> E04
     fun openInputs() {
