@@ -1,0 +1,28 @@
+# ⚠️ 2026-09-10: .kt 125개 중 100개가 CRLF, 25개가 LF로 섞여 있었음.
+# 그 상태에서는 실제로 한 줄만 고쳐도 git diff에 파일 전체가 바뀐 것으로 나와서,
+# 리뷰도 안 되고 브랜치 간 비교도 무의미해짐(feature/11 대비 4,098줄 추가/4,170줄 삭제로
+# 잡혔는데 실제 내용 변경은 148줄뿐이었음).
+#
+# text=auto eol=lf : 저장소에는 항상 LF로 저장. 체크아웃할 때도 LF.
+# 윈도우 팀원이 있어도 Android Studio·IntelliJ는 LF를 그대로 잘 다룸.
+* text=auto eol=lf
+
+# 줄바꿈을 건드리면 안 되는 것들
+*.sh   text eol=lf
+*.bat  text eol=crlf
+gradlew     text eol=lf
+gradlew.bat text eol=crlf
+
+# 바이너리 - git이 텍스트로 오해해서 망가뜨리지 않게 명시
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.webp   binary
+*.ttf    binary
+*.otf    binary
+*.jar    binary
+*.joblib binary
+*.keystore binary
+*.jks    binary
+*.apk    binary
+*.aab    binary
