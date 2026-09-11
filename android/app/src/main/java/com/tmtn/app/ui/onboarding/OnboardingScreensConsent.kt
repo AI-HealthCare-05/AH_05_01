@@ -64,6 +64,24 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // ⚠️ 2026-09-11 추가 - 구글 로그인 경로로 왔을 때만 표시. 디자인 핸드오프
+            // (TMTN-google-signin-handoff-20260910, A17/A18)의 "인증으로 확인한 실제
+            // 계정 주소" 카드. 이메일 가입 경로(state.isGoogleSignup=false)는 이미
+            // A03에서 직접 이메일을 입력했으니 다시 보여줄 필요가 없어서 그대로 숨김.
+            if (state.isGoogleSignup) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.surface, RoundedCornerShape(12.dp))
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text("Google 계정 확인 완료", style = TmtnType.label, color = colors.onSurface)
+                        Text(state.email.value, style = TmtnType.body, color = colors.onSurfaceVariant)
+                    }
+                }
+            }
             // 모두 동의
             Row(
                 modifier = Modifier

@@ -1,5 +1,6 @@
 package com.tmtn.app.ui.onboarding
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
@@ -8,6 +9,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import com.tmtn.app.ui.theme.tmtnPressFeedback
 import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
@@ -128,6 +131,43 @@ fun TmtnOutlinedButton(text: String, onClick: () -> Unit, enabled: Boolean = tru
         colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.onSurface, disabledContentColor = colors.onSurfaceVariant),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     ) { Text(text, style = TmtnType.label, textAlign = TextAlign.Center) }
+}
+
+/**
+ * Google 브랜드 가이드에 맞춘 로그인 버튼 (2026-09-11 추가, 디자인 핸드오프
+ * TMTN-google-signin-handoff-20260910 android-reference/res 기준).
+ *
+ * ⚠️ 앱 테마(라이트/다크)를 따르지 않고 색상을 고정함 - Google 공식 "Neutral" 버튼
+ * 스타일은 배경/테두리/글자색을 브랜드 규정대로 고정하는 게 원칙(구글 로고 옆에
+ * 임의의 앱 색을 섞으면 안 됨). 흰 배경(#FFFFFF) · 테두리(#747775, 1dp) ·
+ * 글자색(#1F1F1F) 전부 디자인 핸드오프의 colors.xml 값 그대로.
+ */
+@Composable
+fun TmtnGoogleButton(onClick: () -> Unit, enabled: Boolean = true, modifier: Modifier = Modifier) {
+    val interactions = remember { MutableInteractionSource() }
+    OutlinedButton(
+        onClick = onClick, enabled = enabled, interactionSource = interactions,
+        modifier = modifier.fillMaxWidth()
+            .heightIn(min = if (AccessibilitySettingsHolder.largeControlsEnabled.value) 60.dp else 52.dp)
+            .tmtnPressFeedback(interactions, enabled),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFF747775)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.White, contentColor = Color(0xFF1F1F1F),
+            disabledContainerColor = Color.White, disabledContentColor = Color(0xFF747775),
+        ),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Image(
+                painter = painterResource(com.tmtn.app.R.drawable.google_g_logo),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text("Google로 계속하기", style = TmtnType.label, textAlign = TextAlign.Center)
+        }
+    }
 }
 
 @Composable

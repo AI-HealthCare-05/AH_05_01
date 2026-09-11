@@ -39,6 +39,20 @@ android {
             "String", "TEST_ACCOUNT_PASSWORD",
             "\"${localProperties.getProperty("TEST_ACCOUNT_PASSWORD", "")}\"",
         )
+
+        // ⚠️ 2026-09-09 추가(구글 계정 연동 로그인).
+        // 여기 들어가는 건 Google Cloud Console에서 만든 **웹 애플리케이션 유형**
+        // 클라이언트 ID입니다(안드로이드 유형 아님 - 헷갈리기 쉬운 부분).
+        // 서버(config.GOOGLE_CLIENT_ID)와 정확히 같은 값이어야 하고, 이 값이 구글
+        // ID 토큰의 aud 클레임으로 들어가서 서버 검증의 기준이 됩니다.
+        // 비밀값은 아니지만(앱에 어차피 박혀서 나감) 팀원마다 다른 값을 쓸 수 있게
+        // TEST_ACCOUNT_*와 같은 방식으로 local.properties에서 읽습니다.
+        //   GOOGLE_WEB_CLIENT_ID=1234567890-xxxxxxxx.apps.googleusercontent.com
+        // 값이 없으면 빈 문자열이고, GoogleSignInHelper가 "설정 안 됨"으로 안내합니다.
+        buildConfigField(
+            "String", "GOOGLE_WEB_CLIENT_ID",
+            "\"${localProperties.getProperty("GOOGLE_WEB_CLIENT_ID", "")}\"",
+        )
     }
 
     buildTypes {
@@ -92,6 +106,18 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
     // ⚠️ 2026-09-08 추가: 미션 미완료·쉼/포기 리마인더 로컬 알림 스케줄링용.
+    // ⚠️ 2026-09-10: 구글 로그인 작업분을 얹으면서 이 줄이 지워져 있었음(compileDebugKotlin에서
+    // androidx.work 미해결로 빌드 실패). notification/ 3개 파일이 이 의존성을 씁니다 -
+    // MissionReminderWorker, RestGiveUpReminderWorker, NotificationScheduler.
     implementation(libs.androidx.work.runtime.ktx)
+
+    // 구글 계정 연동 로그인 (2026-09-09)
+    // ⚠️ 예전 방식인 play-services-auth의 GoogleSignIn API는 공식 deprecated이고 앞으로
+    // Play Services Auth SDK에서 제거될 예정이라, 처음부터 Credential Manager로 붙임.
+    // credentials-play-services-auth가 있어야 실제 구글 계정 선택 UI가 뜹니다(둘 다 필요).
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 }

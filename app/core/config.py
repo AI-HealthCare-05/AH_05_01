@@ -35,6 +35,17 @@ class Config(BaseSettings):
     # legacy 계약, /score)과는 별개 - v0.2는 완전히 다른 계약(/score/peer/v2, X-Tuntun-Schema
     # 헤더)을 쓰므로 설정도 분리함. 운영에는 절대 채우지 않음(LOCAL_REVIEW_CANDIDATE 상태).
     TUNTUN_PEER_BRIDGE_URL: str | None = None
+    # ⚠️ 2026-09-10 추가 - 허리둘레(cm) 전용 보조 서버(tuntun_peer_bridge/waist_addon/
+    # serve_waist.py, 포트 8768). TUNTUN_PEER_BRIDGE_URL(8766, 또래 백분위)과는 별개
+    # 프로세스라 URL도 따로 설정함. 운영에는 절대 채우지 않음.
+    TUNTUN_WAIST_BRIDGE_URL: str | None = None
+    # ⚠️ 2026-09-11 추가 - app/core/oauth/google.py가 config.GOOGLE_CLIENT_ID를 참조하는데
+    # 여기 필드 선언이 빠져 있었음. Config가 extra="allow"라 .env에 값이 있으면 동작은
+    # 하지만, 값이 아예 없으면 속성 자체가 안 생겨서 접근 시 AttributeError가 남
+    # (is_google_login_enabled()가 503으로 안전하게 막아주려던 게 무색해짐 - 실제로
+    # 재현해서 확인함). 기본값 None을 명시해서 .env에 안 채워도 항상 안전하게 "꺼짐"
+    # 상태가 되도록 함.
+    GOOGLE_CLIENT_ID: str | None = None
 
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306

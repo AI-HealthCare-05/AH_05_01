@@ -27,6 +27,10 @@ app = [
     "asyncmy>=0.2.11",
     "bcrypt<=4.0.1",
     "fastapi[standard]>=0.128.0",
+    # ⚠️ 2026-09-10 추가: 구글 ID 토큰 검증(POST /auth/google). 구글 공개키를 받아와서
+    # 서명·aud·exp를 확인해 줌 - 직접 구현하면 검증을 빠뜨리기 쉬운 부분이라 공식
+    # 라이브러리를 씀(app/core/oauth/google.py).
+    "google-auth>=2.38.0",
     "httpx>=0.28.1",
     "orjson>=3.11.5",
     "passlib[bcrypt]>=1.7.4",

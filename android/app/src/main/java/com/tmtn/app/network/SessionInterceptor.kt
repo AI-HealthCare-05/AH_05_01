@@ -16,6 +16,25 @@ class SessionInterceptor : Interceptor {
          * ⚠️ MissionApi 쪽 @Headers 문자열과 값이 같아야 함.
          */
         const val BACKGROUND_SYNC_HEADER = "X-Tmtn-Background-Sync"
+
+        /**
+         * "로그인·가입 자체를 요청하는" 경로들. 여기서 나는 401은 세션 만료가 아니라
+         * 비밀번호 틀림·인증번호 틀림·구글 토큰 거부 같은 **이번 시도의 실패**임.
+         *
+         * ⚠️ 2026-09-09 반영: /auth/google이 빠져 있었음. AuthInterceptor도 이 경로를
+         * 제외하지 않아서 예전 토큰이 요청에 붙었고, 구글 토큰이 거부되면 hadAuthHeader가
+         * true라서 진짜 세션 만료로 오인 -> 온보딩 화면 위에 "다시 로그인해주세요"가
+         * 덮였음(9/8에 고친 재가입 중 튕김과 같은 구조).
+         *
+         * ⚠️ AuthInterceptor.UNAUTHENTICATED_PATHS와 같은 목록을 유지할 것.
+         * (email-verification은 헤더를 붙여도 무해해서 그쪽 목록엔 없고 여기만 있음)
+         */
+        val AUTH_ENDPOINT_PATHS = listOf(
+            "/auth/login",
+            "/auth/email-verification",
+            "/auth/signup",
+            "/auth/google",
+        )
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -23,9 +42,7 @@ class SessionInterceptor : Interceptor {
         val path = request.url.encodedPath
         val response = chain.proceed(request)
 
-        val isAuthEndpoint = path.contains("/auth/login") ||
-            path.contains("/auth/email-verification") ||
-            path.contains("/auth/signup")
+        val isAuthEndpoint = AUTH_ENDPOINT_PATHS.any { path.contains(it) }
 
         // ⚠️ 2026-09-08 QA 반영(회원가입 정보 입력 중에 "다시 로그인해주세요"로 튕기던 버그):
         // 애초에 토큰이 없어서 Authorization 헤더도 안 붙은 요청의 401은 "세션이 만료된 것"이

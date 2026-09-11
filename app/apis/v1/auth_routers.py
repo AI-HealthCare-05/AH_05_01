@@ -9,11 +9,14 @@ from app.core.config import Env
 from app.dtos.auth import (
     EmailVerificationConfirmRequest,
     EmailVerificationRequestRequest,
+    GoogleActionRequiredResponse,
+    GoogleLoginRequest,
     LoginRequest,
     LoginResponse,
+    SocialLoginResponse,
     TokenRefreshResponse,
 )
-from app.services.auth import AuthService
+from app.services.auth import AuthService, GoogleLinkRequiredError, GoogleSignupRequiredError
 from app.services.email_verification import EmailVerificationService
 from app.services.jwt import JwtService
 
@@ -63,10 +66,16 @@ def _cookie_domain_for(http_request: Request) -> str | None:
     return None
 
 
-def _issue_login_response(http_request: Request, tokens: dict) -> Response:
-    resp = Response(
-        content=LoginResponse(access_token=str(tokens["access_token"])).model_dump(), status_code=status.HTTP_200_OK
-    )
+def _issue_login_response(http_request: Request, tokens: dict, content: dict | None = None) -> Response:
+    """로그인 성공 응답 + refresh_token 쿠키.
+
+    content: 응답 본문을 바꿔야 할 때만 넘김(구글 로그인은 is_new_user가 하나 더 붙음).
+    안 넘기면 기존과 동일하게 access_token만 나갑니다. 쿠키 로직은 어느 경우든 같아야
+    해서 - 여기 한 군데에서만 만들도록 유지 -이 함수를 분기시키지 않고 본문만 받습니다.
+    """
+
+    body = content if content is not None else LoginResponse(access_token=str(tokens["access_token"])).model_dump()
+    resp = Response(content=body, status_code=status.HTTP_200_OK)
     resp.set_cookie(
         key="refresh_token",
         value=str(tokens["refresh_token"]),
@@ -134,6 +143,75 @@ async def login(
     user = await auth_service.authenticate(request)
     tokens = await auth_service.login(user)
     return _issue_login_response(http_request, tokens)
+
+
+@auth_router.post("/google", response_model=SocialLoginResponse, status_code=status.HTTP_200_OK)
+async def google_login(
+    http_request: Request,
+    request: GoogleLoginRequest,
+    auth_service: Annotated[AuthService, Depends(AuthService)],
+) -> Response:
+    """A02 "구글로 계속하기" - 앱이 Credential Manager로 받은 구글 ID 토큰을 검증하고
+    우리 서비스의 토큰 쌍을 발급합니다.
+
+    가입과 로그인이 하나의 엔드포인트입니다 - 사용자는 "구글로 계속하기" 버튼 하나만 누르고,
+    서버가 상황을 보고 갈라줍니다.
+
+      이미 연결된 계정        -> 200, is_new_user=false  (앱: 홈으로)
+      같은 이메일의 기존 계정  -> 409 LINK_REQUIRED       (앱: 연결 확인 다이얼로그)
+      처음 보는 구글 계정      -> 409 SIGNUP_REQUIRED     (앱: 약관 동의 A06으로)
+      동의까지 마치고 재요청   -> 200, is_new_user=true   (앱: SIGNUP_COMPLETE로)
+
+    ⚠️ 처음 보는 계정이라고 바로 만들지 않는 게 핵심입니다. 이메일 가입도 A06 동의 후에야
+    계정을 만들고 있어서(RegistrationProgress) 같은 규칙을 지킵니다 - 건강정보 이용 동의는
+    민감정보라 "동의 전에 만들어진 계정"이 생기면 안 됩니다.
+
+    ⚠️ 신규 가입이어도 201이 아니라 200으로 응답합니다. 앱 입장에서 이 요청의 의미는
+    "로그인해 줘"이고 계정 생성은 부수 효과라, 상태 코드로 분기하게 만들면 두 경로의
+    처리가 갈라집니다. 신규 여부는 본문의 is_new_user 하나로만 보게 통일했습니다.
+    """
+
+    # ⚠️ 아래 두 예외는 실패가 아니라 "한 번 확인받아야 한다"는 신호입니다. 앱은 이 409를
+    # 에러 배너로 띄우면 안 되고, code를 보고 각각 다른 화면으로 가야 합니다.
+    # HTTPException 대신 JSONResponse를 직접 만드는 이유: 앱이 code로 분기해야 해서 detail
+    # 문자열 하나로는 부족하고, {"detail": {...}} 형태로 감싸면 앱의 기존 parseErrorMessage()가
+    # 못 읽습니다.
+    try:
+        user, is_new_user = await auth_service.login_with_google(
+            request.id_token,
+            link_confirmed=request.link_confirmed,
+            signup_confirmed=request.signup_confirmed,
+        )
+    except GoogleLinkRequiredError as exc:
+        return Response(
+            content=GoogleActionRequiredResponse(
+                code="LINK_REQUIRED",
+                email=exc.email,
+                detail=f"{exc.email} 은(는) 이미 이메일로 가입된 계정이에요. 이 계정에 구글 로그인을 연결할까요?",
+            ).model_dump(),
+            status_code=status.HTTP_409_CONFLICT,
+        )
+    except GoogleSignupRequiredError as exc:
+        # 계정은 아직 만들어지지 않았습니다. 앱은 약관 동의(A06)부터 태우고, 동의가 끝나면
+        # 같은 ID 토큰에 signup_confirmed=true를 붙여 다시 호출해야 그때 생성됩니다.
+        return Response(
+            content=GoogleActionRequiredResponse(
+                code="SIGNUP_REQUIRED",
+                email=exc.email,
+                detail=f"{exc.email} 으로 처음 오셨네요. 약관에 동의하면 가입이 완료돼요.",
+            ).model_dump(),
+            status_code=status.HTTP_409_CONFLICT,
+        )
+
+    tokens = await auth_service.login(user)
+    return _issue_login_response(
+        http_request,
+        tokens,
+        content=SocialLoginResponse(
+            access_token=str(tokens["access_token"]),
+            is_new_user=is_new_user,
+        ).model_dump(),
+    )
 
 
 @auth_router.get("/token/refresh", response_model=TokenRefreshResponse, status_code=status.HTTP_200_OK)

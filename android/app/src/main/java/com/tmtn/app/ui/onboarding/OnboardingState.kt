@@ -1,13 +1,16 @@
 package com.tmtn.app.ui.onboarding
 
+import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import com.google.gson.JsonParser
+import com.tmtn.app.auth.GoogleSignInHelper
 import com.tmtn.app.network.ApiClient
 import com.tmtn.app.network.TokenHolder
 import com.tmtn.app.network.model.ConsentRequest
 import com.tmtn.app.network.model.EmailVerificationConfirmRequest
 import com.tmtn.app.network.model.EmailVerificationRequestRequest
 import com.tmtn.app.network.model.ExerciseHabitsRequest
+import com.tmtn.app.network.model.GoogleLoginRequest
 import com.tmtn.app.network.model.HealthInputRequest
 import com.tmtn.app.network.model.LoginRequest
 import com.tmtn.app.network.model.NotificationSettingResponse
@@ -188,6 +191,150 @@ class OnboardingState {
         )
     }
 
+    // ===== A02 · 구글로 계속하기 (2026-09-10) =====
+    //
+    // 이메일 가입과 **같은 규칙**을 지킵니다: 약관 동의 전에는 계정을 만들지 않음.
+    // 그래서 흐름이 두 번에 나뉩니다.
+    //
+    //   1) 버튼 탭  -> 구글 ID 토큰 받기 -> POST /auth/google (플래그 없음)
+    //        200                 : 이미 연결된 계정 -> 홈
+    //        409 LINK_REQUIRED   : 같은 이메일의 기존 계정 -> 연결 확인 다이얼로그
+    //        409 SIGNUP_REQUIRED : 처음 보는 계정 -> **계정 안 만들고** A06 동의로
+    //   2) A06 동의 완료 -> 같은 ID 토큰 + signup_confirmed=true -> 그때 계정 생성
+    //
+    // 서버에 중간 상태를 저장하지 않는 대신, 그 사이 ID 토큰을 앱이 들고 있습니다.
+    // 구글 ID 토큰은 보통 1시간쯤 유효해서 동의 화면을 보는 동안은 충분합니다.
+
+    /** 구글 로그인 요청 한 번의 결과. 서버가 세 가지를 돌려줄 수 있어 성공/실패로는 부족함. */
+    private sealed interface GoogleOutcome {
+        data class LoggedIn(val isNewUser: Boolean) : GoogleOutcome
+        data class LinkRequired(val email: String) : GoogleOutcome
+        data class SignupRequired(val email: String) : GoogleOutcome
+    }
+
+    /** 연결 확인 다이얼로그에 보여줄 이메일. null이면 다이얼로그를 안 띄움. */
+    var googleLinkEmail = mutableStateOf<String?>(null)
+
+    /** 확인·동의를 기다리는 동안 들고 있는 구글 ID 토큰. */
+    private var pendingGoogleIdToken: String? = null
+
+    /** 지금 A06에 와 있는 이유가 "구글 신규 가입"인지. 뒤로가기·실패 처리 분기에 씀. */
+    val isGoogleSignup get() = pendingGoogleIdToken != null
+
+    suspend fun loginWithGoogle(context: Context, onExistingUser: () -> Unit) {
+        clearError()
+        // 계정 선택 시트가 떠 있는 동안은 우리 로딩 스피너를 띄우지 않음 - 시트 뒤에서 돌아봐야
+        // 보이지도 않고, 사용자가 시트를 닫으면 스피너만 남음.
+        val idToken = when (val result = GoogleSignInHelper.requestIdToken(context)) {
+            is GoogleSignInHelper.Result.Success -> result.idToken
+            // 사용자가 직접 닫은 것이므로 에러 문구를 띄우지 않고 조용히 원래 화면 유지.
+            GoogleSignInHelper.Result.Cancelled -> return
+            GoogleSignInHelper.Result.NoGoogleAccount -> {
+                errorMessage.value = "기기에 등록된 구글 계정이 없어요. 설정에서 계정을 추가한 뒤 다시 시도해 주세요."
+                return
+            }
+            is GoogleSignInHelper.Result.Failure -> {
+                errorMessage.value = result.message
+                return
+            }
+        }
+        postGoogleLogin(idToken, linkConfirmed = false, signupConfirmed = false, onExistingUser = onExistingUser)
+    }
+
+    /** 연결 확인 다이얼로그에서 "연결하기". 아까 받아둔 같은 ID 토큰을 그대로 다시 보냄. */
+    suspend fun confirmGoogleLink(onExistingUser: () -> Unit) {
+        val idToken = pendingGoogleIdToken ?: run { googleLinkEmail.value = null; return }
+        googleLinkEmail.value = null
+        postGoogleLogin(idToken, linkConfirmed = true, signupConfirmed = false, onExistingUser = onExistingUser)
+    }
+
+    /** 연결 확인 다이얼로그에서 "취소". 아무것도 연결하지 않고 들고 있던 토큰도 버림. */
+    fun cancelGoogleLink() {
+        googleLinkEmail.value = null
+        pendingGoogleIdToken = null
+    }
+
+    /** A06에서 뒤로 나가거나 가입이 실패했을 때. 이메일 가입 중이면 아무 일도 하지 않음. */
+    fun cancelGoogleSignup() {
+        pendingGoogleIdToken = null
+    }
+
+    private suspend fun postGoogleLogin(
+        idToken: String,
+        linkConfirmed: Boolean,
+        signupConfirmed: Boolean,
+        onExistingUser: () -> Unit,
+    ) {
+        runStep(
+            block = {
+                runCatching {
+                    val response = ApiClient.authApi.googleLogin(
+                        GoogleLoginRequest(
+                            id_token = idToken,
+                            link_confirmed = linkConfirmed,
+                            signup_confirmed = signupConfirmed,
+                        )
+                    )
+                    // ⚠️ 409는 실패가 아니라 "확인이 필요하다"는 신호. 에러 배너로 띄우면 안 됨.
+                    // ⚠️ errorBody()는 한 번만 읽을 수 있어서, 여기서 읽었으면 parseErrorMessage()를
+                    // 같이 부르면 안 됨(두 번째는 빈 문자열이 됨).
+                    if (response.code() == 409) {
+                        val raw = response.errorBody()?.string()
+                        when (parseGoogleActionCode(raw)) {
+                            "LINK_REQUIRED" -> return@runCatching GoogleOutcome.LinkRequired(parseGoogleEmail(raw))
+                            "SIGNUP_REQUIRED" -> return@runCatching GoogleOutcome.SignupRequired(parseGoogleEmail(raw))
+                            // 그 외 409(예: 비활성 계정)는 서버 문구를 그대로 보여줌.
+                            else -> error(parseDetailString(raw) ?: "로그인할 수 없는 계정이에요.")
+                        }
+                    }
+                    if (!response.isSuccessful) error(parseErrorMessage(response))
+                    val body = response.body() ?: error("로그인 응답을 받지 못했어요")
+                    TokenHolder.accessToken = body.access_token
+                    GoogleOutcome.LoggedIn(body.is_new_user)
+                }
+            },
+            onSuccess = { outcome ->
+                when (outcome) {
+                    is GoogleOutcome.LinkRequired -> {
+                        pendingGoogleIdToken = idToken
+                        googleLinkEmail.value = outcome.email
+                    }
+                    is GoogleOutcome.SignupRequired -> {
+                        // 계정은 아직 없음. 약관 동의부터 받고 submitConsents()에서 실제로 만듦.
+                        pendingGoogleIdToken = idToken
+                        if (outcome.email.isNotBlank()) email.value = outcome.email
+                        step.value = OnboardingStep.A06_CONSENT
+                    }
+                    is GoogleOutcome.LoggedIn -> {
+                        pendingGoogleIdToken = null
+                        if (outcome.isNewUser) {
+                            // signup_confirmed=true로 방금 만들어진 계정 - 동의는 이미 저장됨.
+                            OnboardingCheckpoint.save(OnboardingStep.SIGNUP_COMPLETE)
+                            step.value = OnboardingStep.SIGNUP_COMPLETE
+                        } else {
+                            onExistingUser()
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    private fun parseGoogleActionCode(rawBody: String?): String? = googleErrorField(rawBody, "code")
+
+    private fun parseGoogleEmail(rawBody: String?): String = googleErrorField(rawBody, "email").orEmpty()
+
+    private fun parseDetailString(rawBody: String?): String? = googleErrorField(rawBody, "detail")
+
+    private fun googleErrorField(rawBody: String?, key: String): String? {
+        if (rawBody.isNullOrBlank()) return null
+        return try {
+            JsonParser.parseString(rawBody).asJsonObject.get(key)?.asString
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     // ===== A03 =====
     suspend fun requestVerificationCode() {
         if (password.value != passwordConfirm.value) {
@@ -234,6 +381,9 @@ class OnboardingState {
             if (agreeHealthDataAnalysis.value) add("HEALTH_REFERENCE_ANALYSIS")
             if (agreeMarketingPush.value) add("NOTIFICATION")
         }
+        // ⚠️ 2026-09-10: 계정을 만드는 방법만 두 가지고(이메일 인증번호 / 구글 ID 토큰),
+        // "동의 후에 만든다"는 순서와 나머지 처리는 완전히 같음 - RegistrationProgress를 그대로 씀.
+        val googleIdToken = pendingGoogleIdToken
         runStep(
             block = {
                 runCatching {
@@ -241,14 +391,8 @@ class OnboardingState {
                         requiredAgreed = allMandatoryAgreed,
                         purposes = purposes,
                         createAccount = {
-                            val response = ApiClient.onboardingApi.confirmEmailVerification(
-                                EmailVerificationConfirmRequest(email.value, verificationCode, password.value)
-                            )
-                            if (!response.isSuccessful) error(parseErrorMessage(response))
-                            val token = response.body()?.access_token ?: error("로그인 정보를 받지 못했어요. 다시 시도해 주세요.")
-                            // Save the pending screen before persisting the returned login token.
-                            OnboardingCheckpoint.save(OnboardingStep.A06_CONSENT, email.value)
-                            TokenHolder.accessToken = token
+                            if (googleIdToken != null) createAccountWithGoogle(googleIdToken)
+                            else createAccountWithEmail()
                         },
                         saveConsent = { purpose ->
                             val response = ApiClient.onboardingApi.agreeConsent(ConsentRequest(purpose, "v1"))
@@ -260,17 +404,54 @@ class OnboardingState {
             onSuccess = {
                 password.value = ""; passwordConfirm.value = ""
                 codeDigits.value = List(6) { "" }; devOnlyCode.value = null
+                pendingGoogleIdToken = null
                 OnboardingCheckpoint.save(OnboardingStep.SIGNUP_COMPLETE)
                 step.value = OnboardingStep.SIGNUP_COMPLETE
             },
             onFailureExtra = {
                 // A consent failure retains the account and retries only remaining requests.
                 if (!accountCreated) {
-                    verifyAttemptCount.value += 1
-                    step.value = OnboardingStep.A11_VERIFY_RETRY
+                    // ⚠️ 2026-09-10: 구글 가입은 인증번호가 없어서 A11(인증번호 재발송)로 보내면
+                    // 아무것도 못 하는 화면이 뜸. 토큰을 버리고 시작 화면으로 돌려보냄
+                    // (에러 문구는 runStep이 이미 배너로 띄워둠).
+                    if (isGoogleSignup) {
+                        cancelGoogleSignup()
+                        step.value = OnboardingStep.A02_START
+                    } else {
+                        verifyAttemptCount.value += 1
+                        step.value = OnboardingStep.A11_VERIFY_RETRY
+                    }
                 }
             },
         )
+    }
+
+    /** 이메일 가입 - 인증번호를 확인하면서 계정이 만들어짐. */
+    private suspend fun createAccountWithEmail() {
+        val response = ApiClient.onboardingApi.confirmEmailVerification(
+            EmailVerificationConfirmRequest(email.value, verificationCode, password.value)
+        )
+        if (!response.isSuccessful) error(parseErrorMessage(response))
+        val token = response.body()?.access_token ?: error("로그인 정보를 받지 못했어요. 다시 시도해 주세요.")
+        // Save the pending screen before persisting the returned login token.
+        OnboardingCheckpoint.save(OnboardingStep.A06_CONSENT, email.value)
+        TokenHolder.accessToken = token
+    }
+
+    /**
+     * 구글 가입 - 아까 받아둔 ID 토큰에 signup_confirmed=true를 붙여 다시 부르면 그때 생성됨.
+     *
+     * 여기서 401이 나면 동의 화면을 너무 오래 열어둬서 구글 ID 토큰이 만료된 경우임
+     * (보통 1시간). 실패로 처리되면 onFailureExtra가 A02로 돌려보내니 다시 누르면 됨.
+     */
+    private suspend fun createAccountWithGoogle(idToken: String) {
+        val response = ApiClient.authApi.googleLogin(
+            GoogleLoginRequest(id_token = idToken, link_confirmed = false, signup_confirmed = true)
+        )
+        if (!response.isSuccessful) error(parseErrorMessage(response))
+        val token = response.body()?.access_token ?: error("로그인 정보를 받지 못했어요. 다시 시도해 주세요.")
+        OnboardingCheckpoint.save(OnboardingStep.A06_CONSENT, email.value)
+        TokenHolder.accessToken = token
     }
 
     /** Rehydrate already saved fields after reopening an unfinished signup. */
