@@ -108,6 +108,7 @@ fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
     if (target != null) {
         AlertDialog(
             onDismissRequest = { withdrawTarget = null },
+            containerColor = colors.surface,
             title = { Text("동의를 철회할까요?", style = TmtnType.bodyLarge, color = colors.onSurface) },
             text = {
                 Text(
@@ -144,6 +145,9 @@ private fun agreedDateText(agreedAt: String?): String {
 fun AccessibilityScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
     val accessibility = state.accessibility.value
+    androidx.compose.runtime.LaunchedEffect(accessibility?.reduced_motion) {
+        accessibility?.let { com.tmtn.app.ui.theme.AccessibilitySettingsHolder.reducedMotion.value = it.reduced_motion }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "접근성", onBack = onBack)
@@ -168,14 +172,14 @@ fun AccessibilityScreen(state: ProfileState, scope: CoroutineScope, onBack: () -
             ) {
                 Text("미리보기", style = TmtnType.caption, color = colors.onSurfaceVariant)
                 Text("점심 먹고 8분 걷기", style = TmtnType.bodyLarge, color = colors.onSurface)
-                Text("짧게 걸어도 오늘 한 걸음은 남아.", style = TmtnType.body, color = colors.onSurfaceVariant)
+                Text("짧게 걸어도 오늘의 실천은 남아요.", style = TmtnType.body, color = colors.onSurfaceVariant)
             }
 
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             ) {
                 AccessibilityToggleRow(
-                    "큰 글자 모드", "버튼과 터치 영역을 56까지 키웁니다",
+                    "큰 버튼", "버튼을 더 편하게 누를 수 있어요",
                     accessibility?.large_controls ?: false,
                 ) { scope.launch { state.updateAccessibility(AccessibilityUpdateRequest(large_controls = it)) } }
                 AccessibilityToggleRow(
@@ -204,7 +208,7 @@ private fun AccessibilityToggleRow(title: String, sub: String, checked: Boolean,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(title, style = TmtnType.label, color = colors.onSurface)
             Text(sub, style = TmtnType.caption, color = colors.onSurfaceVariant)
         }

@@ -2,6 +2,9 @@ package com.tmtn.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+// Supplied splash_v1/design.json. Reserved for launch/brand artwork.
+val ColorBrandForest = Color(0xFF3F5D4B)
+
 // ⚠️ 2026-08-31 팀장님이 준 새 Figma 자료("TMTN_Final_App_UI", 107개 화면 PNG)의
 // 실제 픽셀에서 직접 뽑은 색상값. 예전 tokens.css 기준(진한 초록 계열) 팔레트를 완전히
 // 교체함 — 초록은 이제 어디에도 안 쓰임. A/B/D/G 여러 화면에서 교차 확인해서 일관됨.
@@ -52,8 +55,8 @@ val ButtonDangerOutline = ColorError
 val ButtonDangerLabel = ColorError
 
 // 하단 내비게이션
-val NavigationContainer = Color(0xFFFFFFFF)
-val NavigationIndicator = ColorSecondaryContainer
+val NavigationContainer = ColorBackground
+val NavigationIndicator = ColorOutlineVariant
 val NavigationIconActive = ColorPrimary
 val NavigationIconInactive = ColorOnSurfaceVariant
 val NavigationLabelActive = ColorPrimary

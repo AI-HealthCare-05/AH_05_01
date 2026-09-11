@@ -1,5 +1,8 @@
 package com.tmtn.app.ui.cardhome
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
@@ -47,7 +51,7 @@ fun CompletedScreen(state: CardHomeState) {
         TmtnTopBar(title = "오늘의 카드", onBack = { state.step.value = CardHomeStep.HOME })
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(
@@ -59,7 +63,7 @@ fun CompletedScreen(state: CardHomeState) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(
-                    if (isSkipped) "오늘은 쉬어갔어요" else "오늘 완료했어요",
+                    if (isSkipped) "오늘은 여기까지" else "오늘도 하나 쌓았어요",
                     style = TmtnType.display, color = colors.onSurface, textAlign = TextAlign.Center,
                 )
                 card?.let {
@@ -85,7 +89,7 @@ fun CompletedScreen(state: CardHomeState) {
                 } else {
                     Text("✓ 틈튼카드첩에 저장했어요", style = TmtnType.body, color = colors.onSurface)
                     Text(
-                        "잘했어. 내일도 이만큼이면 충분해.",
+                        "내일도 작은 행동 하나면 충분해요.",
                         style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
                     )
                 }
@@ -101,7 +105,7 @@ fun CompletedScreen(state: CardHomeState) {
                 )
             }
             Text(
-                "내일 아침 7:30에 새 카드를 준비해 둘게요.",
+                "내일 또 새로운 카드로 만나요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
             )
         }
@@ -117,7 +121,7 @@ fun CardErrorScreen(state: CardHomeState, scope: CoroutineScope) {
         TmtnTopBar(title = "오늘의 카드", onBack = { state.step.value = CardHomeStep.HOME })
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Box(
@@ -127,9 +131,12 @@ fun CardErrorScreen(state: CardHomeState, scope: CoroutineScope) {
                     .background(colors.surface, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    "일러스트 자리 · 카드 못 가져옴",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+                // ⚠️ 2026-09-06 반영: B09(카드 덱 오류) 배치표 그대로 - "빈 카드첩을 들고
+                // 있는" beaver_empty.
+                Image(
+                    painter = painterResource(com.tmtn.app.R.drawable.beaver_empty),
+                    contentDescription = "빈 카드첩을 들고 있는 비버",
+                    modifier = Modifier.height(160.dp),
                 )
             }
 

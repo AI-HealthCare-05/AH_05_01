@@ -220,12 +220,8 @@ fun AccountDeletedScreen(onGoHome: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Box(
-            modifier = Modifier.fillMaxWidth().height(260.dp).background(colors.surface, RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("손 흔드는 비버 (에셋 준비 중)", style = TmtnType.caption, color = colors.onSurfaceVariant)
-        }
+        com.tmtn.app.ui.common.TmtnMascot(com.tmtn.app.R.drawable.beaver_wave,
+            "손을 흔드는 비버", Modifier.fillMaxWidth().height(220.dp))
         Text("계정을 지웠어요", style = TmtnType.headline, color = colors.onSurface)
         Text("그동안 함께해 주셔서 고맙습니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
         Column(
@@ -251,6 +247,7 @@ fun LogoutConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     val colors = LocalTmtnColors.current
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = colors.surface,
         title = { Text("로그아웃할까요?", style = TmtnType.title, color = colors.onSurface) },
         text = {
             Text(

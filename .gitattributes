@@ -1,1 +1,43 @@
-*.sh text eol=lf
+# ⚠️ 2026-09-10: .kt 125개 중 100개가 CRLF, 25개가 LF로 섞여 있었음.
+# 그 상태에서는 실제로 한 줄만 고쳐도 git diff에 파일 전체가 바뀐 것으로 나와서,
+# 리뷰도 안 되고 브랜치 간 비교도 무의미해짐.
+#
+# text=auto eol=lf : 저장소에는 항상 LF로 저장. 체크아웃할 때도 LF.
+* text=auto eol=lf
+
+# ═══════════════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-09-10 긴급 수정 — 이 블록을 절대 지우지 말 것
+#
+# tuntun_peer_bridge/ 는 외부에서 받은 검토용 모델 패키지 원본이고,
+# manifest.json 의 SHA-256 으로 파일 하나하나가 고정돼 있음.
+# 위 "text=auto eol=lf" 가 이 폴더까지 적용되면서 CRLF -> LF 변환이 일어나
+# 101개 중 45개의 해시가 깨졌음(작업본은 무사했지만 clone 받으면 깨진 상태였음).
+#
+# -text = 텍스트로 취급하지 않음 = 줄바꿈 변환을 일절 하지 않음.
+# 이 폴더는 "바이트 그대로" 보관돼야 신뢰 검증이 통과함.
+# ═══════════════════════════════════════════════════════════════════
+tuntun_peer_bridge/** -text
+tuntun_peer_bridge/**/*.json -text
+tuntun_peer_bridge/**/*.md   -text
+tuntun_peer_bridge/**/*.txt  -text
+
+# 줄바꿈을 건드리면 안 되는 것들
+*.sh   text eol=lf
+*.bat  text eol=crlf
+gradlew     text eol=lf
+gradlew.bat text eol=crlf
+
+# 바이너리 - git이 텍스트로 오해해서 망가뜨리지 않게 명시
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.webp   binary
+*.ttf    binary
+*.otf    binary
+*.jar    binary
+*.joblib binary
+*.keystore binary
+*.jks    binary
+*.apk    binary
+*.aab    binary
+

@@ -53,7 +53,7 @@ fun A16PermissionsScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                "자동 측정을 켜려면\n권한 세 가지가 필요해요",
+                "자동 측정 권한을 확인해 주세요",
                 style = TmtnType.headline, color = colors.onSurface,
             )
             Text(
@@ -77,7 +77,7 @@ fun A16PermissionsScreen(
                     state.step.value = OnboardingStep.A15_COMPLETE
                 },
             )
-            TmtnTextButton(text = "나중에 하기", onClick = { state.step.value = OnboardingStep.A15_COMPLETE })
+
         }
     }
 }
@@ -92,7 +92,7 @@ private fun PermissionCard(title: String, required: Boolean, description: String
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = TmtnType.label, color = colors.onSurface)
             Box(
                 modifier = Modifier

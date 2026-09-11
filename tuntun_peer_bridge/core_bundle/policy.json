@@ -1,0 +1,16 @@
+{
+  "approvedForProduction": false,
+  "cohort": "component_available",
+  "formulaVersion": "peer-equal-four-v0.1-candidate",
+  "grouping": "broad",
+  "minimumEffectiveN": 300,
+  "minimumN": 500,
+  "status": "LOCAL_REVIEW_CANDIDATE",
+  "weighting": "unweighted",
+  "weights": {
+    "diabetes": 1.0,
+    "hypertension": 1.0,
+    "lifestyle": 1.0,
+    "physical": 1.0
+  }
+}

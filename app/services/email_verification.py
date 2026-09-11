@@ -2,7 +2,7 @@ import asyncio
 import hashlib
 import secrets
 import string
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from fastapi.exceptions import HTTPException
 from starlette import status
@@ -46,7 +46,13 @@ class EmailVerificationService:
     async def request_code(self, email: str) -> dict:
         email_normalized = email.strip().lower()
         code = _generate_code()
-        expires_at = datetime.now(UTC) + timedelta(minutes=CODE_EXPIRE_MINUTES)
+        # ⚠️ 2026-09-08 반영(인증번호가 발급 즉시 만료되던 버그): 예전엔 datetime.now(UTC)로
+        # 저장했는데, Tortoise 설정이 timezone="Asia/Seoul" + use_tz=False라 저장은 변환 없이
+        # "UTC 숫자"가 들어가고 조회할 때 거기에 +09:00 라벨이 붙음 - 읽어온 순간 실제보다
+        # 9시간 이른 시각이 되어서, 10분짜리 코드가 항상 이미 만료된 것으로 판정됐음.
+        # (challenge_service._effective_duration_seconds() 주석의 타이머 버그와 완전히 같은 원인.)
+        # 다른 저장소들과 같은 기준(config.TIMEZONE)으로 저장·비교해서 왕복을 대칭으로 맞춤.
+        expires_at = datetime.now(config.TIMEZONE) + timedelta(minutes=CODE_EXPIRE_MINUTES)
 
         await self.repo.create(email_normalized=email_normalized, code_hash=_hash_code(code), expires_at=expires_at)
 
@@ -118,7 +124,13 @@ class EmailVerificationService:
 
         if request is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="인증 요청을 찾을 수 없습니다.")
-        if request.expires_at < datetime.now(UTC):
+        # ⚠️ 2026-09-08: 저장할 때와 같은 기준으로 비교해야 함(위 request_code 주석 참고).
+        # Tortoise 버전에 따라 naive로 돌려주기도 해서, 그 경우 저장 기준(KST)으로 라벨링한
+        # 뒤 비교함 - 안 그러면 naive와 aware를 빼다가 TypeError로 터짐.
+        expires_at = request.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=config.TIMEZONE)
+        if expires_at < datetime.now(config.TIMEZONE):
             raise HTTPException(status_code=status.HTTP_410_GONE, detail="인증번호가 만료되었습니다.")
         if request.attempt_count >= MAX_ATTEMPTS:
             raise HTTPException(

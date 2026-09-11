@@ -1,0 +1,31 @@
+{
+  "cdf_serialization_max_abs_diff": 0.0,
+  "independent_performance_evaluation": false,
+  "input_sha256": {
+    "contract": "37c5d32b3b462ba4ca56d06f227ab3c03d20062875b0c3a8259f55d8fffbbb2e",
+    "d0_runtime": "bcc88a3f919e76fcf980f93c1065a05d7e2aa782dd278d04db787bcf24e22a9e",
+    "formula": "f499c1d96a6c8e16f0465a096fd54ad4e38229ffcab196b9c32f65adccb1a8a4",
+    "io_helpers": "3d0ffcae1195d945eddd8fa98b02bd95fe4907068e74d149d8c71fa1f109d7fb",
+    "oof": "7f633fb30789c1044bf5c0a8dc3f1cfcd7c72f204910537e2cf4787befcfa57a",
+    "receipt": "a43d20b45806770c8b337223928ebe0f206af20e266e911ea0ccb2c5f7b54a3a",
+    "refit_helpers": "835e8daedda969ff1d83eb5f2c441d6212caaf93fc00df26ba0bb03d87e67115",
+    "runtime": "c3efa5a029020390873beee0fd486c64bd293561ad26cd81c35ba095c162c61d",
+    "task_frame": "f6677ef29ab58d848b9341cf5f22c05cf9f75738b5be8edc67dd1592cebf03ba",
+    "trainer": "ae1d52bdd666daf94253787fde35d74c4dde9943918da27de7a68de292825bbc",
+    "v2_dto": "1e33ab36ceed1db3bfe6d51e3314884f6325b41a4542bd2c91abc4794bad803e",
+    "waist_pipeline": "50e7fa2b5737519f21a913d5dd61f066eb366e3f5cb84ee53535dcabe92b55e4"
+  },
+  "production_release_gate": "BLOCKED",
+  "raw_rows_or_oof_predictions_exported": false,
+  "reference_contains_anonymous_distribution_parameters": true,
+  "reference_group_n": {
+    "19-39:1": 2077,
+    "19-39:2": 2246,
+    "40-64:1": 3314,
+    "40-64:2": 4367,
+    "65+:1": 1940,
+    "65+:2": 2459
+  },
+  "waist_n": 16403,
+  "waist_serialization_max_abs_diff": 0.0
+}

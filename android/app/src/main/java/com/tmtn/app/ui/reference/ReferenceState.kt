@@ -3,7 +3,7 @@ package com.tmtn.app.ui.reference
 import androidx.compose.runtime.mutableStateOf
 import com.tmtn.app.network.ApiClient
 import com.tmtn.app.network.model.ScoreInputsResponse
-import com.tmtn.app.network.model.TuntunScoreV2Response
+import com.tmtn.app.network.model.TuntunScorePeerV2Response
 
 /** E01~E06 "틈튼지수" 탭 전체 단계.
  * ⚠️ E06(이 지수에 대하여)은 HANDOFF.md 기준 "진입 경로가 없음"(마이/설정 쪽 추정) —
@@ -15,16 +15,19 @@ enum class ReferenceStep {
     DETAIL,        // E02
     FACTORS,       // E03
     INPUTS,        // E04
+    WAIST,         // Read-only waist estimate, separate from the composite score.
     ABOUT,         // E06 - 이 플로우 밖 F그룹에서 진입 예정, 여기선 미연결
 }
 
 /** E그룹 전체 상태. CardHomeState/RecordState와 같은 패턴 — 백스택은 E04가
  * E01(요약)·E03(반영 항목) 양쪽에서 들어올 수 있어서 맵 대신 실제 스택으로 관리함. */
 class ReferenceState {
+    internal val editorial = ScoreEditorialState()
+    internal val factorOpenRequest = androidx.compose.runtime.mutableIntStateOf(0)
     private val backStack = mutableListOf(ReferenceStep.LOADING)
     val step = mutableStateOf(backStack.last())
 
-    val score = mutableStateOf<TuntunScoreV2Response?>(null)
+    val score = mutableStateOf<TuntunScorePeerV2Response?>(null)
     val eligibleRecordedDaysLabel = mutableStateOf("")
     val eligibleRequiredDaysLabel = mutableStateOf("")
     val scoreInputs = mutableStateOf<ScoreInputsResponse?>(null)
@@ -45,20 +48,20 @@ class ReferenceState {
         return true
     }
 
-    // V2는 기록 일수로 전체 점수를 차단하지 않고 계산 가능한 영역만 재가중한다.
+    // ⚠️ 2026-09-10 반영: 실모델(또래 백분위) 연동. 기존 v2(Mock)는 "최근 7일 기록 일수"로
+    // 산출 가능 여부를 판정했는데, 새 계약엔 그 개념이 없음(availableComponentCount로만 판정).
     suspend fun loadScore() {
         isLoading.value = true
         errorMessage.value = null
         runCatching {
-            val response = ApiClient.tuntunScoreApi.getTuntunScoreV2()
+            val response = ApiClient.tuntunScoreApi.getTuntunScorePeerV2()
             if (!response.isSuccessful) error("틈튼지수를 불러오지 못했어요.")
             response.body()!!
         }.onSuccess { result ->
-            if (result.scoreAvailable && result.tuntunIndex != null) {
+            if (result.scoreAvailable) {
                 score.value = result
                 replaceRoot(ReferenceStep.SUMMARY)
             } else {
-                eligibleRecordedDaysLabel.value = result.recordedDays.toString()
                 eligibleRequiredDaysLabel.value = "신체정보 또는 운동습관"
                 replaceRoot(ReferenceStep.INELIGIBLE)
             }
@@ -78,7 +81,12 @@ class ReferenceState {
     fun openDetail() = push(ReferenceStep.DETAIL)
 
     // E02 "이번 계산에 반영된 항목 보기" -> E03
-    fun openFactors() = push(ReferenceStep.FACTORS)
+    fun openFactors() {
+        factorOpenRequest.intValue++
+        push(ReferenceStep.FACTORS)
+    }
+
+    fun openWaist() = push(ReferenceStep.WAIST)
 
     // E01 "계산에 쓰인 값 보기" 또는 E03 "값 다시 입력하기" -> E04
     fun openInputs() {

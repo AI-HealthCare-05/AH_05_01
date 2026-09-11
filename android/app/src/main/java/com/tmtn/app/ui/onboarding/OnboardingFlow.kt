@@ -1,14 +1,17 @@
 package com.tmtn.app.ui.onboarding
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -16,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
+import kotlinx.coroutines.launch
 
 /** 시스템 뒤로가기(제스처·버튼) 눌렀을 때 어느 단계로 돌아갈지.
  * null이면 "더 되돌아갈 데 없음" -> 시스템 기본 동작(앱 종료)을 그대로 허용. */
@@ -26,7 +30,7 @@ private fun previousStepFor(step: OnboardingStep): OnboardingStep? = when (step)
     OnboardingStep.A04_VERIFY -> OnboardingStep.A03_SIGNUP
     OnboardingStep.A05_LOGIN -> OnboardingStep.A02_START
     OnboardingStep.A06_CONSENT -> OnboardingStep.A04_VERIFY
-    OnboardingStep.A07_PROFILE -> OnboardingStep.A06_CONSENT
+    OnboardingStep.A07_PROFILE -> OnboardingStep.SIGNUP_COMPLETE
     OnboardingStep.A08_EXERCISE -> OnboardingStep.A07_PROFILE
     OnboardingStep.A09_SCHEDULE_INTRO -> OnboardingStep.A08_EXERCISE
     OnboardingStep.A10_SCHEDULE -> OnboardingStep.A09_SCHEDULE_INTRO
@@ -36,6 +40,7 @@ private fun previousStepFor(step: OnboardingStep): OnboardingStep? = when (step)
     OnboardingStep.A14_TERMS_DETAIL -> OnboardingStep.A06_CONSENT
     OnboardingStep.A15_COMPLETE -> null // 온보딩 마지막 요약 - 더 되돌아갈 곳 없음
     OnboardingStep.A16_PERMISSIONS -> OnboardingStep.A08_EXERCISE
+    OnboardingStep.SIGNUP_COMPLETE -> null
     OnboardingStep.DONE -> null
 }
 
@@ -55,6 +60,7 @@ fun OnboardingFlow(
     hasSensorPermissions: () -> Boolean = { true },
     onRequestPermissions: () -> Unit = {},
     startAtLogin: Boolean = false,
+    systemSplashShown: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalTmtnColors.current
@@ -62,25 +68,51 @@ fun OnboardingFlow(
         OnboardingState().apply {
             // H07(세션 만료)에서 넘어온 경우 - 온보딩 처음이 아니라 바로 로그인 화면부터
             if (startAtLogin) step.value = OnboardingStep.A05_LOGIN
+            else if (systemSplashShown && step.value == OnboardingStep.A01_SPLASH) step.value = OnboardingStep.A02_START
         }
     }
     val scope = rememberCoroutineScope()
 
+    // ⚠️ 2026-09-06 QA(P1-9) 반영: 스낵바 타이머가 화면 전환과 분리돼 있어서, 로그인
+    // 화면에서 뜬 에러가 "이메일로 가입하기"로 넘어간 뒤에도 6초 동안 그대로 남아있었음
+    // (가입 화면은 아무 요청도 안 했는데 실패 메시지가 보임). 화면(step)이 바뀔 때마다
+    // 지금 이전 화면에서 뜬 에러는 비워서, 새 화면은 항상 깨끗하게 시작하게 함.
+    LaunchedEffect(state.step.value) {
+        state.errorMessage.value = null
+    }
+
     // ⚠️ 예전엔 화면 안의 "←" 버튼만 단계를 되돌렸고, 폰의 시스템 뒤로가기(제스처/버튼)는
     // 아예 안 걸려있어서 그냥 앱이 종료(바탕화면으로 이동)돼버렸음. 여기서 같이 처리.
-    val previousStep = previousStepFor(state.step.value)
+    LaunchedEffect(state.accountCreated) {
+        state.restoreProfileForResume()
+    }
+    // ⚠️ 2026-09-10 추가(구글 가입): 구글로 처음 온 사용자는 A04(인증번호)를 거치지 않고
+    // 곧장 A06(동의)로 오므로, 뒤로가기가 A04로 가면 아무것도 없는 화면이 뜸. A02로 돌려보내고
+    // 들고 있던 구글 ID 토큰도 같이 버림(cancelGoogleSignup은 이메일 가입에선 아무 일도 안 함).
+    val previousStep = when {
+        state.accountCreated && state.step.value == OnboardingStep.A06_CONSENT -> null
+        state.isGoogleSignup && state.step.value == OnboardingStep.A06_CONSENT -> OnboardingStep.A02_START
+        else -> previousStepFor(state.step.value)
+    }
     BackHandler(enabled = previousStep != null) {
-        previousStep?.let { state.step.value = it }
+        previousStep?.let {
+            if (state.step.value == OnboardingStep.A06_CONSENT) state.cancelGoogleSignup()
+            state.step.value = it
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
         when (state.step.value) {
             OnboardingStep.A01_SPLASH -> A01SplashScreen(state)
-            OnboardingStep.A02_START -> A02StartScreen(state)
+            OnboardingStep.A02_START -> A02StartScreen(state, scope, onLoginSuccess = onOnboardingComplete)
             OnboardingStep.A03_SIGNUP -> A03SignupScreen(state, scope)
             OnboardingStep.A04_VERIFY -> A04VerifyScreen(state, scope)
             OnboardingStep.A05_LOGIN -> A05LoginScreen(state, scope, onLoginSuccess = onOnboardingComplete)
             OnboardingStep.A06_CONSENT -> A06ConsentScreen(state, scope)
+            OnboardingStep.SIGNUP_COMPLETE -> SignupCompleteScreen {
+                OnboardingCheckpoint.save(OnboardingStep.A07_PROFILE)
+                state.step.value = OnboardingStep.A07_PROFILE
+            }
             OnboardingStep.A07_PROFILE -> A07ProfileScreen(state, scope)
             OnboardingStep.A08_EXERCISE -> A08ExerciseScreen(state, scope, hasSensorPermissions)
             OnboardingStep.A09_SCHEDULE_INTRO -> A09ScheduleIntroScreen(state)
@@ -89,12 +121,52 @@ fun OnboardingFlow(
             OnboardingStep.A12_PASSWORD_RESET_REQUEST -> A12PasswordResetRequestScreen(state)
             OnboardingStep.A13_NEW_PASSWORD -> A13NewPasswordScreen(state)
             OnboardingStep.A14_TERMS_DETAIL -> A14TermsDetailScreen(state)
-            OnboardingStep.A15_COMPLETE -> A15CompleteScreen(state, onOnboardingComplete)
-            OnboardingStep.A16_PERMISSIONS -> A16PermissionsScreen(state, onRequestPermissions)
-            OnboardingStep.DONE -> {
-                Text("온보딩 완료!")
+            OnboardingStep.A15_COMPLETE -> A15CompleteScreen(state) {
+                OnboardingCheckpoint.clear()
                 onOnboardingComplete()
             }
+            OnboardingStep.A16_PERMISSIONS -> A16PermissionsScreen(state, onRequestPermissions)
+            OnboardingStep.DONE -> {
+                LaunchedEffect(Unit) { OnboardingCheckpoint.clear(); onOnboardingComplete() }
+            }
+        }
+
+        // ⚠️ 2026-09-10 추가: 구글 계정 연결 확인 (A02·A05 어디서 눌러도 떠야 해서 화면별로
+        // 두지 않고 여기 공용 오버레이로 둠).
+        // 이건 "실패"가 아니라 "확인"입니다 - 같은 이메일로 이미 가입한 계정이 있을 때만 뜨고,
+        // 수락하면 그 계정에 구글 로그인이 연결됩니다(계정이 새로 생기지 않음).
+        state.googleLinkEmail.value?.let { linkEmail ->
+            AlertDialog(
+                onDismissRequest = { state.cancelGoogleLink() },
+                containerColor = colors.surface,
+                title = {
+                    Text("이미 가입한 계정이 있어요", style = TmtnType.bodyLarge, color = colors.onSurface)
+                },
+                text = {
+                    Text(
+                        "$linkEmail 은(는) 이메일로 이미 가입된 계정이에요.\n" +
+                            "이 계정에 구글 로그인을 연결할까요? 연결하면 다음부터 구글로도, " +
+                            "기존 비밀번호로도 로그인할 수 있어요. 기록은 그대로 유지됩니다.",
+                        style = TmtnType.caption, color = colors.onSurfaceVariant,
+                    )
+                },
+                confirmButton = {
+                    Text(
+                        "연결하기", style = TmtnType.label, color = colors.primary,
+                        modifier = Modifier
+                            .clickable { scope.launch { state.confirmGoogleLink(onOnboardingComplete) } }
+                            .padding(12.dp),
+                    )
+                },
+                dismissButton = {
+                    Text(
+                        "취소", style = TmtnType.label, color = colors.onSurfaceVariant,
+                        modifier = Modifier
+                            .clickable { state.cancelGoogleLink() }
+                            .padding(12.dp),
+                    )
+                },
+            )
         }
 
         // 에러 메시지 - 화면 하단에 떠 있는 배너

@@ -1,0 +1,551 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "ageContext": {
+      "additionalProperties": false,
+      "properties": {
+        "ageTopCoded": {
+          "type": "boolean"
+        },
+        "ageYearsUsed": {
+          "type": "integer"
+        },
+        "healthAgeSupported": {
+          "type": "boolean"
+        },
+        "isApproximate": {
+          "type": "boolean"
+        },
+        "notice": {
+          "type": "string"
+        },
+        "policy": {
+          "const": "completed_birth_month_lower_age_v1"
+        },
+        "possibleAgeYears": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "referenceDate": {
+          "type": "string"
+        },
+        "timezone": {
+          "const": "Asia/Seoul"
+        }
+      },
+      "required": [
+        "ageYearsUsed",
+        "possibleAgeYears",
+        "isApproximate",
+        "policy",
+        "referenceDate",
+        "timezone",
+        "ageTopCoded",
+        "healthAgeSupported",
+        "notice"
+      ],
+      "type": "object"
+    },
+    "ageTopCoded": {
+      "type": "boolean"
+    },
+    "availableComponentCount": {
+      "maximum": 4,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "availableComponents": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 4,
+      "type": "array"
+    },
+    "comparisonKey": {
+      "type": "string"
+    },
+    "components": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "absoluteReferenceScore": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "componentKey": {
+            "enum": [
+              "physical",
+              "diabetes",
+              "hypertension",
+              "lifestyle"
+            ]
+          },
+          "direction": {
+            "enum": [
+              "higher_is_healthier",
+              "higher_is_more_not_healthier"
+            ]
+          },
+          "display": {
+            "additionalProperties": false,
+            "properties": {
+              "percentile": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "number"
+              },
+              "text": {
+                "type": "string"
+              },
+              "topPercentApprox": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "percentile",
+              "topPercentApprox",
+              "text"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "displayPolicyVersion": {
+            "const": "peer-rank100-v0.2"
+          },
+          "formulaVersion": {
+            "type": "string"
+          },
+          "includedInComposite": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "modelVersion": {
+            "type": "string"
+          },
+          "peerPercentile": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "percentileRange": {
+            "items": {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "rankDisplay": {
+            "additionalProperties": false,
+            "properties": {
+              "rankApprox": {
+                "maximum": 100,
+                "minimum": 1,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "rankRange": {
+                "items": {
+                  "maximum": 100,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": [
+                  "array",
+                  "null"
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "tieNotice": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "rankApprox",
+              "rankRange",
+              "text",
+              "tieNotice"
+            ],
+            "type": "object"
+          },
+          "referenceEffectiveN": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "referenceGroup": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "referenceN": {
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "referenceVersion": {
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "questionnaire",
+              "model_inference",
+              "synthetic",
+              "unavailable"
+            ]
+          },
+          "tieMassPercent": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "topPercentApprox": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "unavailableReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valueType": {
+            "enum": [
+              "health_direction_peer_percentile",
+              "quantity_peer_percentile"
+            ]
+          }
+        },
+        "required": [
+          "componentKey",
+          "label",
+          "direction",
+          "includedInComposite",
+          "valueType",
+          "absoluteReferenceScore",
+          "peerPercentile",
+          "topPercentApprox",
+          "percentileRange",
+          "tieMassPercent",
+          "referenceGroup",
+          "referenceN",
+          "referenceEffectiveN",
+          "available",
+          "unavailableReason",
+          "modelVersion",
+          "referenceVersion",
+          "formulaVersion",
+          "displayPolicyVersion",
+          "source",
+          "display",
+          "rankDisplay"
+        ],
+        "type": "object"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "type": "array"
+    },
+    "compositeDisplay": {
+      "additionalProperties": false,
+      "properties": {
+        "bandLabel": {
+          "type": "null"
+        },
+        "score": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "unit": {
+          "const": "점"
+        }
+      },
+      "required": [
+        "score",
+        "unit",
+        "bandLabel",
+        "text"
+      ],
+      "type": "object"
+    },
+    "displayPolicyVersion": {
+      "const": "peer-rank100-v0.2"
+    },
+    "formulaVersion": {
+      "type": "string"
+    },
+    "habitContext": {
+      "additionalProperties": false,
+      "properties": {
+        "bedToWakeIntervalMinutes": {
+          "maximum": 1439,
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "bedToWakeStatus": {
+          "enum": [
+            "available",
+            "ambiguous_same_time",
+            "incomplete_optional_input"
+          ]
+        },
+        "lowIntensityMinutes": {
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "lowIntensityNotice": {
+          "type": "string"
+        },
+        "moderateEquivalentMinutes": {
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "sleepNotice": {
+          "type": "string"
+        },
+        "strengthDaysTopCoded": {
+          "type": "boolean"
+        },
+        "strengthIntensity": {
+          "enum": [
+            null,
+            "light",
+            "moderate",
+            "hard"
+          ]
+        },
+        "strengthIntensityNotice": {
+          "type": "string"
+        },
+        "totalReportedActivityMinutes": {
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "lowIntensityMinutes",
+        "totalReportedActivityMinutes",
+        "moderateEquivalentMinutes",
+        "strengthIntensity",
+        "strengthDaysTopCoded",
+        "bedToWakeIntervalMinutes",
+        "bedToWakeStatus",
+        "lowIntensityNotice",
+        "strengthIntensityNotice",
+        "sleepNotice"
+      ],
+      "type": "object"
+    },
+    "inputMappingVersion": {
+      "const": "birth-month-app-inputs-v0.2"
+    },
+    "inputRevision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "inputUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "aerobicLowMinutes": {
+          "type": "string"
+        },
+        "aerobicModerateMinutes": {
+          "type": "string"
+        },
+        "aerobicVigorousMinutes": {
+          "type": "string"
+        },
+        "bedtimeWakeTime": {
+          "type": "string"
+        },
+        "birthYearMonth": {
+          "type": "string"
+        },
+        "heightCm": {
+          "type": "string"
+        },
+        "pregnancyStatus": {
+          "type": "string"
+        },
+        "sex": {
+          "type": "string"
+        },
+        "strengthIntensity": {
+          "type": "string"
+        },
+        "strengthWeeklyCount": {
+          "type": "string"
+        },
+        "weightKg": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "birthYearMonth",
+        "sex",
+        "pregnancyStatus",
+        "heightCm",
+        "weightKg",
+        "strengthWeeklyCount",
+        "strengthIntensity",
+        "aerobicLowMinutes",
+        "aerobicModerateMinutes",
+        "aerobicVigorousMinutes",
+        "bedtimeWakeTime"
+      ],
+      "type": "object"
+    },
+    "isMock": {
+      "const": false
+    },
+    "isPartialScore": {
+      "type": "boolean"
+    },
+    "isSynthetic": {
+      "const": false,
+      "type": "boolean"
+    },
+    "lifestyleAvailableSubcomponentCount": {
+      "maximum": 2,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "modelVersion": {
+      "type": "string"
+    },
+    "notice": {
+      "type": "string"
+    },
+    "peerCompositeScore": {
+      "maximum": 100,
+      "minimum": 0,
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "referenceCaution": {
+      "type": "string"
+    },
+    "referencePopulation": {
+      "type": "string"
+    },
+    "referenceVersion": {
+      "type": "string"
+    },
+    "referenceYears": {
+      "items": {
+        "type": "integer"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "releaseStatus": {
+      "const": "LOCAL_REVIEW_CANDIDATE"
+    },
+    "schemaVersion": {
+      "const": "tuntun-app-vnext-v0.2"
+    },
+    "scoreAvailable": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "formulaVersion",
+    "displayPolicyVersion",
+    "modelVersion",
+    "referenceVersion",
+    "referenceYears",
+    "referencePopulation",
+    "components",
+    "peerCompositeScore",
+    "availableComponents",
+    "availableComponentCount",
+    "isPartialScore",
+    "scoreAvailable",
+    "ageTopCoded",
+    "lifestyleAvailableSubcomponentCount",
+    "comparisonKey",
+    "isSynthetic",
+    "releaseStatus",
+    "notice",
+    "inputMappingVersion",
+    "isMock",
+    "inputRevision",
+    "ageContext",
+    "habitContext",
+    "compositeDisplay",
+    "inputUsage",
+    "referenceCaution"
+  ],
+  "type": "object"
+}

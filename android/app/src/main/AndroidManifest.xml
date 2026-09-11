@@ -30,11 +30,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.TMTNv1">
+        <!-- ⚠️ 2026-09-07 반영: 화면 방향을 아예 안 정해뒀어서, 폰을 옆으로 돌리면
+             안드로이드가 "화면 돌려도 됨" 아이콘을 우측 상단에 계속 띄웠음. 이 앱은
+             가로 모드를 지원할 계획이 없으니 세로로 고정 - 그 아이콘 자체가 안 뜸. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.TMTNv1"
+            android:theme="@style/Theme.TMTNv1.Launch"
+            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

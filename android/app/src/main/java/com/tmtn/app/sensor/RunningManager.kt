@@ -69,6 +69,14 @@ class RunningManager(private val context: Context) : LocationListener {
         totalDistanceMeters = 0f
     }
 
+    // ⚠️ 2026-09-06 추가: reset()과 달리 0부터가 아니라 서버가 준 baseline(미터)부터
+    // 이어서 셈. totalDistanceMeters는 상대 증가값(+=)으로 관리되니 초기값만 baseline으로
+    // 맞추면 됨 - lastLocation은 그대로 초기화해서 다음 위치 업데이트로 새로 기준을 잡음.
+    fun resumeFrom(baselineMeters: Int) {
+        lastLocation = null
+        totalDistanceMeters = baselineMeters.toFloat()
+    }
+
     override fun onLocationChanged(location: Location) {
         // 원시 데이터 기록: 정확도/속도 필터링 이전의 위치값을 그대로 기록
         loggingScope.launch {

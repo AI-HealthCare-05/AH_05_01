@@ -1,5 +1,25 @@
 package com.tmtn.app.ui.nav
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.graphics.graphicsLayer
+import com.tmtn.app.ui.theme.TmtnMotion
+import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ripple
+import com.tmtn.app.ui.theme.tmtnPressFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import com.tmtn.app.ui.theme.rememberTmtnReducedMotion
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,64 +63,47 @@ enum class MainTab(val label: String) {
     MY("내 정보"),
 }
 
-/** Figma base.css .nav-bar: 높이 104(항목 80 + 제스처 inset 24), 항목 폭 78. */
+/** A quiet, edge-attached bar. Only the selection marker moves; labels stay in place. */
 @Composable
 fun BottomNavBar(currentTab: MainTab, onTabSelected: (MainTab) -> Unit) {
     val colors = LocalTmtnColors.current
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.navigationContainer)
-            .border(width = 1.dp, color = colors.outlineVariant),
-    ) {
-        Box(
-            modifier = Modifier.fillMaxWidth().height(80.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(horizontalArrangement = Arrangement.Center) {
-                MainTab.entries.forEach { tab ->
-                    NavItem(
-                        tab = tab,
-                        isActive = tab == currentTab,
-                        onClick = { onTabSelected(tab) },
-                    )
-                }
+    val reducedMotion = rememberTmtnReducedMotion()
+    val position by animateFloatAsState(
+        targetValue = MainTab.entries.indexOf(currentTab).toFloat(),
+        animationSpec = if (reducedMotion) snap() else spring(dampingRatio = 1f, stiffness = TmtnMotion.TouchStiffness),
+        label = "navigation selection position",
+    )
+    BoxWithConstraints(Modifier.fillMaxWidth().background(colors.navigationContainer)) {
+        val slotWidth = maxWidth / MainTab.entries.size
+        Box(Modifier.fillMaxWidth().height(.5.dp).background(colors.outlineVariant))
+        Box(Modifier.width(24.dp).height(3.dp)
+            .graphicsLayer { translationX = (slotWidth * (position + .5f) - 12.dp).toPx() }
+            .background(colors.onSurface, RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp)))
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp).selectableGroup()) {
+            MainTab.entries.forEach { tab ->
+                NavItem(tab, tab == currentTab, { onTabSelected(tab) }, Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun NavItem(tab: MainTab, isActive: Boolean, onClick: () -> Unit) {
+private fun NavItem(tab: MainTab, isActive: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalTmtnColors.current
-    val iconColor = if (isActive) colors.navigationIconActive else colors.navigationIconInactive
-
-    Column(
-        modifier = Modifier
-            .width(78.dp)
-            .height(80.dp)
-            .clickable { onClick() }
-            .padding(top = 12.dp, bottom = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .width(56.dp)
-                .height(32.dp)
-                .background(
-                    if (isActive) colors.navigationIndicator else Color.Transparent,
-                    RoundedCornerShape(16.dp),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            TabIcon(tab = tab, color = iconColor, strokeWidth = if (isActive) 2.2f else 1.6f)
+    val reduce = rememberTmtnReducedMotion()
+    val iconColor by animateColorAsState(
+        if (isActive) colors.navigationIconActive else colors.navigationIconInactive,
+        animationSpec = tween(if (reduce) 0 else 120), label = "tab selection")
+    val interactions = remember { MutableInteractionSource() }
+    Column(modifier.tmtnPressFeedback(interactions).selectable(selected = isActive, role = Role.Tab, interactionSource = interactions, indication = ripple(), onClick = onClick)
+        .heightIn(min = if (AccessibilitySettingsHolder.largeControlsEnabled.value) 72.dp else 64.dp)
+        .padding(horizontal = 2.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+            TabIcon(tab, iconColor, if (isActive) 1.9f else 1.65f)
         }
-        Text(
-            tab.label,
-            style = TmtnType.label.copy(fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium),
-            color = if (isActive) colors.navigationLabelActive else colors.navigationLabelInactive,
-        )
+        Text(tab.label, style = TmtnType.navigationLabel.copy(fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium),
+            color = iconColor, textAlign = TextAlign.Center)
     }
 }
 
@@ -111,7 +114,7 @@ private fun NavItem(tab: MainTab, isActive: Boolean, onClick: () -> Unit) {
  */
 @Composable
 private fun TabIcon(tab: MainTab, color: Color, strokeWidth: Float) {
-    Canvas(modifier = Modifier.size(24.dp)) {
+    Canvas(modifier = Modifier.size(22.dp)) {
         val w = size.width
         val h = size.height
         val stroke = Stroke(width = strokeWidth.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)

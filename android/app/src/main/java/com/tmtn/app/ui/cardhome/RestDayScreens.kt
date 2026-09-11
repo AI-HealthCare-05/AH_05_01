@@ -3,6 +3,7 @@ package com.tmtn.app.ui.cardhome
 import com.tmtn.app.ui.common.toKoreanDateLabel
 import java.time.LocalDate
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -87,16 +89,19 @@ fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
                 )
             }
             Text("오늘은 쉬어갈까요?", style = TmtnType.title, color = colors.onSurface)
-            Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.bodyLarge, color = colors.onSurface)
+            Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.bodyLarge, color = colors.onSurface)
 
             Row(
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("이번 주 남은 쉼", style = TmtnType.body, color = colors.onSurface)
+                // ⚠️ 2026-09-07 반영: 상태전이 문서 G5 - 라벨은 "남은 쉼"인데 값은 쓴
+                // 횟수(usedThisWeek)를 보여줘서 서로 모순됐음(QA N6). "이번 주 쉬어가기
+                // N회 중 M회 남음" 형식으로 통일 - 이 값이 실제로 남은 횟수(remaining)임.
+                Text("이번 주 쉬어가기", style = TmtnType.body, color = colors.onSurface)
                 Text(
-                    "${state.restDaysUsedThisWeek.value}회 / 2회",
+                    "2회 중 ${state.restDaysRemainingThisWeek.value}회 남음",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
             }
@@ -132,7 +137,7 @@ fun RestDayDoneScreen(state: CardHomeState, scope: kotlinx.coroutines.CoroutineS
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("틈튼", style = TmtnType.title, color = colors.onSurface)
-        Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
         Column(
             modifier = Modifier
@@ -142,10 +147,12 @@ fun RestDayDoneScreen(state: CardHomeState, scope: kotlinx.coroutines.CoroutineS
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Box(modifier = Modifier.fillMaxWidth().height(88.dp)) {
-                Text(
-                    "일러스트 자리 · 쉬는 비버", style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.Center),
+            Box(modifier = Modifier.fillMaxWidth().height(88.dp), contentAlignment = Alignment.Center) {
+                // ⚠️ 2026-09-06 반영: B16(홈 · 쉬어가기 확인) 배치표 그대로 - beaver_cheer.
+                Image(
+                    painter = painterResource(com.tmtn.app.R.drawable.beaver_cheer),
+                    contentDescription = "쉬어가기를 응원하는 비버",
+                    modifier = Modifier.height(88.dp),
                 )
             }
             Box(
