@@ -19,7 +19,9 @@ from fastapi import HTTPException, status
 
 from app.core import config
 from app.core.time_utils import service_today
+from app.models.accounts import ConsentPurpose, ConsentStatus
 from app.models.users import User
+from app.repositories.consent_repository import ConsentRepository
 from app.repositories.exercise_habit_repository import ExerciseHabitRepository
 from app.repositories.health_repository import HealthInputRepository
 
@@ -40,8 +42,20 @@ class TuntunScorePeerService:
     def __init__(self):
         self.health_repo = HealthInputRepository()
         self.exercise_repo = ExerciseHabitRepository()
+        self.consent_repo = ConsentRepository()
 
     async def get_score(self, user: User) -> dict:
+        # ⚠️ 2026-09-12 추가 - "틈튼지수 산출을 위한 분석"(HEALTH_REFERENCE_ANALYSIS,
+        # 선택 동의)을 거부한 사용자는 이 분석 자체를 돌리면 안 됨. 위치정보 동의를 이미
+        # 같은 방식으로 막고 있던 것과 같은 원칙 - 동의 화면에 항목만 있고 실제로는 안
+        # 막던 걸 QA로 발견해서 고침.
+        consent = await self.consent_repo.get_latest_by_purpose(user.id, ConsentPurpose.HEALTH_REFERENCE_ANALYSIS)
+        if consent is None or consent.status != ConsentStatus.AGREED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="HEALTH_REFERENCE_ANALYSIS_NOT_AGREED",
+            )
+
         if not config.TUNTUN_PEER_BRIDGE_URL:
             # ⚠️ 운영에는 이 값을 절대 채우지 않음(브릿지 자체가 PRODUCTION_RELEASE_GATE:
             # BLOCKED 상태의 검토용 패키지). 로컬 개발 중 docker compose로 브릿지를 띄웠을
