@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -177,84 +179,104 @@ fun RevealScreen(
 }
 
 @Composable
-private fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
+fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
     val material = MATERIAL_NAMES[card.five_element]
+    val cardFont = com.tmtn.app.ui.common.TarotCardFontFamily
+    // ⚠️ 2026-09-12 반영: TMTN_V19 카드 리디자인 - 다크 "신문" 감성에서 크림색 종이 +
+    // 갈색 장식 프레임(TarotCardFrame, 실제 원화 이미지 9-patch 스트레칭)으로 전면 교체.
+    // 모델 인식 배지 규칙(V17)은 그대로 유지 - 프레임 자체에 주황 테두리를 그려 넣음.
+    val isModelMission = com.tmtn.app.ui.common.isModelRecognitionExecType(card.exec_type)
+    val ink = Color(0xFF16181C) // V19 본문 색
+    val secondary = Color(0xFF666A71) // V19 보조정보 색
 
-    Column(
+    com.tmtn.app.ui.common.TarotCardFrame(
+        isBack = false,
+        modelMission = isModelMission,
         modifier = Modifier
             .fillMaxWidth()
-            .background(NoteCardBg, RoundedCornerShape(24.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(24.dp))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .defaultMinSize(minHeight = 650.dp), // V19: "기본 카드 너비 350, 최소 높이 650"
     ) {
-        // 머리 · 날짜/재료
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 34.dp).padding(top = 40.dp, bottom = 56.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column {
-                Text("오늘의 틈", style = TmtnType.bodyLarge, color = NoteCream)
-                Text(displayDate.toKoreanDateLabel(), style = TmtnType.caption, color = NoteCream.copy(alpha = 0.76f))
-                if (material != null) {
-                    Text(
-                        "${material.first} · ${card.domain ?: material.second}",
-                        style = TmtnType.caption, color = NoteCream.copy(alpha = 0.50f),
-                    )
-                }
-            }
+            Text("오늘의 틈", style = TmtnType.title.copy(fontFamily = cardFont), color = ink)
+
+            // 원형 메달리온에 재료 이미지
             Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(NoteStampColor, RoundedCornerShape(16.dp)),
+                modifier = Modifier.size(90.dp).background(Color(0xFFF7F4EE), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                MaterialIcon(element = card.five_element, size = 40.dp)
+                MaterialIcon(element = card.five_element, size = 56.dp)
             }
-        }
 
-        // 오늘의 운세
-        if (card.fortune_text != null) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("오늘의 운세", style = TmtnType.caption, color = NoteCream.copy(alpha = 0.56f))
-                Text(card.fortune_text, style = TmtnType.title, color = NoteCream)
-            }
-        }
-
-        // 구분선 · TMTN
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Box(modifier = Modifier.weight(1f).height(1.dp).background(NoteCream.copy(alpha = 0.22f)))
-            Text("TMTN", style = TmtnType.caption, color = NoteGold)
-            Box(modifier = Modifier.weight(1f).height(1.dp).background(NoteCream.copy(alpha = 0.22f)))
-        }
-
-        // 행운 정보
-        Column {
-            LuckyRow(label = "행운의 행동", value = card.title)
-            if (card.lucky_location != null) {
-                LuckyRow(label = "행운의 위치", value = card.lucky_location)
-            }
-            LuckyRow(label = "행운의 숫자", value = null) {
-                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("${card.target_value}", style = TmtnType.title, color = NoteGold)
-                    Text(card.unit, style = TmtnType.body, color = NoteCream)
+            if (material != null) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("${material.first} · ${card.domain ?: material.second}", style = TmtnType.label.copy(fontFamily = cardFont), color = ink)
+                    Text(displayDate.toKoreanDateLabel(), style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
                 }
             }
-        }
 
-        // 오늘의 한 줄
-        if (card.line_text != null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(NoteCream, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp, vertical = 13.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                Text("오늘의 한 줄", style = TmtnType.caption, color = NoteStampColor)
-                Text(card.line_text, style = TmtnType.label, color = NoteCardBg)
+            if (card.fortune_text != null) {
+                Text(card.fortune_text, style = TmtnType.title.copy(fontFamily = cardFont), color = ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+
+            if (isModelMission) com.tmtn.app.ui.common.ModelMissionBadge()
+
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LuckyRowV19(label = "행운의 행동", value = card.title, ink = ink, secondary = secondary, cardFont = cardFont)
+                if (card.lucky_location != null) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text("행운의 위치", style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
+                            Text(card.lucky_location, style = TmtnType.label.copy(fontFamily = cardFont), color = ink)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("행운의 숫자", style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
+                            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text("${card.target_value}", style = TmtnType.headline.copy(fontFamily = cardFont), color = ink)
+                                Text(card.unit, style = TmtnType.body.copy(fontFamily = cardFont), color = ink)
+                            }
+                        }
+                    }
+                } else {
+                    LuckyRowV19(label = "행운의 숫자", value = "${card.target_value}${card.unit}", ink = ink, secondary = secondary, cardFont = cardFont)
+                }
+            }
+
+            if (card.line_text != null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF7F4EE), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 13.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text("오늘의 한 줄", style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
+                    Text(card.line_text, style = TmtnType.label.copy(fontFamily = cardFont), color = ink)
+                }
+            }
+
+            if (material != null) {
+                Text(
+                    // ⚠️ 2026-09-12 반영: V19 C08(완료 카드) - 완료 상태면 "실천하면"이
+                    // 아니라 "실천 완료 · 받았어요"로 바뀜. NoteCard를 완료 화면에서도
+                    // 재사용하기 위해 카드 자체 상태(card.state)로 분기.
+                    if (card.state == "COMPLETED") "✓ 실천 완료 · ${material.first} 1개 받았어요"
+                    else "실천하면 ${material.first} 1개",
+                    style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun LuckyRowV19(label: String, value: String, ink: Color, secondary: Color, cardFont: androidx.compose.ui.text.font.FontFamily) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
+        Text(value, style = TmtnType.label.copy(fontFamily = cardFont), color = ink)
     }
 }
 

@@ -159,66 +159,29 @@ private fun SelectionIndicatorPill(index: Int) {
     }
 }
 
-/** Figma "오늘의 카드 · 뒷면" - 초록 나무결 패턴 + 금색 TMTN 로고 알약 + 라디오 선택 표시. */
+/** Figma "오늘의 카드 · 뒷면" (V19) - 짙은 세이지 + 비버 인장 원화, 선택 시 먹색 테두리+체크. */
 @Composable
 private fun CardBackTile(selected: Boolean, onClick: () -> Unit) {
-    Box(
+    val colors = LocalTmtnColors.current
+    com.tmtn.app.ui.common.TarotCardFrame(
+        isBack = true,
         modifier = Modifier
             .width(104.dp)
-            .height(152.dp)
-            .background(CardWoodDark, RoundedCornerShape(12.dp))
-            .then(
-                if (selected) {
-                    Modifier.border(3.dp, CardGold, RoundedCornerShape(12.dp))
-                } else {
-                    Modifier
-                }
-            )
+            .height(193.dp) // ⚠️ V19 원화 비율(920:1710) 유지 - 104 * 1710/920 ≈ 193
+            .then(if (selected) Modifier.border(3.dp, colors.onSurface, RoundedCornerShape(20.dp)) else Modifier)
             .clickable { onClick() },
     ) {
-        // 나무결 패턴(가로줄 몇 개로 단순화 - Figma 원본은 무작위 폭의 줄 15개)
-        Column(
-            modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            listOf(0.6f, 0.5f, 0.7f, 0.35f, 0.55f).forEach { widthFraction ->
+        if (selected) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(8.dp),
+                contentAlignment = Alignment.TopEnd,
+            ) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth(widthFraction)
-                        .height(2.dp)
-                        .background(CardWoodGrain),
-                )
-            }
-        }
-
-        // TMTN 로고 알약 (상단 중앙)
-        Box(
-            modifier = Modifier
-                .padding(top = 14.dp)
-                .align(Alignment.TopCenter)
-                .background(CardGold, RoundedCornerShape(12.dp))
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-        ) {
-            Text("TMTN", style = TmtnType.caption, color = CardWoodDark)
-        }
-
-        // 라디오 선택 표시 (하단 중앙)
-        Box(
-            modifier = Modifier
-                .padding(bottom = 14.dp)
-                .align(Alignment.BottomCenter)
-                .size(22.dp)
-                .then(
-                    if (selected) {
-                        Modifier.background(CardGold, CircleShape)
-                    } else {
-                        Modifier.border(2.dp, CardRadioUnselected, CircleShape)
-                    }
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (selected) {
-                Box(modifier = Modifier.size(9.dp).background(CardWoodDark, CircleShape))
+                    modifier = Modifier.size(22.dp).background(colors.onSurface, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("✓", style = TmtnType.caption, color = colors.background)
+                }
             }
         }
     }

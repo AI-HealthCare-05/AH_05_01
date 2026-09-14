@@ -13,7 +13,7 @@ val ColorBrandForest = Color(0xFF3F5D4B)
 // ⚠️ 2026-09-04 희주조교님 피드백(P2 ⑧) 반영: 순수 검정에 가까운 #16181C가 "너무
 // 새까맣다"는 의견이라 #2C2C2C로 올림. 순백(#FFFFFF) 배경 대비 14.0:1로 WCAG AA
 // 기준(4.5:1)을 여유 있게 넘음. 하드코딩된 색이 없어서 이 토큰 두 줄만 바꾸면 전체 반영됨.
-val ColorPrimary = Color(0xFF2C2C2C)
+val ColorPrimary = Color(0xFF16181C)
 val ColorOnSurface = Color(0xFF2C2C2C)
 val ColorOnSurfaceVariant = Color(0xFF666A71)
 val ColorBackground = Color(0xFFFFFFFF)
@@ -42,6 +42,10 @@ val ColorErrorContainer = Color(0xFFFDECEC)
 // 색 · 비활성 - 이번 캡처에서 확인 안 됨, 기존 톤 유지(추정)
 val ColorDisabledContainer = Color(0xFFE5E0D6)
 val ColorOnDisabled = Color(0xFF9C9E9F)
+
+// ⚠️ 2026-09-11 추가 - V17 디자인 핸드오프: 차콜 #16181C(주 버튼), 선택면 #F2F4F6(하단 탭 선택 표시).
+val ColorCharcoal = Color(0xFF16181C)
+val ColorSelectedSurface = Color(0xFFF2F4F6)
 
 // 버튼
 val ButtonPrimaryContainer = ColorPrimary

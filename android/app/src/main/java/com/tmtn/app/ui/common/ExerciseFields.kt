@@ -76,6 +76,8 @@ fun TmtnExerciseFields(
         AerobicInput("중강도", "숨이 조금 차요", "빠르게 걷기 · 자전거", moderateMinutes, onModerateMinutes)
         AerobicInput("고강도", "숨이 많이 차요", "달리기 · 등산", highMinutes, onHighMinutes)
         Text("하지 않는 운동은 0분으로 두세요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+        // ⚠️ 2026-09-11 반영: V17 A16 디자인에 있던 문구 - 유산소 안내 문단 마지막 줄.
+        Text("같은 운동도 느끼는 강도는 다를 수 있어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
     }
 }
 

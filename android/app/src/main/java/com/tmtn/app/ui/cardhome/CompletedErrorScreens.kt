@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,7 +37,6 @@ import kotlinx.coroutines.launch
 fun CompletedScreen(state: CardHomeState) {
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value
-    val material = card?.let { MATERIAL_NAMES[it.five_element] }
     // ⚠️ 이 화면은 COMPLETED(완료)뿐 아니라 SKIPPED(중단으로 끝낸 미션)도 같이 씀 —
     // 둘 다 "오늘은 다시 시작 못 함"이라는 점은 같지만 문구/보상 표시는 달라야 함.
     val isSkipped = card?.state == "SKIPPED"
@@ -45,6 +45,10 @@ fun CompletedScreen(state: CardHomeState) {
     // SKIPPED(중단)는 애초에 회고 대상이 아니라서 확인 자체를 안 함.
     LaunchedEffect(isSkipped) {
         if (!isSkipped) state.checkTodayMemo()
+        // ⚠️ 2026-09-11 추가 - 틈새 운동 섹션에 쓸 오늘 현황(used/remaining)을 같이 불러옴.
+        // SKIPPED(포기)는 카드 자체가 미완료라 서버가 어차피 card_completed=false를 주므로
+        // 굳이 숨기지 않고 그대로 불러도 안전함(화면에서 섹션 노출만 isSkipped로 막음).
+        if (!isSkipped) state.loadExerciseMissionsToday()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -54,32 +58,20 @@ fun CompletedScreen(state: CardHomeState) {
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(24.dp))
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text(
-                    if (isSkipped) "오늘은 여기까지" else "오늘도 하나 쌓았어요",
-                    style = TmtnType.display, color = colors.onSurface, textAlign = TextAlign.Center,
-                )
-                card?.let {
-                    Text(it.title, style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
-                }
-
-                // SKIPPED는 재료를 받지 못했으므로 보상 표시 자체를 생략.
-                if (!isSkipped && material != null && card != null) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        MaterialIcon(element = card.five_element, size = 88.dp)
-                        Text(material.first + " 1개", style = TmtnType.title, color = colors.onSurface)
-                        Text(material.second, style = TmtnType.caption, color = colors.onSurfaceVariant)
+            if (isSkipped || card == null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.surface, RoundedCornerShape(24.dp))
+                        .padding(horizontal = 20.dp, vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text("오늘은 여기까지", style = TmtnType.display, color = colors.onSurface, textAlign = TextAlign.Center)
+                    card?.let {
+                        Text(it.title, style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
                     }
-                }
-
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
 
                 if (isSkipped) {
                     Text(
@@ -93,8 +85,13 @@ fun CompletedScreen(state: CardHomeState) {
                         style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
                     )
                 }
+                } // Column(surface 대체 박스) 닫기
+            } else {
+                // ⚠️ 2026-09-12 반영: V19 C08 - 완료 카드도 RevealScreen과 같은
+                // TarotCardFrame(NoteCard)을 재사용. card.state == "COMPLETED"라서
+                // NoteCard 내부에서 "실천 완료 · 받았어요" 문구로 자동 전환됨.
+                NoteCard(card, state.displayDateLabel())
             }
-
             TmtnOutlinedButton(text = "오늘 카드 다시 보기", onClick = { state.step.value = CardHomeStep.REVEALED })
             // 아직 오늘 회고를 안 남겼을 때만 노출 (회고를 남기면 checkTodayMemo/submitRetrospect가
             // hasMemoToday를 true로 갱신해서 자동으로 사라짐). SKIPPED는 애초에 대상 아님.
@@ -104,6 +101,29 @@ fun CompletedScreen(state: CardHomeState) {
                     onClick = { state.step.value = CardHomeStep.CHALLENGE_RETROSPECT },
                 )
             }
+
+            // ⚠️ 2026-09-11 추가 - 틈새 운동(TMtn_UI_V17 §5, B17). 완료 카드 아래에
+            // 추가로 노출. SKIPPED(포기)면 애초에 카드가 미완료라 서버가 시작을 막으니
+            // 화면에서도 굳이 안 보여줌.
+            if (!isSkipped) {
+                val today = state.exerciseMissionsToday.value
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("틈새 운동", style = TmtnType.title, color = colors.onSurface)
+                        if (today != null) {
+                            Text("${today.used} / ${today.limit}회", style = TmtnType.body, color = colors.onSurfaceVariant)
+                        }
+                    }
+                    Text("조금 더 움직이고 싶은 날, 재료를 하나 더.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                    androidx.compose.material3.TextButton(onClick = { state.openExerciseMissionList() }) {
+                        Text("틈새 운동 둘러보기", style = TmtnType.label, color = colors.primary)
+                    }
+                }
+            }
+
             Text(
                 "내일 또 새로운 카드로 만나요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,

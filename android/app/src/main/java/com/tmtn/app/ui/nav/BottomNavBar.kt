@@ -58,27 +58,18 @@ import com.tmtn.app.ui.theme.TmtnType
 enum class MainTab(val label: String) {
     HOME("홈"),
     RECORD("기록"),
-    REFERENCE("틈튼지수"),
+    REFERENCE("일보"),
     DAM("댐"),
     MY("내 정보"),
 }
 
-/** A quiet, edge-attached bar. Only the selection marker moves; labels stay in place. */
+/** ⚠️ 2026-09-11 반영: V17 디자인 - 상단 밑줄 마커 대신 선택된 탭 아이콘 뒤에 회색
+ * 선택면(#F2F4F6)을 까는 방식으로 바뀜. 애니메이션은 색상 전환만 유지. */
 @Composable
 fun BottomNavBar(currentTab: MainTab, onTabSelected: (MainTab) -> Unit) {
     val colors = LocalTmtnColors.current
-    val reducedMotion = rememberTmtnReducedMotion()
-    val position by animateFloatAsState(
-        targetValue = MainTab.entries.indexOf(currentTab).toFloat(),
-        animationSpec = if (reducedMotion) snap() else spring(dampingRatio = 1f, stiffness = TmtnMotion.TouchStiffness),
-        label = "navigation selection position",
-    )
-    BoxWithConstraints(Modifier.fillMaxWidth().background(colors.navigationContainer)) {
-        val slotWidth = maxWidth / MainTab.entries.size
+    Box(Modifier.fillMaxWidth().background(colors.navigationContainer)) {
         Box(Modifier.fillMaxWidth().height(.5.dp).background(colors.outlineVariant))
-        Box(Modifier.width(24.dp).height(3.dp)
-            .graphicsLayer { translationX = (slotWidth * (position + .5f) - 12.dp).toPx() }
-            .background(colors.onSurface, RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp)))
         Row(Modifier.fillMaxWidth().padding(top = 4.dp).selectableGroup()) {
             MainTab.entries.forEach { tab ->
                 NavItem(tab, tab == currentTab, { onTabSelected(tab) }, Modifier.weight(1f))
@@ -94,12 +85,20 @@ private fun NavItem(tab: MainTab, isActive: Boolean, onClick: () -> Unit, modifi
     val iconColor by animateColorAsState(
         if (isActive) colors.navigationIconActive else colors.navigationIconInactive,
         animationSpec = tween(if (reduce) 0 else 120), label = "tab selection")
+    // ⚠️ 2026-09-11 추가 - 선택면 배경도 색상과 같은 방식으로 부드럽게 전환.
+    val selectionBg by animateColorAsState(
+        if (isActive) com.tmtn.app.ui.theme.ColorSelectedSurface else androidx.compose.ui.graphics.Color.Transparent,
+        animationSpec = tween(if (reduce) 0 else 120), label = "tab selection background")
     val interactions = remember { MutableInteractionSource() }
     Column(modifier.tmtnPressFeedback(interactions).selectable(selected = isActive, role = Role.Tab, interactionSource = interactions, indication = ripple(), onClick = onClick)
         .heightIn(min = if (AccessibilitySettingsHolder.largeControlsEnabled.value) 72.dp else 64.dp)
         .padding(horizontal = 2.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(width = 56.dp, height = 32.dp)
+                .background(selectionBg, RoundedCornerShape(16.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
             TabIcon(tab, iconColor, if (isActive) 1.9f else 1.65f)
         }
         Text(tab.label, style = TmtnType.navigationLabel.copy(fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium),
