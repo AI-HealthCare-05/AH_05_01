@@ -76,6 +76,14 @@ private fun previousStepFor(step: CardHomeStep): CardHomeStep? = when (step) {
     CardHomeStep.SENSOR_MEASURING -> CardHomeStep.REVEALED
     CardHomeStep.SENSOR_PERMISSION_FALLBACK -> CardHomeStep.REVEALED
     CardHomeStep.SENSOR_RESULT -> null
+
+    // ⚠️ 2026-09-11 추가 - 틈새 운동. LIST는 완료 화면(COMPLETED)에서 왔으니 거기로,
+    // DETAIL은 목록으로. RUNNING/REWARD 중엔 뒤로가기로 조용히 세션이 사라지면 안 되므로
+    // 막음(측정 화면과 같은 원칙).
+    CardHomeStep.EXTRA_LIST -> CardHomeStep.COMPLETED
+    CardHomeStep.EXTRA_DETAIL -> CardHomeStep.EXTRA_LIST
+    CardHomeStep.EXTRA_RUNNING -> null
+    CardHomeStep.EXTRA_REWARD -> null
 }
 
 @Composable
@@ -98,6 +106,16 @@ fun CardHomeFlow(
     onRequestSensorPermissions: () -> Unit = {},
     onStartSensorTracking: (challengeId: String, execType: String, resumeCount: Int, targetValue: Int) -> Unit,
     onStopSensorTracking: () -> Unit,
+    // ⚠️ 2026-09-11 추가 - 틈새 운동(제자리걸음) 전용. 오늘의 카드 센서 추적과 독립적.
+    onStartStepInPlace: () -> Unit = {},
+    onStopStepInPlace: () -> Unit = {},
+    onStartWalking: () -> Unit = {},
+    onStopWalking: () -> Unit = {},
+    onStartRunningDistance: () -> Unit = {},
+    onStartRunningDuration: () -> Unit = {},
+    onStopRunning: () -> Unit = {},
+    onStartStairs: () -> Unit = {},
+    onStopStairs: () -> Unit = {},
     // ⚠️ 2026-09-04 추가: 센서 측정 일시정지/재개 - TIMER형과 같은 일시정지 개념을 센서형에도 적용.
     onPauseSensorTracking: () -> Unit = {},
     onResumeSensorTracking: () -> Unit = {},
@@ -305,6 +323,14 @@ fun CardHomeFlow(
             )
             CardHomeStep.SENSOR_PERMISSION_FALLBACK -> SensorPermissionFallbackScreen(state, onOpenSettings)
             CardHomeStep.SENSOR_RESULT -> SensorResultScreen(state, scope)
+            CardHomeStep.EXTRA_LIST -> ExerciseMissionListScreen(state, scope)
+            CardHomeStep.EXTRA_DETAIL -> ExerciseMissionDetailScreen(state, scope)
+            CardHomeStep.EXTRA_RUNNING -> ExerciseMissionRunningScreen(
+                state, scope, onStartStepInPlace, onStopStepInPlace,
+                onStartWalking, onStopWalking, onStartRunningDistance, onStartRunningDuration, onStopRunning,
+                onStartStairs, onStopStairs,
+            )
+            CardHomeStep.EXTRA_REWARD -> ExerciseMissionRewardScreen(state)
         }
 
         // ⚠️ B16(오늘 쉬어가기)은 진짜 바텀시트여야 함 — "화면"으로 취급해서 REST_DAY_SHEET라는

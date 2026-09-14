@@ -56,6 +56,7 @@ fun SensorIntroScreen(
 ) {
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value ?: return
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "오늘의 행동", onBack = { state.step.value = CardHomeStep.REVEALED })
@@ -65,9 +66,31 @@ fun SensorIntroScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            // ⚠️ 2026-09-11 반영: V17 디자인 - "실제 움직임 인식 모델로 측정하는 미션"에만
+            // 배지 표시(SENSOR_WALKING_DURATION/RUNNING_DURATION/RUNNING_DISTANCE만 대상 -
+            // 걸음수·계단처럼 순수 하드웨어 카운터에는 안 보임).
+            if (com.tmtn.app.ui.common.isModelRecognitionExecType(card.exec_type)) {
+                com.tmtn.app.ui.common.ModelMissionBadge()
+            }
             // ⚠️ 2026-09-06 QA(P1-7) 반영: SENSOR형도 target_value/unit이 한 번도
             // 안 쓰였음 - "아침 산책하기"가 몇 분인지, 몇 걸음인지 안 보였음.
             Text("목표 ${card.target_value}${card.unit}", style = TmtnType.body, color = colors.onSurfaceVariant)
+            // ⚠️ 2026-09-13 추가(팀 QA 지적) - 제자리걸음은 "제자리인지"를 센서가 구분
+            // 못 하고 시작 후 걸음 증가분을 그대로 셈. 사용자가 오해 없이 정확히 측정되게
+            // 안내(회피 유도로 읽히지 않게 "정확한 측정을 위해"로 프레이밍).
+            if (card.exec_type == "SENSOR_STEPS_IN_PLACE") {
+                Text(
+                    "정확한 측정을 위해 제자리에서 걸어 주세요. 이동하며 걸으면 걸음이 더 세어질 수 있어요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
+            }
+            // ⚠️ 2026-09-14 추가 - 팀장님과 협의된 안전 안내 문구(CSV "수행안내_안전문구",
+            // guide_text). 틈새 운동 상세 화면엔 이미 나오고 있었는데(ExerciseMissionScreens.kt),
+            // "오늘의 카드" 준비 화면엔 빠져 있었음 - 위 "정확한 측정을 위해~" 문구(측정
+            // 방식 안내)와는 별개로, 이 문구는 실제 안전(미끄럼 방지 등)을 다룸.
+            if (card.guide_text.isNotBlank()) {
+                Text(card.guide_text, style = TmtnType.body, color = colors.onSurfaceVariant)
+            }
 
             // ⚠️ 2026-09-08 QA(9번) 반영: "위치정보 수집·이용 동의"(선택 동의)를 거부해도
             // 센서 미션이 그대로 활성화돼 있었음. 동의가 없으면 안내 배너를 먼저 보여주고,
@@ -147,6 +170,14 @@ fun SensorIntroScreen(
                     if (!state.locationConsentGranted.value) {
                         // ⚠️ 2026-09-08 QA(9번) 반영: 동의가 없으면 시스템 권한 요청 자체를
                         // 안 하고 곧장 "직접 체크로" 폴백 안내로 보냄.
+                        state.sensorFallbackReason.value = "PERMISSION"
+                        state.step.value = CardHomeStep.SENSOR_PERMISSION_FALLBACK
+                    } else if (hasSensorPermissions() && !com.tmtn.app.ui.common.hasRequiredSensor(context, card.exec_type)) {
+                        // ⚠️ 2026-09-13 버그 수정(팀 QA 지적) - 권한은 다 있어도 이 기기에
+                        // 필요한 하드웨어 센서(TYPE_STEP_COUNTER 등) 자체가 없으면 측정
+                        // 화면으로 보내봐야 영원히 0에서 안 올라감. 권한 체크 다음으로,
+                        // 센서 가용성도 같은 폴백 화면으로 보내서 "직접 체크"로 대체함.
+                        state.sensorFallbackReason.value = "HARDWARE"
                         state.step.value = CardHomeStep.SENSOR_PERMISSION_FALLBACK
                     } else if (hasSensorPermissions()) {
                         // ⚠️ 2026-09-06 반영: exec_type에 따라 "이어서 셀" 기준값이 다름 -
@@ -188,6 +219,9 @@ fun SensorIntroScreen(
                         state.hasRequestedSensorPermissionsOnce.value = true
                         onRequestPermissions()
                     } else {
+                        // ⚠️ 시스템 권한 다이얼로그까지 띄웠는데도 거부된 경우 - 설정에서
+                        // 복구 가능하므로 PERMISSION.
+                        state.sensorFallbackReason.value = "PERMISSION"
                         state.step.value = CardHomeStep.SENSOR_PERMISSION_FALLBACK
                     }
                 },
@@ -334,6 +368,12 @@ fun SensorMeasuringScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            // ⚠️ 2026-09-11 반영: V17 디자인 - 준비/진행/대기/일시정지/완료 어느 상태에서도
+            // 배지는 유지되고, "인식 중" 여부는 아래 별도 상태 문구가 전달함(배지 자체가
+            // 숫자를 올리거나 "인식 중"으로 오인시키지 않음).
+            if (com.tmtn.app.ui.common.isModelRecognitionExecType(card.exec_type)) {
+                com.tmtn.app.ui.common.ModelMissionBadge()
+            }
 
             Row(
                 modifier = Modifier
@@ -479,6 +519,10 @@ fun SensorPermissionFallbackScreen(state: CardHomeState, onOpenSettings: () -> U
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value ?: return
     val material = MATERIAL_NAMES[card.five_element]
+    // ⚠️ 2026-09-13 반영 - 지현님 팀 제안: 권한 거부(설정에서 복구 가능)와 하드웨어
+    // 미지원(직접 체크만 가능)을 문구로 구분. "설정 열기" 버튼도 하드웨어 미지원일 땐
+    // 눌러봐야 소용없으니 아예 숨김.
+    val isPermissionIssue = state.sensorFallbackReason.value == "PERMISSION"
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "오늘의 행동", onBack = { state.step.value = CardHomeStep.REVEALED })
@@ -495,7 +539,16 @@ fun SensorPermissionFallbackScreen(state: CardHomeState, onOpenSettings: () -> U
                     .background(colors.rewardContainer, RoundedCornerShape(16.dp))
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
-                Text("자동 측정에 필요한 권한이 없어요", style = TmtnType.label, color = colors.onSurface)
+                Text(
+                    if (isPermissionIssue) "자동 측정에 필요한 권한이 없어요" else "이 기기에서는 자동 측정을 할 수 없어요",
+                    style = TmtnType.label, color = colors.onSurface,
+                )
+            }
+            if (isPermissionIssue) {
+                Text(
+                    "설정에서 권한을 허용하면 다시 자동으로 측정할 수 있어요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
             }
 
             Column(
@@ -516,7 +569,12 @@ fun SensorPermissionFallbackScreen(state: CardHomeState, onOpenSettings: () -> U
             }
 
             TmtnPrimaryButton(text = "직접 체크로 진행하기", onClick = { state.step.value = CardHomeStep.CHALLENGE_CHECK })
-            TmtnOutlinedButton(text = "설정 열기", onClick = onOpenSettings)
+            // ⚠️ 하드웨어 미지원이면 "설정 열기"를 눌러도 해결이 안 되니(권한 문제가
+            // 아니므로) 버튼 자체를 안 보여줌 - 사용자가 괜히 눌렀다가 아무 변화가 없어서
+            // 헷갈리는 걸 방지.
+            if (isPermissionIssue) {
+                TmtnOutlinedButton(text = "설정 열기", onClick = onOpenSettings)
+            }
             TmtnTextButton(text = "다른 카드 고르기", onClick = { state.step.value = CardHomeStep.DECK_PICK })
         }
     }

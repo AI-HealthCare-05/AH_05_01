@@ -262,6 +262,15 @@ class MainActivity : ComponentActivity() {
                                                 startTrackingChallenge(challengeId, execType, resumeCount, targetValue)
                                             },
                                             onStopSensorTracking = { stopMissionService() },
+                                            onStartStepInPlace = { startStepInPlaceTracking() },
+                                            onStopStepInPlace = { stopStepInPlaceTracking() },
+                                            onStartWalking = { startWalkingTracking() },
+                                            onStopWalking = { stopWalkingTracking() },
+                                            onStartRunningDistance = { startRunningDistanceTracking() },
+                                            onStartRunningDuration = { startRunningDurationTracking() },
+                                            onStopRunning = { stopRunningTracking() },
+                                            onStartStairs = { startStairsTracking() },
+                                            onStopStairs = { stopStairsTracking() },
                                             onPauseSensorTracking = { pauseMissionService() },
                                             onResumeSensorTracking = { resumeMissionService() },
                                             onForceSyncSensor = { forceSyncSensorNow() },
@@ -445,6 +454,49 @@ class MainActivity : ComponentActivity() {
 
     private fun resumeMissionService() {
         sendServiceAction(MissionSensorService.ACTION_RESUME_TRACKING)
+    }
+
+    // ⚠️ 2026-09-11 추가 - 틈새 운동(제자리걸음) 센서 연동. 오늘의 카드 챌린지와 완전히
+    // 독립된 액션이라 CurrentChallengeHolder(챌린지 ID 기반)를 안 건드림 - 서비스가 이미
+    // stepInPlaceManager를 별도로 갖고 있어서 카드 미션과 동시에 켜져 있어도 서로 안 섞임.
+    private fun startStepInPlaceTracking() {
+        sendServiceAction(MissionSensorService.ACTION_START_STEP_IN_PLACE)
+    }
+
+    private fun stopStepInPlaceTracking() {
+        sendServiceAction(MissionSensorService.ACTION_STOP_STEP_IN_PLACE)
+    }
+
+    // ⚠️ 2026-09-11 추가 - 틈새 운동(계단) 센서 연동. 다른 4개(제자리걸음/걷기/달리기시간/
+    // 달리기거리)와 완전히 같은 패턴.
+    private fun startStairsTracking() {
+        sendServiceAction(MissionSensorService.ACTION_START_STAIRS)
+    }
+
+    private fun stopStairsTracking() {
+        sendServiceAction(MissionSensorService.ACTION_STOP_STAIRS)
+    }
+
+    // ⚠️ 2026-09-11 추가 - 틈새 운동의 나머지 센서형(걷기/달리기)도 이미 있던 독립 액션을
+    // 그대로 재사용. 오늘의 카드 챌린지와 분리돼 있어서 서로 안 섞임.
+    private fun startWalkingTracking() {
+        sendServiceAction(MissionSensorService.ACTION_START_WALKING)
+    }
+
+    private fun stopWalkingTracking() {
+        sendServiceAction(MissionSensorService.ACTION_STOP_WALKING)
+    }
+
+    private fun startRunningDistanceTracking() {
+        sendServiceAction(MissionSensorService.ACTION_START_RUNNING_DISTANCE)
+    }
+
+    private fun startRunningDurationTracking() {
+        sendServiceAction(MissionSensorService.ACTION_START_RUNNING_DURATION)
+    }
+
+    private fun stopRunningTracking() {
+        sendServiceAction(MissionSensorService.ACTION_STOP_RUNNING)
     }
 
     private fun sendServiceAction(action: String) {

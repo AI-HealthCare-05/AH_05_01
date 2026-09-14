@@ -5,6 +5,13 @@ import com.tmtn.app.network.ApiClient
 import com.tmtn.app.network.model.CalendarDayItem
 import com.tmtn.app.network.model.CardRevealResponse
 import com.tmtn.app.network.model.CompleteChallengeRequestBody
+import com.tmtn.app.network.model.CompleteExerciseMissionSessionRequest
+import com.tmtn.app.network.model.CompleteExerciseMissionSessionResponse
+import com.tmtn.app.network.model.CreateExerciseMissionSessionRequest
+import com.tmtn.app.network.model.ExerciseMissionActionRequest
+import com.tmtn.app.network.model.ExerciseMissionOption
+import com.tmtn.app.network.model.ExerciseMissionSessionResponse
+import com.tmtn.app.network.model.ExerciseMissionsTodayResponse
 import com.tmtn.app.network.model.MaterialItem
 import com.tmtn.app.network.model.MemoUpdateRequest
 import com.tmtn.app.network.model.RestDayRequest
@@ -40,6 +47,12 @@ enum class CardHomeStep {
     SENSOR_MEASURING,         // C10/C12/C14 통합 (측정 중 - exec_type별로 표시만 다름)
     SENSOR_PERMISSION_FALLBACK, // C16 (권한 거부 · 미지원)
     SENSOR_RESULT,            // C18 (자동 측정 완료 결과)
+
+    // ⚠️ 2026-09-11 추가 - 틈새 운동(TMtn_UI_V17 §5). "오늘의 카드" 완료 후에만 진입 가능.
+    EXTRA_LIST,       // B31 (오늘 고를 수 있는 틈새 운동 목록)
+    EXTRA_DETAIL,     // B32/B43 (선택한 운동 상세 · 시작 확인)
+    EXTRA_RUNNING,    // B34~B37 (측정 중 - 기존 SENSOR_MEASURING과 같은 표시 규칙 재사용)
+    EXTRA_REWARD,     // B38/B41 (완료 · 재료 획득)
 }
 
 /**
@@ -86,6 +99,10 @@ class CardHomeState {
     // 직후 잠깐)에 실수로 센서 미션을 막아버리지 않기 위함. 실제로 거부한 게 확인되면
     // loadLocationConsent()가 false로 갱신함.
     var locationConsentGranted = mutableStateOf(true)
+    // ⚠️ 2026-09-13 추가 - 지현님 팀 제안 반영: SENSOR_PERMISSION_FALLBACK 화면의 문구를
+    // "권한 거부"(설정에서 복구 가능)와 "하드웨어 미지원"(직접 체크만 가능)으로 구분.
+    // "PERMISSION" | "HARDWARE"
+    var sensorFallbackReason = mutableStateOf("PERMISSION")
 
     // ⚠️ 2026-09-10 반영: 실모델(또래 백분위, tuntun-score/peer/v2) 연동. 기존
     // tuntunIndexBand("관심/보통/양호")·tuntunIndexPeriodLabel(주간 기간)은 새 계약에
@@ -802,5 +819,89 @@ class CardHomeState {
         }.getOrNull()?.let { detail ->
             hasMemoToday.value = !detail.memo.isNullOrBlank()
         }
+    }
+
+    // ⚠️ 2026-09-11 추가 - 틈새 운동(TMtn_UI_V17 §5). "오늘의 카드" 완료 후에만 실제로
+    // 시작 가능하지만, 목록 자체는 항상 조회 가능(card_completed=false면 화면에서
+    // "카드부터 완료해 주세요" 안내로 대체 - B17 카드 완료 화면 안내와 일관되게).
+    var exerciseMissionsToday = mutableStateOf<ExerciseMissionsTodayResponse?>(null)
+    var selectedExerciseOption = mutableStateOf<ExerciseMissionOption?>(null)
+    var activeExerciseSession = mutableStateOf<ExerciseMissionSessionResponse?>(null)
+    var exerciseRewardResult = mutableStateOf<CompleteExerciseMissionSessionResponse?>(null)
+
+    suspend fun loadExerciseMissionsToday() {
+        runCatching {
+            val response = ApiClient.exerciseMissionApi.getToday()
+            if (response.isSuccessful) response.body() else null
+        }.onSuccess { exerciseMissionsToday.value = it }
+    }
+
+    fun openExerciseMissionList() {
+        step.value = CardHomeStep.EXTRA_LIST
+    }
+
+    fun selectExerciseOption(option: ExerciseMissionOption) {
+        selectedExerciseOption.value = option
+        step.value = CardHomeStep.EXTRA_DETAIL
+    }
+
+    // ⚠️ B32/B43 "이 운동 시작하기/실천하기" 버튼. 서버가 세션을 만들면서 바로 ACTIVE로
+    // 시작함(Challenge의 start()와 달리 create가 곧 시작 - 틈새 운동은 "고르는 순간
+    // 바로 시작"이 자연스러운 흐름이라 별도 시작 API를 안 둠).
+    suspend fun startExerciseMission(): Boolean {
+        val option = selectedExerciseOption.value ?: return false
+        val idempotencyKey = UUID.randomUUID().toString()
+        return runCatching {
+            val response = ApiClient.exerciseMissionApi.createSession(
+                CreateExerciseMissionSessionRequest(catalog_entry_id = option.catalog_entry_id, idempotency_key = idempotencyKey)
+            )
+            if (response.isSuccessful) response.body() else null
+        }.getOrNull()?.let { session ->
+            activeExerciseSession.value = session
+            // CHECK형은 측정 화면 없이 바로 완료 확인으로 넘어감(문서: "직접 완료를 확인해요")
+            step.value = CardHomeStep.EXTRA_RUNNING
+            true
+        } ?: false
+    }
+
+    suspend fun pauseExerciseMission() {
+        val session = activeExerciseSession.value ?: return
+        runCatching {
+            ApiClient.exerciseMissionApi.patchSession(session.id, ExerciseMissionActionRequest(action = "pause"))
+        }.onSuccess { response -> if (response.isSuccessful) activeExerciseSession.value = response.body() }
+    }
+
+    suspend fun resumeExerciseMission() {
+        val session = activeExerciseSession.value ?: return
+        runCatching {
+            ApiClient.exerciseMissionApi.patchSession(session.id, ExerciseMissionActionRequest(action = "resume"))
+        }.onSuccess { response -> if (response.isSuccessful) activeExerciseSession.value = response.body() }
+    }
+
+    suspend fun completeExerciseMission(manualCheck: Boolean = false, accumulatedCount: Int? = null) {
+        val session = activeExerciseSession.value ?: return
+        val idempotencyKey = UUID.randomUUID().toString()
+        runCatching {
+            ApiClient.exerciseMissionApi.completeSession(
+                session.id,
+                CompleteExerciseMissionSessionRequest(
+                    idempotency_key = idempotencyKey, manual_check = manualCheck, accumulated_count = accumulatedCount,
+                ),
+            )
+        }.onSuccess { response ->
+            if (response.isSuccessful) {
+                exerciseRewardResult.value = response.body()
+                step.value = CardHomeStep.EXTRA_REWARD
+            } else {
+                errorMessage.value = "아직 목표에 도달하지 못했어요."
+            }
+        }
+    }
+
+    suspend fun cancelExerciseMission() {
+        val session = activeExerciseSession.value ?: return
+        runCatching { ApiClient.exerciseMissionApi.cancelSession(session.id) }
+        activeExerciseSession.value = null
+        step.value = CardHomeStep.COMPLETED
     }
 }

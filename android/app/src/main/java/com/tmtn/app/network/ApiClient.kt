@@ -81,6 +81,7 @@ object ApiClient {
     val recordApi: RecordApi by lazy { retrofit.create(RecordApi::class.java) }
     val profileApi: ProfileApi by lazy { retrofit.create(ProfileApi::class.java) }
     val tuntunScoreApi: TuntunScoreApi by lazy { retrofit.create(TuntunScoreApi::class.java) }
+    val exerciseMissionApi: ExerciseMissionApi by lazy { retrofit.create(ExerciseMissionApi::class.java) }
     val debugApi: DebugApi by lazy { retrofit.create(DebugApi::class.java) }
     /**
      * 실제 온보딩 화면(A03~A10)이 생겨서, 이제 이 함수는 "온보딩 건너뛰고 바로 기능 테스트"

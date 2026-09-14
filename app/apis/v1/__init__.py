@@ -9,6 +9,7 @@ from app.apis.v1.companion_routers import companion_router
 from app.apis.v1.consent_routers import consent_router
 from app.apis.v1.debug_routers import debug_router
 from app.apis.v1.exercise_habit_routers import exercise_habit_router
+from app.apis.v1.exercise_mission_routers import exercise_mission_router
 from app.apis.v1.health_routers import health_router
 from app.apis.v1.inquiry_routers import inquiry_router
 from app.apis.v1.notification_setting_routers import notification_setting_router
@@ -27,6 +28,7 @@ v1_routers.include_router(exercise_habit_router)
 v1_routers.include_router(notification_setting_router)
 v1_routers.include_router(card_router)
 v1_routers.include_router(challenge_router)
+v1_routers.include_router(exercise_mission_router)
 v1_routers.include_router(sensor_router)
 v1_routers.include_router(assessment_router)
 v1_routers.include_router(accessibility_router)

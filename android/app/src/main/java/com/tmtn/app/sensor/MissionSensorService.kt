@@ -231,6 +231,18 @@ class MissionSensorService : Service() {
                 SensorDataHolder.setStepInPlaceActive(false)
             }
 
+            // ⚠️ 2026-09-11 추가 - 틈새 운동(계단) 실제 센서 연동. stairClimbManager는
+            // onCreate()에서 이미 독립적으로 만들어져 있어서(챌린지 시작과 무관), 제자리걸음과
+            // 똑같은 패턴으로 재사용 - 오늘의 카드 챌린지(ACTION_START_TRACKING_CHALLENGE)와
+            // 완전히 분리된 별도 액션.
+            ACTION_START_STAIRS -> {
+                stairClimbManager.reset()
+                stairClimbManager.start()
+            }
+            ACTION_STOP_STAIRS -> {
+                stairClimbManager.stop()
+            }
+
             ACTION_START_STAIR_IN_PLACE -> {
                 stairInPlaceManager.reset()
                 stairInPlaceManager.start()
@@ -587,6 +599,10 @@ class MissionSensorService : Service() {
 
         const val ACTION_START_STEP_IN_PLACE = "com.tmtn.app.ACTION_START_STEP_IN_PLACE"
         const val ACTION_STOP_STEP_IN_PLACE = "com.tmtn.app.ACTION_STOP_STEP_IN_PLACE"
+
+        // ⚠️ 2026-09-11 추가 - 틈새 운동(계단) 전용. 오늘의 카드 챌린지와 완전히 분리된 독립 액션.
+        const val ACTION_START_STAIRS = "com.tmtn.app.ACTION_START_STAIRS"
+        const val ACTION_STOP_STAIRS = "com.tmtn.app.ACTION_STOP_STAIRS"
 
         const val ACTION_START_STAIR_IN_PLACE = "com.tmtn.app.ACTION_START_STAIR_IN_PLACE"
         const val ACTION_STOP_STAIR_IN_PLACE = "com.tmtn.app.ACTION_STOP_STAIR_IN_PLACE"
