@@ -41,14 +41,37 @@ class MissionReminderWorker(
         TokenHolder.init(applicationContext)
 
         runCatching {
-            if (TokenHolder.accessToken == null) return@runCatching // 로그아웃 상태면 아무것도 안 함
+            if (TokenHolder.accessToken == null) {
+                android.util.Log.w("MissionReminderWorker", "[$slot] 스킵: 로그인 토큰 없음")
+                return@runCatching
+            }
 
             val consents = ApiClient.profileApi.listConsents()
+            if (!consents.isSuccessful) {
+                // ⚠️ 2026-09-12 추가 - 예전엔 이 실패가 조용히 "동의 없음"과 똑같이
+                // 취급돼서 알림이 안 오는데 원인을 전혀 알 수 없었음(서버 통신 실패인지,
+                // 정말 동의를 안 한 건지 구분 불가). 이제 로그로 구분해서 남김.
+                android.util.Log.w(
+                    "MissionReminderWorker",
+                    "[$slot] 동의 조회 실패(HTTP ${consents.code()}) - 서버에 못 닿았을 수 있음",
+                )
+                return@runCatching
+            }
             val notificationConsented = consents.body()
                 ?.any { it.purpose == "NOTIFICATION" && it.status == "AGREED" } == true
-            if (!notificationConsented) return@runCatching
+            if (!notificationConsented) {
+                android.util.Log.i("MissionReminderWorker", "[$slot] 스킵: 알림 동의 안 함")
+                return@runCatching
+            }
 
             val today = ApiClient.cardHomeApi.getTodayCards()
+            if (!today.isSuccessful) {
+                android.util.Log.w(
+                    "MissionReminderWorker",
+                    "[$slot] 오늘 카드 조회 실패(HTTP ${today.code()}) - 서버에 못 닿았을 수 있음",
+                )
+                return@runCatching
+            }
             val card = today.body()
             if (card != null) {
                 val isFinishedOrOff = card.challenge_state == "COMPLETED" ||
@@ -57,8 +80,15 @@ class MissionReminderWorker(
                     card.is_given_up
                 if (!isFinishedOrOff) {
                     showNotification(slot)
+                } else {
+                    android.util.Log.i("MissionReminderWorker", "[$slot] 스킵: 오늘 미션 이미 완료/쉼/포기 상태")
                 }
+            } else {
+                android.util.Log.w("MissionReminderWorker", "[$slot] 스킵: 오늘 카드 응답이 비어 있음")
             }
+        }.onFailure { e ->
+            // ⚠️ 네트워크 예외(타임아웃, DNS 실패 등)도 예전엔 조용히 삼켜졌음 - 이제 로그로 남김.
+            android.util.Log.e("MissionReminderWorker", "[$slot] 예외 발생: ${e.message}", e)
         }
 
         // ⚠️ 성공/실패/동의없음 어떤 경우든 "내일 같은 시각"으로 재예약 - 여기서 재예약을

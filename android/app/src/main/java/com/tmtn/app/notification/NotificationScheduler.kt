@@ -37,6 +37,7 @@ object NotificationScheduler {
     private const val WORK_LUNCH = "mission_reminder_lunch"
     private const val WORK_EVENING = "mission_reminder_evening"
     private const val WORK_REST_GIVEUP = "rest_giveup_reminder"
+    private const val KEY_LAST_SCHEDULED_SLOTS = "last_scheduled_slots"
 
     // 쉼·포기 알림은 사용자가 못 바꾸는 고정 시각(요구사항: "하루 1번 오후 7시").
     const val REST_GIVEUP_TIME = "19:00"
@@ -67,14 +68,30 @@ object NotificationScheduler {
     }
 
     /** slots = [오전, 점심, 저녁] "HH:MM" 리스트(서버 NotificationSetting.slots 그대로).
-     * 순서가 안 맞거나 값이 없으면 기본값(08:00/12:00/18:00)으로 채움. */
+     * 순서가 안 맞거나 값이 없으면 기본값(08:00/12:00/18:00)으로 채움.
+     *
+     * ⚠️ 2026-09-12 버그 수정 - "앱을 열 때마다 서버 값으로 재동기화"(MainActivity)가
+     * 의도치 않게 "이미 정확히 예약돼서 대기 중인 오늘 알림"을 취소시키던 문제. 재현:
+     * 알림 목표 시각을 막 지난 직후에 앱을 열면, millisUntilNextOccurrence()가 "오늘은
+     * 이미 지났다"고 보고 REPLACE로 "내일"로 밀어버림 - 정작 그 알림은 아직 실행 전
+     * 대기 상태였는데도 취소됨. 그래서 값이 실제로 바뀌었을 때만 재예약하도록 함(값이
+     * 같으면 이미 예약된 걸 그대로 둠 - 아직 대기 중인 오늘 알림을 안 건드림). 사용자가
+     * 설정 화면에서 직접 저장한 경우도 이 함수를 거치지만, 그땐 값이 실제로 달라지므로
+     * 정상적으로 재예약됨. */
     fun scheduleAllExact(context: Context, slots: List<String>) {
-        scheduleAll(
-            context,
-            morningTime = slots.getOrNull(0) ?: "08:00",
-            lunchTime = slots.getOrNull(1) ?: "12:00",
-            eveningTime = slots.getOrNull(2) ?: "18:00",
+        val normalized = listOf(
+            slots.getOrNull(0) ?: "08:00",
+            slots.getOrNull(1) ?: "12:00",
+            slots.getOrNull(2) ?: "18:00",
         )
+        val prefs = context.getSharedPreferences("notification_scheduler_prefs", Context.MODE_PRIVATE)
+        val lastScheduled = prefs.getString(KEY_LAST_SCHEDULED_SLOTS, null)
+        val normalizedKey = normalized.joinToString(",")
+        if (lastScheduled == normalizedKey) {
+            return // 값이 안 바뀌었으면 아직 대기 중인 예약을 그대로 둠(재예약 안 함)
+        }
+        prefs.edit().putString(KEY_LAST_SCHEDULED_SLOTS, normalizedKey).apply()
+        scheduleAll(context, morningTime = normalized[0], lunchTime = normalized[1], eveningTime = normalized[2])
     }
 
     /** 알림 동의를 철회했을 때 - 예약된 걸 전부 취소. */
@@ -84,6 +101,10 @@ object NotificationScheduler {
         workManager.cancelUniqueWork(WORK_LUNCH)
         workManager.cancelUniqueWork(WORK_EVENING)
         workManager.cancelUniqueWork(WORK_REST_GIVEUP)
+        // ⚠️ 마지막 예약값 기록도 같이 지움 - 안 지우면 나중에 동의를 다시 켰을 때
+        // "값이 그대로라 재예약 스킵"으로 오판해서 알림이 다시 안 걸릴 수 있음.
+        context.getSharedPreferences("notification_scheduler_prefs", Context.MODE_PRIVATE)
+            .edit().remove(KEY_LAST_SCHEDULED_SLOTS).apply()
     }
 
     private fun scheduleOne(context: Context, uniqueWorkName: String, time: String, slot: String) {
