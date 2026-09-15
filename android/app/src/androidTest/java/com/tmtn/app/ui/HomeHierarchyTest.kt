@@ -50,7 +50,7 @@ class HomeHierarchyTest {
     }
 
     @Test fun largeDatesCanBeScrolledAndScoreOpensFromHomeWithoutExampleBadge() {
-        val state = fixture().apply { tuntunIndexValue.value = 68; tuntunIndexBand.value = "보통"; tuntunIndexIsMock.value = true }
+        val state = fixture().apply { tuntunIndexValue.value = 68; tuntunIndexIsMock.value = true }
         var opened = false
         compose.setContent {
             TMTNv1Theme { CompositionLocalProvider(LocalTmtnTextScale provides 2f) {

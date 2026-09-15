@@ -5,12 +5,16 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
@@ -22,8 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.tmtn.app.network.model.AccessibilityUpdateRequest
 import com.tmtn.app.ui.onboarding.TmtnChip
 import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.LocalTmtnColors
@@ -38,7 +42,7 @@ private val MANDATORY_PURPOSES = listOf(
     "HEALTH_DATA_USAGE" to "건강정보 수집 · 이용",
 )
 private val OPTIONAL_PURPOSES = listOf(
-    "LOCATION_DATA_USAGE" to ("위치정보 수집 · 이용" to "달리기·걷기 미션 중에만 거리를 잽니다"),
+    "LOCATION_DATA_USAGE" to ("위치정보 수집 · 이용" to "거리를 재는 미션에서 사용해요"),
     "HEALTH_REFERENCE_ANALYSIS" to ("틈튼지수 산출을 위한 분석" to "동의하지 않아도 챌린지는 그대로 이용할 수 있습니다"),
     "NOTIFICATION" to ("알림 받기" to "생활시간에 맞춰 알려드립니다"),
 )
@@ -47,7 +51,8 @@ private val OPTIONAL_PURPOSES = listOf(
 @Composable
 fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
-    var withdrawTarget by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var withdrawTarget by state.pendingWithdrawal
     val consentByPurpose = state.consents.value.associateBy { it.purpose }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -61,7 +66,7 @@ fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             ) {
                 MANDATORY_PURPOSES.forEach { (purpose, label) ->
-                    ProfileListItem(label, agreedDateText(consentByPurpose[purpose]?.agreed_at)) { }
+                    ProfileListItem(label, agreedDateText(consentByPurpose[purpose]?.agreed_at))
                 }
             }
 
@@ -72,23 +77,28 @@ fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
                 OPTIONAL_PURPOSES.forEach { (purpose, info) ->
                     val (label, sub) = info
                     val agreed = consentByPurpose[purpose]?.status == "AGREED"
+                    val changeConsent: (Boolean) -> Unit = { checked ->
+                        if (checked) {
+                            scope.launch { state.agreeOptionalConsent(purpose); syncDeviceNotifications(context, state) }
+                        } else {
+                            state.errorMessage.value = null
+                            withdrawTarget = purpose
+                        }
+                    }
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                            .toggleable(agreed, enabled = !state.isLoading.value, role = Role.Switch, onValueChange = changeConsent)
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(label, style = TmtnType.label, color = colors.onSurface)
                             Text(sub, style = TmtnType.caption, color = colors.onSurfaceVariant)
                         }
                         Switch(
                             checked = agreed,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    scope.launch { state.agreeOptionalConsent(purpose) }
-                                } else {
-                                    withdrawTarget = purpose
-                                }
-                            },
+                            enabled = !state.isLoading.value,
+                            onCheckedChange = null,
                         )
                     }
                 }
@@ -106,31 +116,17 @@ fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
     // F11: 선택 동의 철회 확인
     val target = withdrawTarget
     if (target != null) {
-        AlertDialog(
-            onDismissRequest = { withdrawTarget = null },
-            containerColor = colors.surface,
-            title = { Text("동의를 철회할까요?", style = TmtnType.bodyLarge, color = colors.onSurface) },
-            text = {
-                Text(
-                    "동의를 철회하면 관련 기능이 즉시 꺼집니다. 언제든 다시 켤 수 있습니다.",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
-                )
-            },
-            confirmButton = {
-                Text(
-                    "철회하기", style = TmtnType.label, color = colors.error,
-                    modifier = Modifier.clickable {
-                        scope.launch { state.withdrawConsent(target) }
-                        withdrawTarget = null
-                    }.padding(8.dp),
-                )
-            },
-            dismissButton = {
-                Text(
-                    "취소", style = TmtnType.label, color = colors.primary,
-                    modifier = Modifier.clickable { withdrawTarget = null }.padding(8.dp),
-                )
-            },
+        com.tmtn.app.ui.common.TmtnConfirmationDialog(
+            title = "동의를 철회할까요?",
+            message = "동의를 철회하면 관련 기능이 즉시 꺼집니다. 언제든 다시 켤 수 있습니다.",
+            confirmLabel = "철회하기", busy = state.isLoading.value, error = state.errorMessage.value,
+            onConfirm = { scope.launch {
+                if (state.withdrawConsent(target)) {
+                    withdrawTarget = null
+                    syncDeviceNotifications(context, state)
+                }
+            } },
+            onDismiss = { withdrawTarget = null; state.errorMessage.value = null },
         )
     }
 }
@@ -138,80 +134,4 @@ fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
 private fun agreedDateText(agreedAt: String?): String {
     if (agreedAt == null) return ""
     return "${agreedAt.take(10)} 동의함"
-}
-
-/** Figma F12 · 접근성 설정 */
-@Composable
-fun AccessibilityScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
-    val colors = LocalTmtnColors.current
-    val accessibility = state.accessibility.value
-    androidx.compose.runtime.LaunchedEffect(accessibility?.reduced_motion) {
-        accessibility?.let { com.tmtn.app.ui.theme.AccessibilitySettingsHolder.reducedMotion.value = it.reduced_motion }
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "접근성", onBack = onBack)
-        Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text("글자 크기", style = TmtnType.label, color = colors.onSurface)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("NORMAL" to "보통", "LARGE" to "크게", "EXTRA_LARGE" to "아주 크게").forEach { (value, label) ->
-                    TmtnChip(
-                        text = label,
-                        selected = (accessibility?.preferred_text_scale_hint ?: "NORMAL") == value,
-                        onClick = { scope.launch { state.updateAccessibility(AccessibilityUpdateRequest(preferred_text_scale_hint = value)) } },
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text("미리보기", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                Text("점심 먹고 8분 걷기", style = TmtnType.bodyLarge, color = colors.onSurface)
-                Text("짧게 걸어도 오늘의 실천은 남아요.", style = TmtnType.body, color = colors.onSurfaceVariant)
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
-            ) {
-                AccessibilityToggleRow(
-                    "큰 버튼", "버튼을 더 편하게 누를 수 있어요",
-                    accessibility?.large_controls ?: false,
-                ) { scope.launch { state.updateAccessibility(AccessibilityUpdateRequest(large_controls = it)) } }
-                AccessibilityToggleRow(
-                    "동작 줄이기", "화면 전환 효과를 줄입니다",
-                    accessibility?.reduced_motion ?: false,
-                ) { scope.launch { state.updateAccessibility(AccessibilityUpdateRequest(reduced_motion = it)) } }
-                AccessibilityToggleRow(
-                    "고대비", "글자와 배경의 차이를 키웁니다",
-                    accessibility?.senior_mode ?: false,
-                ) { scope.launch { state.updateAccessibility(AccessibilityUpdateRequest(senior_mode = it)) } }
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(20.dp),
-            ) {
-                Text("기능과 정보의 순서는 어떤 설정에서도 같습니다.", style = TmtnType.body, color = colors.onSurface)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccessibilityToggleRow(title: String, sub: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    val colors = LocalTmtnColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, style = TmtnType.label, color = colors.onSurface)
-            Text(sub, style = TmtnType.caption, color = colors.onSurfaceVariant)
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
 }

@@ -46,32 +46,31 @@ fun A16PermissionsScreen(
 
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth().weight(1f)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                "자동 측정 권한을 확인해 주세요",
+                "움직임을 함께\n셀 준비를 해요.",
                 style = TmtnType.headline, color = colors.onSurface,
             )
             Text(
-                "걷기·계단·거리를 직접 입력하지 않아도 되도록 기기 센서를 씁니다.",
+                "걷거나 계단을 오르는 움직임을 알아차리고, 실천한 만큼 기록할게요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
 
-            PermissionCard(title = "신체 활동", required = true, description = "걸음·계단을 세기 위해 필요합니다. 없으면 자동 측정을 켤 수 없어요.")
-            PermissionCard(title = "위치", required = false, description = "걸은 거리를 계산할 때만 씁니다. 거부하면 시간·계단만 기록됩니다.")
-            PermissionCard(title = "알림", required = false, description = "측정 중 상태와 하루 한 번 카드 알림을 보냅니다.")
+            PermissionCard(title = "신체 활동", required = true, description = "걸음과 움직이는 시간을 셀 때 사용해요. 아래 버튼을 누르면 휴대전화의 권한 창이 열려요.")
+            PermissionCard(title = "위치", required = false, description = "거리를 재는 미션을 시작할 때 따로 요청해요. 걷는 시간이나 계단을 셀 때는 필요 없어요.")
 
             Text(
-                "권한을 주지 않아도 앱은 그대로 씁니다. 자동 측정만 직접 기록으로 바뀝니다.",
+                "지금 건너뛰어도 괜찮아요. 미션을 할 때 허용하거나, 직접 체크를 선택할 수 있어요.",
                 style = TmtnType.caption, color = colors.onSurfaceVariant,
             )
 
             TmtnPrimaryButton(
-                text = "권한 허용하기",
+                text = "신체 활동 권한 확인",
                 onClick = {
                     onRequestPermissions()
                     state.step.value = OnboardingStep.A15_COMPLETE
@@ -103,7 +102,7 @@ private fun PermissionCard(title: String, required: Boolean, description: String
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             ) {
                 Text(
-                    if (required) "필수" else "선택",
+                    if (required) "자동 측정에 필요" else "거리 미션에서",
                     style = TmtnType.caption,
                     color = if (required) colors.onSurface else colors.onSurfaceVariant,
                 )

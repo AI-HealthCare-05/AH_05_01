@@ -1,12 +1,11 @@
 package com.tmtn.app.ui.onboarding
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -14,21 +13,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
-import kotlinx.coroutines.launch
 
 /** 시스템 뒤로가기(제스처·버튼) 눌렀을 때 어느 단계로 돌아갈지.
  * null이면 "더 되돌아갈 데 없음" -> 시스템 기본 동작(앱 종료)을 그대로 허용. */
 private fun previousStepFor(step: OnboardingStep): OnboardingStep? = when (step) {
     OnboardingStep.A01_SPLASH -> null
     OnboardingStep.A02_START -> null
-    OnboardingStep.A03_SIGNUP -> OnboardingStep.A02_START
+    OnboardingStep.AUTH_CHOICE -> OnboardingStep.A02_START
+    OnboardingStep.A03_SIGNUP -> OnboardingStep.AUTH_CHOICE
     OnboardingStep.A04_VERIFY -> OnboardingStep.A03_SIGNUP
-    OnboardingStep.A05_LOGIN -> OnboardingStep.A02_START
+    OnboardingStep.A05_LOGIN -> OnboardingStep.AUTH_CHOICE
     OnboardingStep.A06_CONSENT -> OnboardingStep.A04_VERIFY
     OnboardingStep.A07_PROFILE -> OnboardingStep.SIGNUP_COMPLETE
     OnboardingStep.A08_EXERCISE -> OnboardingStep.A07_PROFILE
@@ -57,6 +59,7 @@ private fun previousStepFor(step: OnboardingStep): OnboardingStep? = when (step)
 @Composable
 fun OnboardingFlow(
     onOnboardingComplete: () -> Unit,
+    onLoginComplete: () -> Unit = onOnboardingComplete,
     hasSensorPermissions: () -> Boolean = { true },
     onRequestPermissions: () -> Unit = {},
     startAtLogin: Boolean = false,
@@ -72,6 +75,8 @@ fun OnboardingFlow(
         }
     }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val welcomeState = rememberSaveableStateHolder()
 
     // ⚠️ 2026-09-06 QA(P1-9) 반영: 스낵바 타이머가 화면 전환과 분리돼 있어서, 로그인
     // 화면에서 뜬 에러가 "이메일로 가입하기"로 넘어간 뒤에도 6초 동안 그대로 남아있었음
@@ -86,28 +91,29 @@ fun OnboardingFlow(
     LaunchedEffect(state.accountCreated) {
         state.restoreProfileForResume()
     }
-    // ⚠️ 2026-09-10 추가(구글 가입): 구글로 처음 온 사용자는 A04(인증번호)를 거치지 않고
-    // 곧장 A06(동의)로 오므로, 뒤로가기가 A04로 가면 아무것도 없는 화면이 뜸. A02로 돌려보내고
-    // 들고 있던 구글 ID 토큰도 같이 버림(cancelGoogleSignup은 이메일 가입에선 아무 일도 안 함).
-    val previousStep = when {
-        state.accountCreated && state.step.value == OnboardingStep.A06_CONSENT -> null
-        state.isGoogleSignup && state.step.value == OnboardingStep.A06_CONSENT -> OnboardingStep.A02_START
-        else -> previousStepFor(state.step.value)
-    }
-    BackHandler(enabled = previousStep != null) {
-        previousStep?.let {
-            if (state.step.value == OnboardingStep.A06_CONSENT) state.cancelGoogleSignup()
-            state.step.value = it
+    val previousStep = if (state.accountCreated && state.step.value == OnboardingStep.A06_CONSENT) null else previousStepFor(state.step.value)
+    BackHandler(enabled = previousStep != null || state.isLoading.value || state.googlePicking.value) {
+        if (!state.isLoading.value && !state.googlePicking.value) {
+            if (state.step.value == OnboardingStep.A06_CONSENT) state.leaveConsent()
+            else previousStep?.let { state.step.value = it }
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
+      Box(Modifier.weight(1f)) {
         when (state.step.value) {
             OnboardingStep.A01_SPLASH -> A01SplashScreen(state)
-            OnboardingStep.A02_START -> A02StartScreen(state, scope, onLoginSuccess = onOnboardingComplete)
+            OnboardingStep.A02_START -> welcomeState.SaveableStateProvider("welcome") { A02StartScreen(state) }
+            OnboardingStep.AUTH_CHOICE -> AuthChoiceScreen(
+                onGoogle = { scope.launch { state.loginWithGoogle(context, onLoginComplete) } },
+                onEmail = { state.cancelGoogleSignup(); state.step.value = OnboardingStep.A03_SIGNUP },
+                onLogin = { state.cancelGoogleSignup(); state.step.value = OnboardingStep.A05_LOGIN },
+                onBack = { state.step.value = OnboardingStep.A02_START },
+                busy = state.isLoading.value || state.googlePicking.value,
+            )
             OnboardingStep.A03_SIGNUP -> A03SignupScreen(state, scope)
             OnboardingStep.A04_VERIFY -> A04VerifyScreen(state, scope)
-            OnboardingStep.A05_LOGIN -> A05LoginScreen(state, scope, onLoginSuccess = onOnboardingComplete)
+            OnboardingStep.A05_LOGIN -> A05LoginScreen(state, scope, onLoginSuccess = onLoginComplete)
             OnboardingStep.A06_CONSENT -> A06ConsentScreen(state, scope)
             OnboardingStep.SIGNUP_COMPLETE -> SignupCompleteScreen {
                 OnboardingCheckpoint.save(OnboardingStep.A07_PROFILE)
@@ -131,65 +137,13 @@ fun OnboardingFlow(
             }
         }
 
-        // ⚠️ 2026-09-10 추가: 구글 계정 연결 확인 (A02·A05 어디서 눌러도 떠야 해서 화면별로
-        // 두지 않고 여기 공용 오버레이로 둠).
-        // 이건 "실패"가 아니라 "확인"입니다 - 같은 이메일로 이미 가입한 계정이 있을 때만 뜨고,
-        // 수락하면 그 계정에 구글 로그인이 연결됩니다(계정이 새로 생기지 않음).
-        state.googleLinkEmail.value?.let { linkEmail ->
-            AlertDialog(
-                onDismissRequest = { state.cancelGoogleLink() },
-                containerColor = colors.surface,
-                title = {
-                    Text("이미 가입한 계정이 있어요", style = TmtnType.bodyLarge, color = colors.onSurface)
-                },
-                text = {
-                    Text(
-                        "$linkEmail 은(는) 이메일로 이미 가입된 계정이에요.\n" +
-                            "이 계정에 구글 로그인을 연결할까요? 연결하면 다음부터 구글로도, " +
-                            "기존 비밀번호로도 로그인할 수 있어요. 기록은 그대로 유지됩니다.",
-                        style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    )
-                },
-                confirmButton = {
-                    Text(
-                        "연결하기", style = TmtnType.label, color = colors.primary,
-                        modifier = Modifier
-                            .clickable { scope.launch { state.confirmGoogleLink(onOnboardingComplete) } }
-                            .padding(12.dp),
-                    )
-                },
-                dismissButton = {
-                    Text(
-                        "취소", style = TmtnType.label, color = colors.onSurfaceVariant,
-                        modifier = Modifier
-                            .clickable { state.cancelGoogleLink() }
-                            .padding(12.dp),
-                    )
-                },
-            )
-        }
-
-        // 에러 메시지 - 화면 하단에 떠 있는 배너
-        state.errorMessage.value?.let { message ->
-            Surface(
-                color = colors.errorContainer,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(20.dp),
-            ) {
-                Text(
-                    "⚠️ $message", style = TmtnType.caption, color = colors.error,
-                    modifier = Modifier.padding(12.dp),
-                )
-            }
-        }
-
-        // 로딩 인디케이터 - 화면 전체 덮는 오버레이
-        if (state.isLoading.value) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = colors.primary)
-            }
-        }
+      }
+      if (state.googleLinkEmail.value == null) OnboardingErrorMessage(state.errorMessage.value)
     }
+    state.googleLinkEmail.value?.let { email ->
+        GoogleLinkDialog(email, state.isLoading.value, state.errorMessage.value,
+            onConfirm = { scope.launch { state.confirmGoogleLink(onLoginComplete) } },
+            onDismiss = { state.cancelGoogleSignup(); state.errorMessage.value = null })
+    }
+    if (state.isLoading.value && state.googleLinkEmail.value == null) OnboardingSavingDialog()
 }

@@ -45,19 +45,14 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
     var weightText by remember(health) {
         mutableStateOf((health?.input_values?.get("weight_kg") as? Number)?.toInt()?.toString() ?: "")
     }
-    // ⚠️ 2026-09-07 QA(N5) 반영: 성별이 읽기 전용이라 온보딩에서 잘못/무심코 넘긴 값을 되돌릴
-    // 방법이 없었음. 키·몸무게와 같은 방식(로컬 편집 후 저장)으로 고칠 수 있게 함.
-    var gender by remember(user) { mutableStateOf(user?.gender) }
-    // ⚠️ 2026-09-08 QA 반영: 온보딩(A07)에는 여성일 때 임신 여부를 묻는 칸이 있는데 이 화면엔
-    // 없었음. 그래서 여기서 성별을 여성으로 바꾸면 is_pregnant가 null인 채로 남고, 틈튼지수
-    // 건강 영역이 통째로 미산출됨(_get_pregnancy_status()가 "모른다"를 임신 아님으로 넘겨짚지
-    // 않기 때문). A07과 같은 질문을 여기에도 둬서 성별을 바꾼 뒤에도 계산이 이어지게 함.
+    // Registered gender is read-only; pregnancy remains editable independently.
+    val gender = user?.gender
     var isPregnant by remember(user) { mutableStateOf(user?.is_pregnant) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "신체 정보", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("기본 정보", style = TmtnType.title, color = colors.onSurface)
@@ -67,10 +62,12 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
                     style = TmtnType.bodyLarge, color = colors.onSurface)
             }
             androidx.compose.material3.HorizontalDivider(color = colors.outlineVariant)
-            Text("성별", style = TmtnType.label, color = colors.onSurface)
-            Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                com.tmtn.app.ui.onboarding.TmtnIntensityCard("남성", "", gender == "MALE", { gender = "MALE" }, Modifier.weight(1f).fillMaxHeight())
-                com.tmtn.app.ui.onboarding.TmtnIntensityCard("여성", "", gender == "FEMALE", { gender = "FEMALE" }, Modifier.weight(1f).fillMaxHeight())
+            Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(14.dp)).padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("성별", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text(when (gender) { "MALE" -> "남성"; "FEMALE" -> "여성"; else -> "등록된 정보가 없어요" },
+                    style = TmtnType.bodyLarge, color = colors.onSurface)
+                Text("가입할 때 등록한 정보예요. 변경할 수 없어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
             if (gender == "FEMALE") {
@@ -96,34 +93,29 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
                 label = "몸무게 (kg)", keyboardType = KeyboardType.Number,
             )
 
-            Text("저장하면 틈튼지수에 반영돼요. 지난 기록은 그대로 남아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            Text("다음 틈튼지수 계산에 사용해요. 지난 기록은 그대로 남아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             val saveBlockedReason = when {
-                heightText.toIntOrNull() == null -> "키를 입력해 주세요."
-                weightText.toIntOrNull() == null -> "몸무게를 입력해 주세요."
+                (heightText.toIntOrNull() ?: 0) <= 0 -> "키를 입력해 주세요."
+                (weightText.toIntOrNull() ?: 0) <= 0 -> "몸무게를 입력해 주세요."
+                gender == null -> "등록된 성별을 확인하지 못했어요. 이전 화면에서 다시 불러와 주세요."
                 gender == "FEMALE" && isPregnant == null -> "임신 여부를 선택해 주세요."
                 else -> null
             }
             TmtnPrimaryButton(
-                text = "저장하고 다시 계산",
+                text = if (state.isLoading.value) "저장 중…" else "신체 정보 저장",
                 onClick = {
                     val h = heightText.toIntOrNull()
                     val w = weightText.toIntOrNull()
                     scope.launch {
-                        val currentGender = gender
-                        // ⚠️ 2026-09-08: 성별과 임신 여부는 같이 보내야 함. 성별만 바꾸고
-                        // is_pregnant를 안 보내면 예전 값(또는 null)이 그대로 남아서, 남성에서
-                        // 여성으로 바꾼 사람은 계속 미산출 상태가 됨.
-                        val pregnancyToSave = if (currentGender == "FEMALE") isPregnant else null
-                        if (currentGender != null &&
-                            (currentGender != user?.gender || pregnancyToSave != user?.is_pregnant)
-                        ) {
-                            state.saveGenderAndPregnancy(currentGender, pregnancyToSave)
+                        if (gender == "FEMALE" && isPregnant != user?.is_pregnant) {
+                            state.saveGenderAndPregnancy(gender, isPregnant)
+                            if (state.errorMessage.value != null) return@launch
                         }
                         if (h != null && w != null) state.saveHealthInput(h, w)
                     }
                 },
-                enabled = saveBlockedReason == null,
+                enabled = saveBlockedReason == null && !state.isLoading.value,
                 disabledReason = saveBlockedReason,
             )
         }
@@ -137,7 +129,7 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
     val existing = state.exerciseHabits.value
 
     var strengthCount by remember(existing) { mutableStateOf(existing?.strength_weekly_count ?: 0) }
-    var strengthIntensity by remember(existing) { mutableStateOf(existing?.strength_intensity ?: "MODERATE") }
+    var strengthIntensity by remember(existing) { mutableStateOf(existing?.strength_intensity) }
     var aerobicLow by remember(existing) { mutableStateOf(existing?.aerobic_low_minutes ?: 0) }
     var aerobicModerate by remember(existing) { mutableStateOf(existing?.aerobic_moderate_minutes ?: 0) }
     var aerobicHigh by remember(existing) { mutableStateOf(existing?.aerobic_high_minutes ?: 0) }
@@ -145,7 +137,7 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "운동 정보", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             com.tmtn.app.ui.common.TmtnExerciseFields(
@@ -157,12 +149,14 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
             Text("저장하면 틈튼지수에 반영돼요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             TmtnPrimaryButton(
-                text = "저장하고 다시 계산",
+                text = if (state.isLoading.value) "저장 중…" else "운동 정보 저장",
                 onClick = {
                     scope.launch {
                         state.saveExerciseHabits(strengthCount, strengthIntensity, aerobicLow, aerobicModerate, aerobicHigh)
                     }
                 },
+                enabled = !state.isLoading.value && (strengthCount == 0 || strengthIntensity != null),
+                disabledReason = if (strengthCount > 0 && strengthIntensity == null) "근력운동의 강도를 골라 주세요." else null,
             )
         }
     }

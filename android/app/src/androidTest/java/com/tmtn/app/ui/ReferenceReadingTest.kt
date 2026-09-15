@@ -23,27 +23,12 @@ import org.junit.Test
 class ReferenceReadingTest {
     @get:Rule val compose = createComposeRule()
 
-    private fun result() = TuntunScoreV2Response(
-        tuntunIndex = 68.0, physicalScore = 70.0, diabetesScore = 66.0, hypertensionScore = 72.0,
-        lifestyleScore = 64.0, aerobicScore = 78.0, strengthScore = 50.0,
-        lifestyleAvailableSubcomponentCount = 2, lifestyleScoreSource = "questionnaire",
-        componentScores = listOf(
-            TuntunComponentScoreV2("physical", "신체", 70.0, true, "양호", "신체 정보에 대한 안내", "test"),
-            TuntunComponentScoreV2("diabetes", "당뇨", 66.0, true, "보통", "당뇨 영역 안내", "test"),
-            TuntunComponentScoreV2("hypertension", "고혈압", 72.0, true, "양호", "고혈압 영역 안내", "test"),
-            TuntunComponentScoreV2("lifestyle", "생활습관", 64.0, true, "보통", "입력한 운동 정보에 대한 안내", "test"),
-        ),
-        availableComponentCount = 4, availableComponents = listOf("physical", "diabetes", "hypertension", "lifestyle"),
-        unavailableComponents = emptyList(), isPartialScore = false, scoreAvailable = true,
-        activityWindowStart = "2026-08-31", activityWindowEnd = "2026-09-06", recordedDays = 6,
-        missionIntegrationStatus = "pending_evidence", scoreContractVersion = "test", modelVersion = "test",
-        calibrationVersion = null, notice = "비진단용 참고 정보", olderAdultNotice = null, isMock = true,
-    )
+    private fun result() = peerFixture(68.0)
 
     private fun fixture() = ReferenceState().apply { score.value = result() }
 
     @Test fun homeAndSummaryKeepTheSameActualFractionalScore() {
-        val state = fixture().apply { score.value = result().copy(tuntunIndex = 79.6) }
+        val state = fixture().apply { score.value = result().copy(peerCompositeScore = 79.6) }
         val home = com.tmtn.app.ui.cardhome.CardHomeState().apply {
             tuntunIndexValue.value = 80
             tuntunIndexPresentationValue.value = 79.6
@@ -54,8 +39,8 @@ class ReferenceReadingTest {
             else ReferenceSummaryScreen(state)
         } }
         val description = "틈튼지수 79.6점"
-        compose.onNodeWithContentDescription(description).assertIsDisplayed()
-        compose.onNodeWithText("지수 보기 ›").performClick()
+        compose.onNodeWithText("틈튼일보").assertIsDisplayed()
+        compose.onNodeWithText("틈튼일보").performClick()
         compose.onNodeWithContentDescription(description).assertIsDisplayed()
     }
 
@@ -81,7 +66,7 @@ class ReferenceReadingTest {
         compose.onNodeWithText("추정 허리둘레").assertIsDisplayed()
         compose.onNodeWithContentDescription("뒤로").performClick()
         compose.onNodeWithContentDescription("내 틈튼일보 펼치기").performScrollTo().assertIsDisplayed()
-        compose.runOnIdle { assertEquals(68.0, state.score.value!!.tuntunIndex!!, 0.0) }
+        compose.runOnIdle { assertEquals(68.0, state.score.value!!.peerCompositeScore!!, 0.0) }
     }
 
     @Test fun newspaperOpensAndBeaverAreasCanBeExploredThenReturnedToSummary() {
@@ -107,9 +92,9 @@ class ReferenceReadingTest {
     @Test fun partialDataNeverBecomesAnOverallScoreOrAnUnavailableNumber() {
         val state = fixture().apply {
             score.value = result().copy(availableComponentCount = 1, isPartialScore = true,
-                componentScores = listOf(
-                    TuntunComponentScoreV2("physical", "신체", 99.0, false, null, "정보 부족 안내", "test"),
-                    result().componentScores.last(),
+                components = listOf(
+                    PeerComponent("physical", "신체", false, null, null, PeerRankDisplay(null, "", null), "정보 부족 안내"),
+                    result().components.last(),
                 ))
         }
         compose.setContent { TMTNv1Theme { ReferenceDetailScreen(state) } }
@@ -202,12 +187,12 @@ class ReferenceReadingTest {
         compose.onNodeWithContentDescription("100명 중 약 35번째").performScrollTo().assertIsDisplayed()
         compose.onNode(hasText("당뇨") and isSelectable()).performScrollTo().performClick().assertIsSelected()
         compose.onNodeWithContentDescription("100명 중 약 48번째").assertIsDisplayed()
-        compose.runOnIdle { assertEquals(68.0, state.score.value!!.tuntunIndex!!, 0.0) }
+        compose.runOnIdle { assertEquals(68.0, state.score.value!!.peerCompositeScore!!, 0.0) }
     }
 
     @Test fun currentScoresDoNotNeedDevelopmentCopyOrPretendToBeRanks() {
         val state = fixture().apply {
-            score.value = result().copy(notice = "현재 화면의 건강영역 점수는 연동 확인용 Mock 값입니다.", olderAdultNotice = "고령자 참고 안내")
+            score.value = result().copy(notice = "현재 화면의 건강영역 점수는 연동 확인용 Mock 값입니다.")
         }
         compose.setContent { TMTNv1Theme { ReferenceDetailScreen(state) } }
         compose.onNodeWithContentDescription("틈튼지수 68점").assertIsDisplayed()
@@ -217,6 +202,5 @@ class ReferenceReadingTest {
         compose.onNodeWithText("읽는 법").performClick()
         compose.onNodeWithText("Mock", substring = true).assertDoesNotExist()
         compose.onNodeWithText("비진단용 참고 정보").assertIsDisplayed()
-        compose.onNodeWithText("고령자 참고 안내").performScrollTo().assertIsDisplayed()
     }
 }

@@ -1,5 +1,8 @@
 package com.tmtn.app.ui.profile
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,7 +49,7 @@ fun EmailChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "이메일 변경", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Column(
@@ -79,7 +82,7 @@ fun EmailChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> 
                 TmtnPrimaryButton(
                     text = "인증번호 받기",
                     onClick = { scope.launch { state.requestEmailChangeCode(newEmail) } },
-                    enabled = newEmail.contains("@"),
+                    enabled = !state.isLoading.value && android.util.Patterns.EMAIL_ADDRESS.matcher(newEmail.trim()).matches(),
                 )
             } else {
                 Text(
@@ -93,7 +96,7 @@ fun EmailChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> 
                 TmtnPrimaryButton(
                     text = "확인하고 변경",
                     onClick = { scope.launch { state.confirmEmailChange(code) } },
-                    enabled = code.length == 6,
+                    enabled = code.length == 6 && !state.isLoading.value,
                 )
                 TmtnTextButton(text = "다른 이메일로 다시 받기", onClick = { state.emailChangeCodeSent.value = false })
             }
@@ -112,7 +115,7 @@ fun PasswordChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "비밀번호 변경", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             TmtnTextField(value = currentPassword, onValueChange = { currentPassword = it }, label = "지금 비밀번호", isPassword = true)
@@ -120,7 +123,7 @@ fun PasswordChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () 
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("· 8자 이상", style = TmtnType.label, color = colors.onSurfaceVariant)
-                Text("· 문자와 숫자를 함께 넣어 주세요", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text("· 영문 대문자·소문자·숫자·특수문자를 모두 넣어 주세요", style = TmtnType.caption, color = colors.onSurfaceVariant)
                 Text("· 이전 비밀번호와 다르게 정해 주세요", style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
@@ -134,7 +137,7 @@ fun PasswordChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () 
                     .padding(16.dp),
             ) {
                 Text(
-                    "비밀번호를 바꾸면 다른 기기의 로그인이 모두 해제됩니다. 이 기기에서는 그대로 이어집니다.",
+                    "다음 로그인부터 새 비밀번호를 사용해 주세요.",
                     style = TmtnType.body, color = colors.onSurface,
                 )
             }
@@ -142,7 +145,7 @@ fun PasswordChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () 
             TmtnPrimaryButton(
                 text = "비밀번호 바꾸기",
                 onClick = { scope.launch { state.changePassword(currentPassword, newPassword) } },
-                enabled = currentPassword.isNotBlank() && newPassword.length >= 8 && newPassword == confirmPassword,
+                enabled = !state.isLoading.value && currentPassword.isNotBlank() && com.tmtn.app.ui.onboarding.isValidPassword(newPassword) && newPassword != currentPassword && newPassword == confirmPassword,
             )
         }
     }
@@ -158,7 +161,7 @@ fun AccountDeleteReauthScreen(state: ProfileState, scope: CoroutineScope, onBack
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "계정 삭제", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(
@@ -213,10 +216,10 @@ fun AccountDeleteReauthScreen(state: ProfileState, scope: CoroutineScope, onBack
 
 /** Figma F18 · 삭제 완료 */
 @Composable
-fun AccountDeletedScreen(onGoHome: () -> Unit) {
+fun AccountDeletedScreen(onGoLogin: () -> Unit) {
     val colors = LocalTmtnColors.current
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -231,41 +234,19 @@ fun AccountDeletedScreen(onGoHome: () -> Unit) {
                 .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
                 .padding(16.dp),
         ) {
-            Text("기록 · 재료 · 댐은 모두 지웠습니다. 삭제 상태 조회나 복구는 제공하지 않습니다.", style = TmtnType.body, color = colors.onSurface)
+            Text("계정과 함께 기록 · 재료 · 댐을 지웠어요. 삭제한 내용은 되돌릴 수 없어요.", style = TmtnType.body, color = colors.onSurface)
         }
-        Text(
-            "법령이 정한 최소 보관 기간이 있는 항목은 그 기간이 끝난 뒤 지웁니다.",
-            style = TmtnType.body, color = colors.onSurfaceVariant,
-        )
-        TmtnPrimaryButton(text = "홈으로 가기", onClick = onGoHome)
+        TmtnPrimaryButton(text = "로그인 화면으로", onClick = onGoLogin)
     }
 }
 
 /** Figma F22 · 로그아웃 확인 다이얼로그 */
 @Composable
 fun LogoutConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    val colors = LocalTmtnColors.current
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = colors.surface,
-        title = { Text("로그아웃할까요?", style = TmtnType.title, color = colors.onSurface) },
-        text = {
-            Text(
-                "기록은 그대로 남습니다. 같은 계정으로 다시 로그인하면 이어서 볼 수 있습니다.",
-                style = TmtnType.body, color = colors.onSurfaceVariant,
-            )
-        },
-        confirmButton = {
-            Text(
-                "로그아웃", style = TmtnType.label, color = colors.error,
-                modifier = Modifier.clickable { onConfirm() }.padding(8.dp),
-            )
-        },
-        dismissButton = {
-            Text(
-                "그만두기", style = TmtnType.label, color = colors.primary,
-                modifier = Modifier.clickable { onDismiss() }.padding(8.dp),
-            )
-        },
+    com.tmtn.app.ui.common.TmtnConfirmationDialog(
+        title = "로그아웃할까요?",
+        message = "기록은 그대로 남습니다. 같은 계정으로 다시 로그인하면 이어서 볼 수 있습니다.",
+        confirmLabel = "로그아웃", cancelLabel = "그만두기",
+        onConfirm = onConfirm, onDismiss = onDismiss,
     )
 }

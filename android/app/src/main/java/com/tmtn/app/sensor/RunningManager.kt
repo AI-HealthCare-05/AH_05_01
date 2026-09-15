@@ -33,6 +33,9 @@ class RunningManager(private val context: Context) : LocationListener {
     private val loggingScope = CoroutineScope(Dispatchers.IO)
 
     private var lastLocation: Location? = null
+    @Volatile private var lastAcceptedMovementAt = 0L
+    fun isRecentlyActive(now: Long = android.os.SystemClock.elapsedRealtime()): Boolean =
+        lastAcceptedMovementAt > 0L && now - lastAcceptedMovementAt in 0L..3000L
 
     // 누적 달린 거리 (미터 단위)
     var totalDistanceMeters = 0f
@@ -52,6 +55,9 @@ class RunningManager(private val context: Context) : LocationListener {
 
     @SuppressLint("MissingPermission")
     fun start() {
+        // A resumed session establishes a new GPS segment; movement while paused is excluded.
+        lastLocation = null
+        lastAcceptedMovementAt = 0L
         locationManager.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
             1000L,   // 최소 1초 간격으로 위치 갱신 요청
@@ -62,10 +68,12 @@ class RunningManager(private val context: Context) : LocationListener {
 
     fun stop() {
         locationManager.removeUpdates(this)
+        lastAcceptedMovementAt = 0L
     }
 
     fun reset() {
         lastLocation = null
+        lastAcceptedMovementAt = 0L
         totalDistanceMeters = 0f
     }
 
@@ -74,6 +82,7 @@ class RunningManager(private val context: Context) : LocationListener {
     // 맞추면 됨 - lastLocation은 그대로 초기화해서 다음 위치 업데이트로 새로 기준을 잡음.
     fun resumeFrom(baselineMeters: Int) {
         lastLocation = null
+        lastAcceptedMovementAt = 0L
         totalDistanceMeters = baselineMeters.toFloat()
     }
 
@@ -118,6 +127,7 @@ class RunningManager(private val context: Context) : LocationListener {
         }
 
         totalDistanceMeters += distance
+        lastAcceptedMovementAt = android.os.SystemClock.elapsedRealtime()
         lastLocation = location
     }
 

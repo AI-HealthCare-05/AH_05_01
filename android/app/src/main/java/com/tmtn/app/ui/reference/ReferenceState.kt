@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.reference
 
+import com.tmtn.app.ui.common.failWithMessage
+import com.tmtn.app.ui.common.userMessageOr
 import androidx.compose.runtime.mutableStateOf
 import com.tmtn.app.network.ApiClient
 import com.tmtn.app.network.model.ScoreInputsResponse
@@ -22,6 +24,8 @@ enum class ReferenceStep {
 /** E그룹 전체 상태. CardHomeState/RecordState와 같은 패턴 — 백스택은 E04가
  * E01(요약)·E03(반영 항목) 양쪽에서 들어올 수 있어서 맵 대신 실제 스택으로 관리함. */
 class ReferenceState {
+    val journal = com.tmtn.app.ui.journal.JournalState()
+    val waist = WaistEstimateState()
     internal val editorial = ScoreEditorialState()
     internal val factorOpenRequest = androidx.compose.runtime.mutableIntStateOf(0)
     private val backStack = mutableListOf(ReferenceStep.LOADING)
@@ -51,22 +55,29 @@ class ReferenceState {
     // ⚠️ 2026-09-10 반영: 실모델(또래 백분위) 연동. 기존 v2(Mock)는 "최근 7일 기록 일수"로
     // 산출 가능 여부를 판정했는데, 새 계약엔 그 개념이 없음(availableComponentCount로만 판정).
     suspend fun loadScore() {
+        if (isLoading.value) return
         isLoading.value = true
         errorMessage.value = null
         runCatching {
             val response = ApiClient.tuntunScoreApi.getTuntunScorePeerV2()
-            if (!response.isSuccessful) error("틈튼지수를 불러오지 못했어요.")
+            if (!response.isSuccessful) failWithMessage("틈튼지수를 불러오지 못했어요.")
             response.body()!!
         }.onSuccess { result ->
             if (result.scoreAvailable) {
                 score.value = result
                 replaceRoot(ReferenceStep.SUMMARY)
             } else {
+                score.value = null
+                eligibleRecordedDaysLabel.value = ""
                 eligibleRequiredDaysLabel.value = "신체정보 또는 운동습관"
                 replaceRoot(ReferenceStep.INELIGIBLE)
             }
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "틈튼지수를 불러오지 못했어요."
+            if (e is kotlinx.coroutines.CancellationException) {
+                isLoading.value = false
+                throw e
+            }
+            errorMessage.value = e.userMessageOr("틈튼지수를 불러오지 못했어요.")
         }
         isLoading.value = false
     }
@@ -98,10 +109,12 @@ class ReferenceState {
         isLoading.value = true
         runCatching {
             val response = ApiClient.tuntunScoreApi.getTuntunScoreInputs()
-            if (!response.isSuccessful) error("입력값을 불러오지 못했어요.")
+            if (!response.isSuccessful) failWithMessage("입력값을 불러오지 못했어요.")
             response.body()!!
         }.onSuccess { scoreInputs.value = it }
-            .onFailure { e -> errorMessage.value = e.message ?: "입력값을 불러오지 못했어요." }
+            .onFailure { e ->
+                if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+                errorMessage.value = e.userMessageOr("입력값을 불러오지 못했어요.") }
         isLoading.value = false
     }
 

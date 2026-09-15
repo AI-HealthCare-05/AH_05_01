@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.tmtn.app.ui.profile
 
 import androidx.compose.foundation.background
@@ -5,12 +7,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -95,7 +103,7 @@ fun HelpDetailScreen(onBack: () -> Unit, onInquiry: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "도움말", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("카드는 어떻게 정해지나요?", style = TmtnType.headline, color = colors.onSurface)
@@ -123,7 +131,7 @@ fun HelpDetailScreen(onBack: () -> Unit, onInquiry: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("이 답이 도움이 되었나요?", style = TmtnType.bodyLarge, color = colors.onSurface)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TmtnChip(text = "도움이 됐어요", selected = feedback == true, onClick = { feedback = true })
                     TmtnChip(text = "잘 모르겠어요", selected = feedback == false, onClick = { feedback = false })
                 }
@@ -146,17 +154,17 @@ private val INQUIRY_TOPICS = listOf(
 @Composable
 fun InquiryScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
-    var topic by remember { mutableStateOf("CARD_CHALLENGE") }
-    var content by remember { mutableStateOf("") }
-    var includeDeviceInfo by remember { mutableStateOf(true) }
+    var topic by rememberSaveable { mutableStateOf("CARD_CHALLENGE") }
+    var content by rememberSaveable { mutableStateOf("") }
+    var includeDeviceInfo by rememberSaveable { mutableStateOf(true) }
     val submitted = state.inquirySubmitted.value
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().imePadding()) {
         TmtnTopBar(title = "문의", onBack = onBack)
 
         if (submitted) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
+                modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -170,13 +178,14 @@ fun InquiryScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
         } else {
             Column(
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Text("무엇에 대한 문의인가요?", style = TmtnType.label, color = colors.onSurface)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     INQUIRY_TOPICS.forEach { (value, label) ->
                         TmtnChip(text = label, selected = topic == value, onClick = { topic = value })
                     }
@@ -185,6 +194,7 @@ fun InquiryScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
                 TmtnTextField(
                     value = content, onValueChange = { if (it.length <= 1000) content = it },
                     label = "내용", supportingText = "어떤 일이 있었는지 적어 주세요.",
+                    singleLine = false,
                 )
                 Text(
                     "${content.length} / 1000", style = TmtnType.caption, color = colors.onSurfaceVariant,
@@ -196,13 +206,14 @@ fun InquiryScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
                         .fillMaxWidth()
                         .background(colors.surface, RoundedCornerShape(16.dp))
                         .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
+                        .toggleable(includeDeviceInfo, role = Role.Checkbox, enabled = !state.isLoading.value) { includeDeviceInfo = it }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Checkbox(checked = includeDeviceInfo, onCheckedChange = { includeDeviceInfo = it })
+                    Checkbox(checked = includeDeviceInfo, onCheckedChange = null, enabled = !state.isLoading.value)
                     Column(modifier = Modifier.weight(1f)) {
                         Text("기기 정보 함께 보내기", style = TmtnType.label, color = colors.onSurface)
-                        Text("기종 · 앱 버전 · 오류 코드만 보냅니다", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                        Text("기종과 앱 버전을 함께 보내요", style = TmtnType.caption, color = colors.onSurfaceVariant)
                     }
                 }
 
@@ -219,10 +230,10 @@ fun InquiryScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
                 TmtnPrimaryButton(
                     text = "보내기",
                     onClick = {
-                        val deviceInfo = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} · v1.0.0"
+                        val deviceInfo = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} · v${com.tmtn.app.BuildConfig.VERSION_NAME}"
                         scope.launch { state.submitInquiry(topic, content, includeDeviceInfo, deviceInfo) }
                     },
-                    enabled = content.isNotBlank(),
+                    enabled = content.isNotBlank() && !state.isLoading.value,
                 )
             }
         }

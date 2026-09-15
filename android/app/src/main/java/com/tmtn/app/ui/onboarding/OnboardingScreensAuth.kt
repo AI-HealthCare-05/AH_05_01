@@ -49,21 +49,21 @@ private fun isValidEmail(email: String): Boolean {
 }
 
 /** 서버 validate_password와 같은 규칙: 8자 이상 + 대문자·소문자·숫자·특수문자 각 1개 이상. */
-private fun isValidPassword(password: String): Boolean =
+internal fun isValidPassword(password: String): Boolean =
     password.length >= 8 &&
-        password.any { it.isUpperCase() } &&
-        password.any { it.isLowerCase() } &&
-        password.any { it.isDigit() } &&
-        password.any { !it.isLetterOrDigit() }
+        password.any { it in 'A'..'Z' } &&
+        password.any { it in 'a'..'z' } &&
+        password.any { it in '0'..'9' } &&
+        password.any { it !in 'A'..'Z' && it !in 'a'..'z' && it !in '0'..'9' }
 
 /** 무엇이 빠졌는지 구체적으로 알려줌 - "규칙에 안 맞아요"만 보여주면 뭘 고쳐야 할지 모름. */
 private fun passwordRuleHint(password: String): String {
     val missing = buildList {
         if (password.length < 8) add("8자 이상")
-        if (password.none { it.isUpperCase() }) add("대문자")
-        if (password.none { it.isLowerCase() }) add("소문자")
-        if (password.none { it.isDigit() }) add("숫자")
-        if (password.none { !it.isLetterOrDigit() }) add("특수문자")
+        if (password.none { it in 'A'..'Z' }) add("대문자")
+        if (password.none { it in 'a'..'z' }) add("소문자")
+        if (password.none { it in '0'..'9' }) add("숫자")
+        if (password.none { it !in 'A'..'Z' && it !in 'a'..'z' && it !in '0'..'9' }) add("특수문자")
     }
     return if (missing.isEmpty()) "" else "${missing.joinToString("·")}가 필요해요."
 }
@@ -81,7 +81,7 @@ fun A03SignupScreen(state: OnboardingState, scope: CoroutineScope) {
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "이메일로 시작하기", onBack = { state.step.value = OnboardingStep.A02_START })
+        TmtnTopBar(title = "이메일로 시작하기", onBack = { state.step.value = OnboardingStep.AUTH_CHOICE })
         StepProgressHeader(1, 3, "계정 정보")
 
         Column(

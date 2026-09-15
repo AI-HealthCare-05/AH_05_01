@@ -1,20 +1,13 @@
 package com.tmtn.app.ui.onboarding
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import com.tmtn.app.ui.theme.tmtnPressFeedback
-import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +33,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import com.tmtn.app.ui.theme.ColorSelectionSurface
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material3.Icon
@@ -63,124 +60,59 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
+import com.tmtn.app.ui.theme.TmtnLayout
+import com.tmtn.app.ui.theme.tmtnFocusOutline
+import com.tmtn.app.ui.common.TmtnActionButton
+import com.tmtn.app.ui.common.TmtnActionStyle
 import kotlinx.coroutines.launch
 
-/** Figma: 뒤로가기 + 타이틀만 있는 상단바(높이 64). */
+/** Figma header: 48dp touch target, with expandable text for accessibility. */
 @Composable
 fun TmtnTopBar(title: String, onBack: (() -> Unit)?, trailing: (@Composable () -> Unit)? = null) {
     val colors = LocalTmtnColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 64.dp)
+            .heightIn(min = 48.dp)
             .background(colors.background),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로", tint = colors.onSurface)
         } else Spacer(Modifier.width(20.dp))
-        Text(title, style = TmtnType.title, color = colors.onSurface, modifier = Modifier.weight(1f).padding(vertical = 14.dp))
+        Text(title, style = TmtnType.label, color = colors.onSurface, modifier = Modifier.weight(1f).padding(vertical = 14.dp))
         trailing?.invoke()
     }
 }
 
-/** Every action has a 52dp minimum, grows with text and preserves its original callback. */
+/** Compatibility entry points; shared actions live in ui/common. Callbacks are unchanged. */
 @Composable
 fun TmtnPrimaryButton(
     text: String, onClick: () -> Unit, enabled: Boolean = true, modifier: Modifier = Modifier,
-    disabledReason: String? = null,
+    disabledReason: String? = null, loading: Boolean = false,
 ) {
-    val colors = LocalTmtnColors.current
-    val interactions = remember { MutableInteractionSource() }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Button(
-            onClick = onClick, enabled = enabled, interactionSource = interactions,
-            modifier = Modifier.fillMaxWidth().heightIn(min = if (AccessibilitySettingsHolder.largeControlsEnabled.value) 60.dp else 52.dp)
-                .tmtnPressFeedback(interactions, enabled),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = colors.primary,
-                contentColor = androidx.compose.ui.graphics.Color.White,
-                disabledContainerColor = colors.disabledContainer, disabledContentColor = colors.onSurfaceVariant),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 14.dp),
-        ) { Text(text, style = TmtnType.label, textAlign = TextAlign.Center) }
-        if (!enabled && disabledReason != null) {
-            Text(disabledReason, style = TmtnType.caption, color = colors.onSurfaceVariant,
+        TmtnActionButton(text, onClick, TmtnActionStyle.Primary, enabled = enabled, loading = loading)
+        if (!enabled && !loading && disabledReason != null) {
+            Text(disabledReason, style = TmtnType.caption, color = LocalTmtnColors.current.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
 
 @Composable
-fun TmtnTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = LocalTmtnColors.current
-    val interactions = remember { MutableInteractionSource() }
-    TextButton(onClick = onClick, interactionSource = interactions, modifier = modifier.fillMaxWidth().heightIn(min = 48.dp).tmtnPressFeedback(interactions),
-        colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurface)) {
-        Text(text, style = TmtnType.label, textAlign = TextAlign.Center)
-    }
+fun TmtnTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    TmtnActionButton(text, onClick, TmtnActionStyle.Text, modifier, enabled)
 }
 
 @Composable
 fun TmtnOutlinedButton(text: String, onClick: () -> Unit, enabled: Boolean = true, modifier: Modifier = Modifier) {
-    val colors = LocalTmtnColors.current
-    val interactions = remember { MutableInteractionSource() }
-    OutlinedButton(onClick = onClick, enabled = enabled, interactionSource = interactions,
-        modifier = modifier.fillMaxWidth().heightIn(min = if (AccessibilitySettingsHolder.largeControlsEnabled.value) 60.dp else 52.dp)
-            .tmtnPressFeedback(interactions, enabled),
-        shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, colors.outlineVariant),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.onSurface, disabledContentColor = colors.onSurfaceVariant),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-    ) { Text(text, style = TmtnType.label, textAlign = TextAlign.Center) }
-}
-
-/**
- * Google 브랜드 가이드에 맞춘 로그인 버튼 (2026-09-11 추가, 디자인 핸드오프
- * TMTN-google-signin-handoff-20260910 android-reference/res 기준).
- *
- * ⚠️ 앱 테마(라이트/다크)를 따르지 않고 색상을 고정함 - Google 공식 "Neutral" 버튼
- * 스타일은 배경/테두리/글자색을 브랜드 규정대로 고정하는 게 원칙(구글 로고 옆에
- * 임의의 앱 색을 섞으면 안 됨). 흰 배경(#FFFFFF) · 테두리(#747775, 1dp) ·
- * 글자색(#1F1F1F) 전부 디자인 핸드오프의 colors.xml 값 그대로.
- */
-@Composable
-fun TmtnGoogleButton(onClick: () -> Unit, enabled: Boolean = true, modifier: Modifier = Modifier) {
-    val interactions = remember { MutableInteractionSource() }
-    OutlinedButton(
-        onClick = onClick, enabled = enabled, interactionSource = interactions,
-        modifier = modifier.fillMaxWidth()
-            .heightIn(min = if (AccessibilitySettingsHolder.largeControlsEnabled.value) 60.dp else 52.dp)
-            .tmtnPressFeedback(interactions, enabled),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color(0xFF747775)),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = Color.White, contentColor = Color(0xFF1F1F1F),
-            disabledContainerColor = Color.White, disabledContentColor = Color(0xFF747775),
-        ),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Image(
-                painter = painterResource(com.tmtn.app.R.drawable.google_g_logo),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text("Google로 계속하기", style = TmtnType.label, textAlign = TextAlign.Center)
-        }
-    }
+    TmtnActionButton(text, onClick, TmtnActionStyle.Outlined, modifier, enabled)
 }
 
 @Composable
 fun TmtnTonalButton(text: String, onClick: () -> Unit, enabled: Boolean = true, modifier: Modifier = Modifier) {
-    val colors = LocalTmtnColors.current
-    val interactions = remember { MutableInteractionSource() }
-    Button(onClick = onClick, enabled = enabled, interactionSource = interactions,
-        modifier = modifier.fillMaxWidth().heightIn(min = if (AccessibilitySettingsHolder.largeControlsEnabled.value) 60.dp else 52.dp)
-            .tmtnPressFeedback(interactions, enabled), shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = colors.surface, contentColor = colors.onSurface,
-            disabledContainerColor = colors.disabledContainer, disabledContentColor = colors.onSurfaceVariant),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-    ) { Text(text, style = TmtnType.label, textAlign = TextAlign.Center) }
+    TmtnActionButton(text, onClick, TmtnActionStyle.Tonal, modifier, enabled)
 }
 
 /** Figma outlined text field: 라운드 12, floating label. Material3 OutlinedTextField가 이 패턴을 기본 지원. */
@@ -196,6 +128,9 @@ fun TmtnTextField(
     keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
     imeAction: androidx.compose.ui.text.input.ImeAction = androidx.compose.ui.text.input.ImeAction.Default,
     onImeAction: (() -> Unit)? = null,
+    enabled: Boolean = true,
+    errorMessage: String? = null,
+    singleLine: Boolean = true,
 ) {
     val colors = LocalTmtnColors.current
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -219,9 +154,11 @@ fun TmtnTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
+        enabled = enabled,
+        isError = errorMessage != null,
         label = { Text(label, style = TmtnType.caption) },
         textStyle = TmtnType.body,
-        supportingText = supportingText?.let { { Text(it, style = TmtnType.caption) } },
+        supportingText = (errorMessage ?: supportingText)?.let { { Text(it, style = TmtnType.caption) } },
         visualTransformation = if (isPassword && !showPassword) {
             androidx.compose.ui.text.input.PasswordVisualTransformation()
         } else {
@@ -229,11 +166,11 @@ fun TmtnTextField(
         },
         trailingIcon = if (isPassword) {
             {
-                Text(
-                    if (showPassword) "숨기기" else "보기",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    modifier = Modifier.clickable { showPassword = !showPassword }.padding(12.dp),
-                )
+                TextButton(onClick = { showPassword = !showPassword }, enabled = enabled,
+                    modifier = Modifier.heightIn(min = TmtnLayout.TouchTarget),
+                    colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurfaceVariant)) {
+                    Text(if (showPassword) "숨기기" else "보기", style = TmtnType.caption)
+                }
             }
         } else {
             null
@@ -245,16 +182,21 @@ fun TmtnTextField(
             onNext = { if (onImeAction != null) onImeAction() else focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) },
             onDone = { if (onImeAction != null) onImeAction() else keyboardController?.hide() },
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = TmtnLayout.FieldShape,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = colors.primary,
-            unfocusedBorderColor = colors.outline,
+            unfocusedBorderColor = colors.outlineVariant,
             focusedLabelColor = colors.primary,
             unfocusedLabelColor = colors.onSurfaceVariant,
+            errorBorderColor = colors.error,
+            errorLabelColor = colors.error,
+            errorSupportingTextColor = colors.error,
         ),
-        singleLine = true,
+        singleLine = singleLine,
+        minLines = if (singleLine) 1 else 4,
         modifier = modifier
             .fillMaxWidth()
+            .semantics { errorMessage?.let { error(it) } }
             .bringIntoViewRequester(bringIntoViewRequester)
             .onFocusEvent {
                 if (it.isFocused) {
@@ -264,12 +206,15 @@ fun TmtnTextField(
     )
 }
 
-/** Figma a07-chip / a08-freq: pill 모양 선택 칩. 선택되면 secondaryContainer 배경 + primary 2px 테두리. */
+/** Compact single-choice pill; selected fill + 1dp ink outline. Exercise options use equal cards. */
 @Composable
-fun TmtnChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun TmtnChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val colors = LocalTmtnColors.current
+    val interactions = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
+            .tmtnPressFeedback(interactions)
+            .tmtnFocusOutline(interactions, RoundedCornerShape(999.dp))
             .clip(RoundedCornerShape(999.dp))
             .background(if (selected) colors.outlineVariant else colors.background)
             .border(
@@ -277,8 +222,8 @@ fun TmtnChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Mod
                 color = if (selected) colors.primary else colors.outlineVariant,
                 shape = RoundedCornerShape(999.dp),
             )
-            .heightIn(min = 48.dp)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .heightIn(min = TmtnLayout.TouchTarget)
+            .selectable(selected = selected, enabled = enabled, interactionSource = interactions, indication = androidx.compose.material3.ripple(), role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -297,27 +242,35 @@ fun TmtnIntensityCard(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    outlined: Boolean = true,
 ) {
     val colors = LocalTmtnColors.current
     val interactions = remember { MutableInteractionSource() }
+    val detailed = description.isNotBlank()
+    val shape = if (detailed) TmtnLayout.PanelShape else TmtnLayout.ControlShape
     Box(
         modifier = modifier
             .tmtnPressFeedback(interactions)
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) colors.outlineVariant else colors.background)
+            .tmtnFocusOutline(interactions, shape)
+            .clip(shape)
+            .background(if (selected) ColorSelectionSurface else colors.surface)
             .border(
-                width = 1.dp,
-                color = if (selected) colors.primary else colors.outlineVariant,
-                shape = RoundedCornerShape(12.dp),
+                width = if (selected) 1.5.dp else 1.dp,
+                color = if (selected) colors.primary
+                    else if (!outlined) Color.Transparent else colors.outlineVariant,
+                shape = shape,
             )
-            .heightIn(min = 48.dp)
+            .heightIn(min = if (detailed) 100.dp else TmtnLayout.ControlMin)
             .selectable(selected = selected, interactionSource = interactions,
-                indication = androidx.compose.material3.ripple(), role = Role.RadioButton, onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 10.dp),
+                indication = null, role = Role.RadioButton, onClick = onClick)
+            .padding(vertical = if (detailed) 14.dp else 12.dp, horizontal = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(title, style = TmtnType.label, color = colors.onSurface, textAlign = TextAlign.Center)
+        androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (selected) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = colors.onSurface)
+                Text(title, style = TmtnType.choiceLabel, color = colors.onSurface, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
+            }
             if (description.isNotBlank()) Text(description, style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
         }
     }
@@ -369,7 +322,7 @@ fun TmtnDigitField(value: String, onValueChange: (String) -> Unit, modifier: Mod
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
             keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = TmtnLayout.FieldShape,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = colors.primary,
             unfocusedBorderColor = colors.outline,
@@ -388,6 +341,7 @@ fun TmtnStepper(
     modifier: Modifier = Modifier,
     minValue: Int = 0,
     captionText: String? = "일주일 기준",
+    maxValue: Int = Int.MAX_VALUE,
 ) {
     val colors = LocalTmtnColors.current
     val scale = LocalDensity.current.fontScale * com.tmtn.app.ui.theme.LocalTmtnTextScale.current
@@ -411,9 +365,9 @@ fun TmtnStepper(
         }
     }
     val plus: @Composable () -> Unit = {
-        IconButton(onClick = onIncrement, interactionSource = increase,
-            modifier = Modifier.size(48.dp).tmtnPressFeedback(increase)) {
-            Icon(Icons.Default.Add, "${unit} 늘리기", Modifier.size(28.dp), tint = colors.onSurface)
+        IconButton(onClick = onIncrement, enabled = value < maxValue, interactionSource = increase,
+            modifier = Modifier.size(48.dp).tmtnPressFeedback(increase, value < maxValue)) {
+            Icon(Icons.Default.Add, "${unit} 늘리기", Modifier.size(28.dp), tint = if (value < maxValue) colors.onSurface else colors.onDisabled)
         }
     }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth()) {
@@ -493,7 +447,7 @@ fun TmtnCheckRow(
                 modifier = Modifier.weight(1f))
         }
         onViewClick?.let {
-            TextButton(onClick = it, modifier = Modifier.heightIn(min = 48.dp)) {
+            TextButton(onClick = it, modifier = Modifier.heightIn(min = TmtnLayout.TouchTarget)) {
                 Text("보기", style = TmtnType.label, color = colors.primary)
             }
         }

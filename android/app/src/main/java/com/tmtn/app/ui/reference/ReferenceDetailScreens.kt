@@ -69,12 +69,13 @@ fun ReferenceInputsScreen(
     }
     LaunchedEffect(Unit) { load() }
     Column(Modifier.fillMaxSize()) {
-        TmtnTopBar("입력 정보", onBack = { state.goBack() })
+        TmtnTopBar("내 정보 확인", onBack = { state.goBack() })
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            Text("계산에 쓰인 값", style = TmtnType.headline, color = colors.onSurface)
+            Text("내가 알려준\n몸과 움직임", style = TmtnType.headline, color = colors.onSurface)
+            Text("최근 달라진 정보가 있다면 바꿔 주세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
             if (inputs == null) {
                 if (requesting || state.isLoading.value) {
                     CircularProgressIndicator(Modifier.size(28.dp), color = colors.primary, strokeWidth = 2.dp)
@@ -107,7 +108,7 @@ fun ReferenceInputsScreen(
                     InfoRow("근력운동", inputs.strength_label ?: "입력 필요")
                 }
                 TmtnPrimaryButton(
-                    text = if (state.isLoading.value) "지수 불러오는 중" else "최신 정보로 지수 보기",
+                    text = if (state.isLoading.value) "새 정보를 불러오는 중" else "일보에서 이어보기",
                     onClick = onRefresh, enabled = !state.isLoading.value && !requesting,
                 )
             }

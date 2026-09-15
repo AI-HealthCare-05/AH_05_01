@@ -39,8 +39,9 @@ fun ReferenceFlow(
     state: ReferenceState = remember { ReferenceState() },
 ) {
     val scope = rememberCoroutineScope()
-    val waist = remember { WaistEstimateState() }
+    val waist = state.waist
     LaunchedEffect(Unit) { waist.load() }
+    LaunchedEffect(Unit) { state.journal.refresh() }
     LaunchedEffect(Unit) {
         // Returning from an editor keeps the reading stack; the inputs page reloads its own values.
         if (state.step.value in setOf(ReferenceStep.LOADING, ReferenceStep.SUMMARY, ReferenceStep.INELIGIBLE)) state.loadScore()
@@ -54,14 +55,30 @@ fun ReferenceFlow(
     )
     LaunchedEffect(immersive) { onImmersiveChange(immersive) }
     BackHandler(enabled = immersive) { state.goBack() }
-    ReferencePageTransition(state.step.value) { step ->
+    // Loading/empty/result updates keep one reading surface and its scroll position.
+    val readingPage = if (state.step.value in setOf(ReferenceStep.LOADING, ReferenceStep.SUMMARY, ReferenceStep.INELIGIBLE))
+        ReferenceStep.SUMMARY else state.step.value
+    ReferencePageTransition(readingPage) { step ->
         when (step) {
             ReferenceStep.LOADING -> ReferenceLoadingScreen(
                 error = state.errorMessage.value.takeUnless { state.isLoading.value },
                 onRetry = { scope.launch { state.loadScore() } },
             )
-            ReferenceStep.SUMMARY -> ReferenceSummaryScreen(state, onOpenExerciseInfo,
-                onOpenArea = { focusedArea = it; state.openFactors() }, waist = waist.ui.value)
+            ReferenceStep.SUMMARY -> com.tmtn.app.ui.journal.JournalScreen(
+                weekly = state.journal.weekly, collection = state.journal.collection, today = state.journal.today,
+                score = state.score.value, waist = waist.ui.value,
+                refreshing = state.journal.refreshing || state.isLoading.value,
+                onRefresh = {
+                    scope.launch { state.journal.refresh() }
+                    scope.launch { state.loadScore() }
+                    scope.launch { waist.load() }
+                },
+                onGoPickCard = onGoPickCard, onEditInformation = { state.openInputs() },
+                onRetryWaist = { scope.launch { waist.load() } },
+                requestedEdition = state.journal.requestedEdition,
+                onEditionOpened = { state.journal.requestedEdition = null },
+                exercises = state.journal.exercises,
+            )
             ReferenceStep.INELIGIBLE -> ReferenceIneligibleScreen(state, onOpenMyInfo, waist.ui.value)
             ReferenceStep.DETAIL -> ReferenceDetailScreen(state, waist = waist.ui.value,
                 onRetryWaist = { scope.launch { waist.load() } })

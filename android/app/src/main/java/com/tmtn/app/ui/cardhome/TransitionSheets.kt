@@ -1,10 +1,18 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.tmtn.app.ui.cardhome
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -72,7 +82,7 @@ private fun SheetButtonRow(button: SheetButton) {
         SheetButtonStyle.FILLED -> TmtnPrimaryButton(text = button.label, onClick = button.onClick, enabled = button.enabled)
         SheetButtonStyle.TONAL -> TmtnTonalButton(text = button.label, onClick = button.onClick, enabled = button.enabled)
         SheetButtonStyle.OUTLINED -> TmtnOutlinedButton(text = button.label, onClick = button.onClick, enabled = button.enabled)
-        SheetButtonStyle.TEXT -> TmtnTextButton(text = button.label, onClick = button.onClick)
+        SheetButtonStyle.TEXT -> TmtnTextButton(text = button.label, onClick = button.onClick, enabled = button.enabled)
     }
 }
 
@@ -80,10 +90,10 @@ private fun SheetButtonRow(button: SheetButton) {
 @Composable
 private fun RestTicketRow(valueText: String) {
     val colors = LocalTmtnColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+    FlowRow(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text("이번 주 쉬어가기", style = TmtnType.bodyLarge, color = colors.onSurface)
         Text(valueText, style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.End)
@@ -103,35 +113,40 @@ private fun TransitionBottomSheetShell(
     captionText: String? = null,
     buttons: List<SheetButton>,
     onDismiss: () -> Unit,
+    errorMessage: String? = null,
+    busy: Boolean = false,
 ) {
     val colors = LocalTmtnColors.current
     var dragOffsetPx by remember { mutableFloatStateOf(0f) }
     val dismissThresholdPx = with(LocalDensity.current) { 96.dp.toPx() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().background(colors.onSurface.copy(alpha = 0.32f)).clickable(onClick = onDismiss))
-
+    com.tmtn.app.ui.common.TmtnSheetDialog(onDismiss = { if (!busy) onDismiss() }) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
+                .heightIn(max = (LocalConfiguration.current.screenHeightDp * .9f).dp)
                 .offset { IntOffset(0, dragOffsetPx.roundToInt()) }
                 .background(colors.surface, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .pointerInput(Unit) { detectTapGestures { } }
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .pointerInput(Unit) {
+                    .heightIn(min = 32.dp)
+                    .pointerInput(busy) {
                         detectVerticalDragGestures(
+                            onDragCancel = { dragOffsetPx = 0f },
                             onDragEnd = {
-                                if (dragOffsetPx > dismissThresholdPx) onDismiss()
+                                if (!busy && dragOffsetPx > dismissThresholdPx) onDismiss()
                                 dragOffsetPx = 0f
                             },
                             onVerticalDrag = { change, dragAmount ->
                                 change.consume()
-                                dragOffsetPx = (dragOffsetPx + dragAmount).coerceAtLeast(0f)
+                                if (!busy) dragOffsetPx = (dragOffsetPx + dragAmount).coerceAtLeast(0f)
                             },
                         )
                     },
@@ -159,7 +174,10 @@ private fun TransitionBottomSheetShell(
                 Text(it, style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
-            buttons.forEach { SheetButtonRow(it) }
+            com.tmtn.app.ui.onboarding.OnboardingErrorMessage(errorMessage)
+            if (busy) Text("변경 내용을 저장하고 있어요.", style = TmtnType.caption, color = colors.onSurface,
+                modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
+            buttons.forEach { SheetButtonRow(it.copy(enabled = it.enabled && !busy)) }
         }
     }
 }
@@ -246,9 +264,12 @@ fun RestCancelSheet(
     onCancelRestAndChallenge: () -> Unit, // 쉬어가기 취소하고 도전하기 -> C03
     onKeepResting: () -> Unit,            // 그대로 쉬기
     onDismiss: () -> Unit,
+    errorMessage: String? = null,
+    busy: Boolean = false,
 ) {
     TransitionBottomSheetShell(
         title = "쉬어가기를 취소하고 도전할까요?",
+        errorMessage = errorMessage, busy = busy,
         subtitle = dateLabel,
         restTicketValue = restTicketValue,
         infoText = "오늘 쓴 쉬어가기 1회가 그대로 돌아와요. 뽑아둔 카드로 이어서 진행합니다.",
@@ -268,14 +289,18 @@ fun RestCancelSheet(
 @Composable
 fun GiveUpConfirmSheet(
     dateLabel: String,
+    restDaysRemaining: Int,
     onRestInstead: () -> Unit,  // 오늘은 쉬어가기(주 버튼) -> C23
     onGiveUp: () -> Unit,       // 그래도 포기하기(보조 버튼) -> B24
     onDismiss: () -> Unit,
+    errorMessage: String? = null,
+    busy: Boolean = false,
 ) {
     TransitionBottomSheetShell(
         title = "오늘 미션을 포기할까요?",
+        errorMessage = errorMessage, busy = busy,
         subtitle = dateLabel,
-        restTicketValue = "2회 그대로 · 차감 없음",
+        restTicketValue = "${restDaysRemaining}회 그대로 · 차감 없음",
         // ⚠️ 2026-09-08 반영: 포기하면 서버가 진행값을 0으로 지움(challenge_service.skip).
         // "다시 도전할 수 있다"만 적어두면 이어서 하는 것처럼 읽혀서, 지금까지 한 게
         // 사라진다는 걸 같이 알림.
@@ -300,9 +325,12 @@ fun RestToGiveUpSheet(
     onKeepResting: () -> Unit,     // 쉬어가기 그대로 두기(주 버튼)
     onSwitchToGiveUp: () -> Unit,  // 포기로 바꾸기(보조 버튼) -> B24
     onDismiss: () -> Unit,
+    errorMessage: String? = null,
+    busy: Boolean = false,
 ) {
     TransitionBottomSheetShell(
         title = "쉬어가기를 포기로 바꿀까요?",
+        errorMessage = errorMessage, busy = busy,
         subtitle = dateLabel,
         restTicketValue = restTicketValue,
         infoText = "쓴 쉬어가기 1회가 돌아옵니다. 대신 오늘은 미완료가 되어 연속 기록이 끊기고, " +

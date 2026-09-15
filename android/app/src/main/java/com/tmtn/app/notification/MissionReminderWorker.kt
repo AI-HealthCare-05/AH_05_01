@@ -60,9 +60,11 @@ class MissionReminderWorker(
             val notificationConsented = consents.body()
                 ?.any { it.purpose == "NOTIFICATION" && it.status == "AGREED" } == true
             if (!notificationConsented) {
-                android.util.Log.i("MissionReminderWorker", "[$slot] 스킵: 알림 동의 안 함")
+                android.util.Log.i("MissionReminderWorker", "[$slot] 스킵: 알림 동의 없음")
                 return@runCatching
             }
+            val setting = ApiClient.profileApi.getNotificationSettings()
+            if (!setting.isSuccessful || !reminderAllowed(setting.body())) return@runCatching
 
             val today = ApiClient.cardHomeApi.getTodayCards()
             if (!today.isSuccessful) {
@@ -87,7 +89,7 @@ class MissionReminderWorker(
                 android.util.Log.w("MissionReminderWorker", "[$slot] 스킵: 오늘 카드 응답이 비어 있음")
             }
         }.onFailure { e ->
-            // ⚠️ 네트워크 예외(타임아웃, DNS 실패 등)도 예전엔 조용히 삼켜졌음 - 이제 로그로 남김.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             android.util.Log.e("MissionReminderWorker", "[$slot] 예외 발생: ${e.message}", e)
         }
 
@@ -101,15 +103,15 @@ class MissionReminderWorker(
 
     private fun showNotification(slot: String) {
         val context = applicationContext
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+        if (android.os.Build.VERSION.SDK_INT >= 33 && ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
             return
         }
         val (title, body) = when (slot) {
-            SLOT_MORNING -> "오늘의 카드가 기다리고 있어요" to "아침에 짬 내서 오늘 미션을 골라볼까요?"
-            SLOT_LUNCH -> "오늘 미션, 아직이에요" to "점심 시간에 잠깐 짬을 내볼까요?"
-            else -> "오늘이 저물기 전에" to "아직 오늘 미션을 안 하셨어요. 지금이라도 해볼까요?"
+            SLOT_MORNING -> "틈튼이가 카드를 준비했어요" to "오늘 하루에 어울리는 실천을 골라 봐요."
+            SLOT_LUNCH -> "점심 뒤, 작은 실천 하나" to "잠깐 여유가 생겼다면 오늘의 카드를 펼쳐 봐요."
+            else -> "하루를 마무리하며" to "오늘의 카드가 기다려요. 편한 만큼 함께해요."
         }
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
         val pendingIntent = android.app.PendingIntent.getActivity(
