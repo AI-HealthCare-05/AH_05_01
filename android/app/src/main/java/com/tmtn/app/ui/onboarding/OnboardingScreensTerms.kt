@@ -20,14 +20,19 @@ import com.tmtn.app.ui.theme.TmtnType
 /** Figma A14 · 약관 상세 보기 (node 282:4683). A06 여러 항목의 "보기"가 전부 여기로 옴. */
 @Composable
 fun A14TermsDetailScreen(state: OnboardingState) {
+    TermsDetailScreen(onBack = { state.step.value = OnboardingStep.A06_CONSENT })
+}
+
+@Composable
+fun TermsDetailScreen(onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "서비스 이용약관", onBack = { state.step.value = OnboardingStep.A06_CONSENT })
+        TmtnTopBar(title = "서비스 이용약관", onBack = onBack)
 
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth().weight(1f)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -64,7 +69,7 @@ fun A14TermsDetailScreen(state: OnboardingState) {
                 )
             }
 
-            TmtnOutlinedButton(text = "닫기", onClick = { state.step.value = OnboardingStep.A06_CONSENT })
+            TmtnOutlinedButton(text = "닫기", onClick = onBack)
         }
     }
 }

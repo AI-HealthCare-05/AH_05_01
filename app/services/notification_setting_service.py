@@ -8,10 +8,9 @@ from app.dtos.notification_settings import (
 from app.models.users import User
 from app.repositories.notification_setting_repository import NotificationSettingRepository
 
-# ⚠️ 2026-08-27 Figma 핸드오프(HANDOFF.md §3.8)로 정정:
-# "점심 뒤"는 고정 13:00이 아니라 "기상 + 6시간"으로 계산해야 함.
-# 예전엔 LUNCH_SLOT="13:00" 고정값을 썼는데, 이러면 기상시각이 7시가 아닌 사용자는
-# 전부 틀린 시각이 나가는 실제 버그였음.
+# ⚠️ 2026-09-08 반영: "점심"은 자동 계산(기상+N시간) 대신 사용자가 직접 입력하는 값으로
+# 바뀜(늦게 일어나는 사람은 자동 계산이 실제 점심시간과 안 맞았음) - 아래 _shift_time()은
+# 이제 오전(기상+2시간)·저녁(취침-2시간)에만 쓰임.
 
 
 def _shift_time(time_str: str, hours: int) -> str:
@@ -31,17 +30,17 @@ class NotificationSettingService:
     async def submit_onboarding_schedule(
         self, user: User, request: OnboardingScheduleRequest
     ) -> NotificationSettingResponse:
-        """A10: 기상/취침 시각 -> 슬롯 3개로 변환해서 저장.
-        HANDOFF.md §3.8 기준:
-          - 아침 준비 = 기상 직후 (기상시각 그대로)
-          - 점심 뒤   = 기상 + 6시간
-          - 자기 전   = 취침 - 1시간
+        """A10: 기상/점심/취침 시각 -> 슬롯 3개로 변환해서 저장.
+        2026-09-08 재개정:
+          - 아침 준비 = 기상 시각 그대로(일어난 직후)
+          - 점심 뒤   = 입력한 점심 시각 + 1시간
+          - 자기 전   = 취침 - 2시간
         F02 화면에서 나중에 개별 슬롯을 껐다 켰다 할 수 있음(별도 PATCH API)."""
 
         slots = [
             request.wake_time,
-            _shift_time(request.wake_time, hours=6),
-            _shift_time(request.sleep_time, hours=-1),
+            _shift_time(request.lunch_time, hours=1),
+            _shift_time(request.sleep_time, hours=-2),
         ]
 
         instance = await self.repo.get_or_create(user.id)

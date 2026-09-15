@@ -1,8 +1,17 @@
 package com.tmtn.app.ui.record
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +27,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.ripple
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.foundation.layout.width
+import com.tmtn.app.ui.theme.TmtnMotion
+import com.tmtn.app.ui.theme.tmtnClickable
+import com.tmtn.app.ui.theme.tmtnPressFeedback
+import com.tmtn.app.ui.theme.rememberTmtnReducedMotion
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -40,7 +65,7 @@ import java.time.YearMonth
 /** ⚠️ 2026-09-04 디자인 스펙 반영: 미완료 셀은 피그마 기준 실선이 아니라 점선 원
  * (dash="2.5 2.5")임. Modifier.border()는 실선만 지원해서, Canvas에 직접 점선 원을
  * 그리는 방식으로 구현. */
-private fun Modifier.dashedCircleBorder(width: Dp, color: Color, dashDp: Dp = 2.5.dp, gapDp: Dp = 2.5.dp): Modifier =
+internal fun Modifier.dashedCircleBorder(width: Dp, color: Color, dashDp: Dp = 2.5.dp, gapDp: Dp = 2.5.dp): Modifier =
     this.drawBehind {
         val strokeWidthPx = width.toPx()
         drawCircle(
@@ -54,7 +79,12 @@ private fun Modifier.dashedCircleBorder(width: Dp, color: Color, dashDp: Dp = 2.
     }
 
 @Composable
-fun MonthlyCalendarScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: () -> Unit) {
+fun MonthlyCalendarScreen(
+    state: RecordState, scope: CoroutineScope, onGoPickCard: () -> Unit,
+    onMonthChange: ((YearMonth) -> Unit)? = null,
+    onDateSelected: ((String) -> Unit)? = null,
+    onPeriodSelected: ((RecordTab) -> Unit)? = null,
+) {
     val colors = LocalTmtnColors.current
     val calendar = state.monthlyCalendar.value
 
@@ -62,109 +92,129 @@ fun MonthlyCalendarScreen(state: RecordState, scope: CoroutineScope, onGoPickCar
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("기록", style = TmtnType.title, color = colors.onSurface)
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("기록", style = TmtnType.label, color = colors.onSurface, modifier = Modifier.weight(1f))
+            Text("오늘", style = TmtnType.label, color = colors.onSurface,
+                modifier = Modifier.tmtnClickable(enabled = !state.isLoading.value) {
+                    val current = YearMonth.now()
+                    if (onMonthChange != null) onMonthChange(current)
+                    else scope.launch { state.loadMonthly(current.year, current.monthValue) }
+                }.size(48.dp).wrapContentSize())
+        }
 
-        RecordTabs(state, scope)
+        Text("쌓아 온 하루들.", style = TmtnType.headline, color = colors.onSurface)
+        Text("날짜를 눌러 그날의 실천을 돌아봐요.", style = TmtnType.body, color = colors.onSurfaceVariant)
 
         if (state.monthlyLoadFailed.value) {
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.rewardContainer, RoundedCornerShape(16.dp)).padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("일부 날짜를 불러오지 못했습니다", style = TmtnType.bodyLarge, color = colors.onSurface)
-                Text("불러오지 못한 날은 물음표로 두었습니다. 값을 지어내지 않습니다.", style = TmtnType.body, color = colors.onSurface)
+                Text("기록을 불러오지 못했어요.", style = TmtnType.bodyLarge, color = colors.onSurface)
+                Text("연결을 확인한 뒤 다시 열어 주세요.", style = TmtnType.body, color = colors.onSurface)
+                com.tmtn.app.ui.onboarding.TmtnTonalButton("다시 불러오기", { scope.launch { state.loadMonthly() } }, enabled = !state.isLoading.value)
             }
         }
 
-        val isEmpty = calendar != null && calendar.completed_count == 0 && calendar.rest_count == 0 &&
-            calendar.days.none { it.status == "INCOMPLETE" }
-        // ⚠️ 예전엔 isEmpty면 무조건 EmptyRecordCard(마스코트 안내)로 바꿔치기했는데, 그
-        // 화면엔 ‹ › 이동 버튼이 아예 없음. 그래서 아직 기록이 없는 미래 달(예: 10월)로
-        // 넘어가면 캘린더 자체가 사라지고 되돌아올 방법이 없었음("9월에서 10월로 넘어가니
-        // 달력이 안 뜬다"는 게 이 증상). 지금 보고 있는 달이 실제 이번 달일 때만(=처음
-        // 들어왔을 때) 안내 화면을 보여주고, 다른 달로 이동한 상태에서는 비어있어도 항상
-        // 진짜 캘린더(‹ › 포함)를 그대로 보여줌.
-        val today = LocalDate.now()
-        val isViewingCurrentMonth = state.year.value == today.year && state.month.value == today.monthValue
-
-        if (calendar == null || (isEmpty && isViewingCurrentMonth)) {
-            EmptyRecordCard(onGoPickCard)
+        if (calendar == null) {
+            if (!state.monthlyLoadFailed.value) Text("기록을 불러오는 중이에요", style = TmtnType.body, color = colors.onSurfaceVariant)
         } else {
-            MonthCalendarCard(state, scope)
-            StreakCard(state)
+            MonthCalendarCard(state, scope, onMonthChange, onDateSelected)
+            if (calendar.days.none { it.status in listOf("COMPLETED", "REST", "INCOMPLETE") }) {
+                EmptyRecordCard(onGoPickCard)
+            } else StreakCard(state)
         }
+        com.tmtn.app.ui.onboarding.TmtnTonalButton("최근 7일 돌아보기", {
+            if (onPeriodSelected != null) onPeriodSelected(RecordTab.WEEKLY) else {
+                state.tab.value = RecordTab.WEEKLY
+                scope.launch { state.loadWeekly() }
+            }
+        }, enabled = !state.isLoading.value)
     }
 }
 
+/** Figma D01/D02: short underline tabs, with native selection semantics. */
 @Composable
-private fun RecordTabs(state: RecordState, scope: CoroutineScope) {
+internal fun RecordPeriodTabs(selectedTab: RecordTab, onSelect: (RecordTab) -> Unit) {
     val colors = LocalTmtnColors.current
-    Row(modifier = Modifier.fillMaxWidth().height(44.dp)) {
+    Row(Modifier.fillMaxWidth().selectableGroup()) {
         listOf(RecordTab.MONTHLY to "월간", RecordTab.WEEKLY to "주간").forEach { (tab, label) ->
-            val selected = state.tab.value == tab
-            Column(
-                modifier = Modifier.weight(1f).fillMaxSize()
-                    .clickable {
-                        state.tab.value = tab
-                        if (tab == RecordTab.WEEKLY) scope.launch { state.loadWeekly() }
-                    },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
+            val interactions = remember { MutableInteractionSource() }
+            val selected = selectedTab == tab
+            Column(Modifier.weight(1f).heightIn(min = 48.dp)
+                .tmtnPressFeedback(interactions)
+                .selectable(selected, interactionSource = interactions, indication = ripple(), role = Role.Tab,
+                    onClick = { if (!selected) onSelect(tab) })
+                .padding(top = 12.dp, bottom = 3.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(label, style = TmtnType.label, color = if (selected) colors.onSurface else colors.onSurfaceVariant)
-                Box(
-                    modifier = Modifier.fillMaxWidth(0.2f).height(2.dp)
-                        .background(if (selected) colors.onSurface else Color.Transparent),
-                )
+                Box(Modifier.width(36.dp).height(2.dp).background(if (selected) colors.onSurface else Color.Transparent, RoundedCornerShape(1.dp)))
             }
         }
     }
 }
 
 @Composable
-private fun MonthCalendarCard(state: RecordState, scope: CoroutineScope) {
+@OptIn(ExperimentalLayoutApi::class)
+private fun MonthCalendarCard(
+    state: RecordState, scope: CoroutineScope,
+    onMonthChange: ((YearMonth) -> Unit)? = null,
+    onDateSelected: ((String) -> Unit)? = null,
+) {
     val colors = LocalTmtnColors.current
     val calendar = state.monthlyCalendar.value ?: return
     val ym = YearMonth.of(state.year.value, state.month.value)
     val firstDayOfWeek = ym.atDay(1).dayOfWeek.value // 1=월 ~ 7=일
     val statusByDate = calendar.days.associateBy { it.date }
+    val reducedMotion = rememberTmtnReducedMotion()
+    val monthAlpha = remember(ym) { Animatable(if (reducedMotion) 1f else .75f) }
+    LaunchedEffect(ym, reducedMotion) {
+        if (reducedMotion) monthAlpha.snapTo(1f)
+        else monthAlpha.animateTo(1f, tween(160, easing = TmtnMotion.EaseOut))
+    }
 
     Column(
-        modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(16.dp),
+        modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "‹", style = TmtnType.title, color = colors.onSurfaceVariant,
-                modifier = Modifier.clickable {
+                modifier = Modifier.tmtnClickable(enabled = !state.isLoading.value) {
                     val prev = ym.minusMonths(1)
-                    scope.launch { state.loadMonthly(prev.year, prev.monthValue) }
-                },
+                    if (onMonthChange != null) onMonthChange(prev) else scope.launch { state.loadMonthly(prev.year, prev.monthValue) }
+                }.semantics { contentDescription = "이전 달" }.size(48.dp).wrapContentSize(),
             )
             Text("${state.year.value}년 ${state.month.value}월", style = TmtnType.label, color = colors.onSurface)
             Text(
                 "›", style = TmtnType.title, color = colors.onSurface,
-                modifier = Modifier.clickable {
+                modifier = Modifier.tmtnClickable(enabled = !state.isLoading.value) {
                     val next = ym.plusMonths(1)
-                    scope.launch { state.loadMonthly(next.year, next.monthValue) }
-                },
+                    if (onMonthChange != null) onMonthChange(next) else scope.launch { state.loadMonthly(next.year, next.monthValue) }
+                }.semantics { contentDescription = "다음 달" }.size(48.dp).wrapContentSize(),
             )
         }
 
+        val dateScale = androidx.compose.ui.platform.LocalDensity.current.fontScale * com.tmtn.app.ui.theme.LocalTmtnTextScale.current
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val gridWidth = maxOf(maxWidth, ((34 * dateScale.coerceAtLeast(1f) + 8) * 7).dp)
+        Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+        Column(Modifier.width(gridWidth), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf("월", "화", "수", "목", "금", "토", "일").forEach {
                 Text(it, style = TmtnType.caption, color = colors.onSurfaceVariant, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
             }
         }
 
-        // 42칸(6주) 고정 그리드 - HANDOFF 규칙.
+        // 달에 필요한 5~6주를 표시해 피그마의 달력 밀도를 유지한다.
         // ⚠️ 2026-09-04 디자인 스펙 반영: 이전/다음 달 날짜가 빈칸이었는데, 피그마 기준
         // 흐린 색으로 숫자를 그대로 보여줘야 함(첨부 이미지 27~31, 1~6 참고). 날짜 자체를
         // LocalDate로 계산해서, 이번 달이면 실제 상태로, 아니면 흐린 숫자만 표시.
         val leadingBlanks = firstDayOfWeek - 1
-        val totalCells = 42
+        val totalCells = ((leadingBlanks + ym.lengthOfMonth() + 6) / 7) * 7
         val monthStart = ym.atDay(1)
         val today = LocalDate.now()
+        Column(Modifier.fillMaxWidth().graphicsLayer { alpha = monthAlpha.value }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         (0 until totalCells).chunked(7).forEach { week ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 week.forEach { idx ->
@@ -174,9 +224,13 @@ private fun MonthCalendarCard(state: RecordState, scope: CoroutineScope) {
                         val status = statusByDate[dateStr]?.status
                         val isToday = state.year.value == today.year && state.month.value == today.monthValue &&
                             cellDate.dayOfMonth == today.dayOfMonth
-                        DayCell(cellDate.dayOfMonth, status, isToday) { scope.launch { state.openDayDetail(dateStr) } }
+                        Box(Modifier.weight(1f).heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
+                            DayCell(cellDate.dayOfMonth, status, isToday, cellDate.isAfter(today)) {
+                                if (onDateSelected != null) onDateSelected(dateStr) else scope.launch { state.openDayDetail(dateStr) }
+                            }
+                        }
                     } else {
-                        Box(modifier = Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
                             Text("${cellDate.dayOfMonth}", style = TmtnType.label, color = colors.outline)
                         }
                     }
@@ -184,30 +238,38 @@ private fun MonthCalendarCard(state: RecordState, scope: CoroutineScope) {
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        }
+
+        }
+        }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             LegendDot(colors.onSurface, "실천")
             LegendDot(colors.disabledContainer, "쉼", outlineColor = colors.onSurface)
             LegendDot(Color.Transparent, "미완료", dashed = true, outlineColor = colors.outline)
             LegendDot(Color.Transparent, "오늘", outlineColor = colors.secondary)
         }
         Text(
-            "${state.month.value}월 실천 ${calendar.completed_count}일 · 쉼 ${calendar.rest_count}일",
+            "${state.month.value}월 실천 ${calendar.completed_count}일 · 쉼 ${calendar.rest_count}일 · 미완료 ${calendar.days.count { it.status == "INCOMPLETE" }}일",
             style = TmtnType.caption, color = colors.onSurfaceVariant,
         )
     }
 }
 
 @Composable
-private fun DayCell(day: Int, status: String?, isToday: Boolean, onClick: () -> Unit) {
+internal fun DayCell(day: Int, status: String?, isToday: Boolean, isFuture: Boolean, onClick: () -> Unit) {
     val colors = LocalTmtnColors.current
+    val dateScale = androidx.compose.ui.platform.LocalDensity.current.fontScale * com.tmtn.app.ui.theme.LocalTmtnTextScale.current
     Box(
         modifier = Modifier
-            .size(34.dp)
+            .fillMaxWidth().heightIn(min = 48.dp)
+            .tmtnClickable { onClick() }
+            .semantics { contentDescription = "${day}일, " + when (status) { "COMPLETED" -> "실천"; "REST" -> "쉼"; "INCOMPLETE" -> "미완료"; else -> "기록 없음" } + if (isToday) ", 오늘" else "" }
+            .wrapContentSize(Alignment.Center).size((34 * dateScale.coerceAtLeast(1f)).dp)
             // ⚠️ "오늘" 표시가 예전엔 when()의 마지막 분기라 그 날에 완료/쉼/미완료 같은
             // 상태가 하나라도 있으면 전혀 안 보였음(실천+오늘, 쉼+오늘, 미완료+오늘을 구분
             // 못 함). 오늘 표시를 바깥쪽 링으로 분리해서, 상태와 무관하게 항상 같이 보이게 함.
             .then(if (isToday) Modifier.border(2.dp, colors.secondary, CircleShape).padding(2.dp) else Modifier)
-            .clickable { onClick() }
             .then(
                 when (status) {
                     "COMPLETED" -> Modifier.background(colors.onSurface, CircleShape)
@@ -220,13 +282,13 @@ private fun DayCell(day: Int, status: String?, isToday: Boolean, onClick: () -> 
     ) {
         Text(
             "$day", style = TmtnType.label,
-            color = if (status == "COMPLETED") colors.background else colors.onSurface,
+            color = if (status == "COMPLETED") colors.background else if (isFuture && status == null) colors.onDisabled else colors.onSurface,
         )
     }
 }
 
 @Composable
-private fun LegendDot(color: Color, label: String, outlineColor: Color? = null, dashed: Boolean = false) {
+internal fun LegendDot(color: Color, label: String, outlineColor: Color? = null, dashed: Boolean = false) {
     val colors = LocalTmtnColors.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         Box(
@@ -250,15 +312,14 @@ private fun StreakCard(state: RecordState) {
     val colors = LocalTmtnColors.current
     val streak = state.streak.value ?: return
     Column(
-        modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(20.dp),
+        modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("연속 기록", style = TmtnType.label, color = colors.onSurface)
-            Text("규칙 보기 ›", style = TmtnType.caption, color = colors.onSurfaceVariant)
         }
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("${streak.current_streak}", style = TmtnType.display, color = colors.onSurface)
+            Text("${streak.current_streak}", style = TmtnType.display, color = colors.secondary)
             Text("일째", style = TmtnType.label, color = colors.onSurface)
         }
         Text("쉼으로 표시한 날은 기록을 끊지 않아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
@@ -270,18 +331,14 @@ private fun StreakCard(state: RecordState) {
 private fun EmptyRecordCard(onGoPickCard: () -> Unit) {
     val colors = LocalTmtnColors.current
     Column(
-        modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(24.dp)).border(1.dp, colors.outline, RoundedCornerShape(24.dp)).padding(20.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-            Text(
-                "마스코트 이미지 (에셋 준비 중)", style = TmtnType.caption, color = colors.onSurfaceVariant,
-                textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.Center),
-            )
-        }
+        com.tmtn.app.ui.common.TmtnMascot(com.tmtn.app.R.drawable.beaver_empty,
+            "첫 기록을 기다리는 비버", Modifier.fillMaxWidth().height(180.dp))
         Text(
-            "아직 쌓인 기록이 없어.\n오늘 한 가지만 해보면 여기가 채워져.",
+            "첫 실천을 기록해 보세요.",
             style = TmtnType.bodyLarge, color = colors.onSurface, textAlign = TextAlign.Center,
         )
         Text(

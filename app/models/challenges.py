@@ -35,6 +35,31 @@ class ChallengeState(StrEnum):
     SKIPPED = "SKIPPED"
 
 
+def duration_seconds_from_target(target_value: int, unit: str | None) -> int:
+    """CSV의 "행운의숫자 + 단위"를 challenges.target_duration_seconds(항상 "초")로 변환.
+
+    ⚠️ 2026-09-07 반영(타이머가 항상 "1초"로 되돌아가던 버그의 진짜 원인): 예전엔
+    challenge_repository.create_from_selection()이 template.target_value를 단위 변환 없이
+    그대로 target_duration_seconds에 넣었음. 그런데 CSV(mission_templates_200.csv)의
+    SELF_TIMER 42개 중 38개는 단위가 "분"이라, "눈 쉬게 하기 1분"이
+    target_duration_seconds=1(=1초)로 저장되고 있었음.
+    여기에 2026-09-06에 _effective_duration_seconds()로 "목표치 상한"(min(base, target))이
+    들어오면서, 이 잘못된 목표값이 그대로 상한이 됨 - 서버가 계산해서 돌려주는 경과 시간이
+    항상 1초로 잘렸음. 앱은 자기 로컬 카운터(ChallengeTimerScreens.targetSecondsFor에서
+    "분"이면 ×60을 이미 하고 있었음)로 60초를 정상적으로 세다가도, 서버와 동기화하는 순간
+    (화면 재진입 / 앱 복귀 / stepForRevealedCard) 그 1초로 덮어써졌던 것.
+    ("20초 쌓였는데 일시정지하니 1초가 됐다"고 보고돼서 pause()의 뺄셈 문제로 진단하고
+    고쳤던 2026-09-07 건도 사실 같은 원인 - 그때는 증상만 가려졌음.)
+
+    안드로이드가 이미 쓰고 있던 규칙("초"면 그대로, 그 외(분 등)면 ×60)을 서버에도 그대로
+    둬서 양쪽 기준을 하나로 맞춤.
+    """
+
+    if unit is not None and "초" in unit:
+        return target_value
+    return target_value * 60
+
+
 class Challenge(models.Model):
     """문서: "option과 1:1". state 전이는 낙관적 잠금(version)으로 관리(문서 §6).
 

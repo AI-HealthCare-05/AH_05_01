@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -48,7 +51,11 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
     val allChecked = tos && privacy && age14 && healthUsage && locationUsage && indexAnalysis && push
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "약관 동의", onBack = { state.step.value = OnboardingStep.A04_VERIFY })
+        TmtnTopBar(title = "약관 동의", onBack = if (state.accountCreated) null else {
+            { state.leaveConsent() }
+        })
+        val consentSteps = if (state.isGoogleSignup) 2 else 3
+        StepProgressHeader(consentSteps, consentSteps, "약관 동의")
 
         Column(
             modifier = Modifier
@@ -58,23 +65,22 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("시작 전에 확인해 주세요.", style = TmtnType.headline, color = colors.onSurface)
-
             // 모두 동의
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
-                    .background(colors.secondaryContainer, RoundedCornerShape(16.dp))
+                    .heightIn(min = 64.dp)
+                    .background(colors.surface, RoundedCornerShape(16.dp))
+                    .toggleable(value = allChecked, role = Role.Checkbox, onValueChange = {
+                        tos = it; privacy = it; age14 = it
+                        healthUsage = it; locationUsage = it; indexAnalysis = it; push = it
+                    })
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Checkbox(
                     checked = allChecked,
-                    onCheckedChange = {
-                        tos = it; privacy = it; age14 = it
-                        healthUsage = it; locationUsage = it; indexAnalysis = it; push = it
-                    },
+                    onCheckedChange = null,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("모두 동의합니다", style = TmtnType.bodyLarge, color = colors.onSurface)
@@ -118,7 +124,7 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
                     onViewClick = { state.step.value = OnboardingStep.A14_TERMS_DETAIL },
                 )
                 Text(
-                    "달리기·걷기 미션을 하는 동안에만 위치를 받아 거리를 잽니다. 어디를 걸었는지 경로는 저장하지 않습니다.",
+                    "걷기·달리기 미션에서 이동 거리를 잴 때 사용해요. 미션을 시작하기 전에 위치 권한을 요청합니다.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
                 )
@@ -138,28 +144,16 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
                 )
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(16.dp))
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    "어디를 걸었는지 경로는 저장하지 않습니다. 거리만 기록합니다.",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
-                )
-                Text(
-                    "계정을 지우면 기록도 함께 지워집니다.",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
-                )
-            }
-
             TmtnPrimaryButton(
-                text = "동의하고 시작하기",
-                onClick = { scope.launch { state.submitConsents() } },
-                enabled = state.allMandatoryAgreed,
-                disabledReason = "필수 항목에 모두 동의해야 시작할 수 있어요.",
+                text = if (state.googleReauthRequired.value) "Google 계정 다시 선택" else "동의하고 가입 완료",
+                onClick = {
+                    if (state.googleReauthRequired.value) {
+                        state.cancelGoogleSignup(); state.step.value = OnboardingStep.AUTH_CHOICE
+                    } else scope.launch { state.submitConsents() }
+                },
+                enabled = (state.allMandatoryAgreed || state.googleReauthRequired.value) && !state.isLoading.value,
+                loading = state.isLoading.value,
+                disabledReason = if (!state.allMandatoryAgreed) "필수 항목을 확인해 주세요." else null,
             )
         }
     }

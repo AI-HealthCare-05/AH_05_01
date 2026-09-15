@@ -1,6 +1,12 @@
 from tortoise.expressions import F
 
-from app.models.challenges import Challenge, ChallengeEvent, ChallengeState, PointLedger
+from app.models.challenges import (
+    Challenge,
+    ChallengeEvent,
+    ChallengeState,
+    PointLedger,
+    duration_seconds_from_target,
+)
 
 
 class ChallengeRepository:
@@ -20,7 +26,10 @@ class ChallengeRepository:
         target_duration_seconds = None
         target_count = None
         if template.exec_type in ("TIMER", "SENSOR_RUNNING_DURATION", "SENSOR_WALKING_DURATION"):
-            target_duration_seconds = template.target_value
+            # ⚠️ 2026-09-07 반영: 예전엔 template.target_value를 그대로 넣어서, 단위가 "분"인
+            # 미션(SELF_TIMER 42개 중 38개)이 "1분 -> 1초"로 저장됐음. 이 컬럼은 이름 그대로
+            # 항상 초 단위여야 함 - duration_seconds_from_target() 주석에 원인 전체 설명.
+            target_duration_seconds = duration_seconds_from_target(template.target_value, template.unit)
         elif template.exec_type in (
             "SENSOR_STEPS",
             "SENSOR_FLOORS_CLIMBED",
@@ -56,6 +65,48 @@ class ChallengeRepository:
         ).update(state=to_state, version=current_version + 1)
         return updated_count > 0
 
+    #: 자정 정산 대상 상태. settle_past_days()의 try_transition(from_states=...)과 반드시
+    #: 같은 집합이어야 함 - 여기서 찾아놓고 저기서 못 넘기면 매번 조회만 하고 아무것도 안 됨.
+    UNSETTLED_STATES = [ChallengeState.READY, ChallengeState.ACTIVE, ChallengeState.PAUSED]
+
+    async def find_unsettled_before(self, user_id, service_date) -> list[Challenge]:
+        """⚠️ 2026-09-08 추가(자정 정산): 지난 날짜인데 아직 안 끝난 챌린지들.
+
+        스케줄러·배치가 없어서 "어제 시작하고 안 끝낸 것"이 계속 살아있었음 - 실제로 DB에
+        9/4에 시작한 챌린지가 9/8까지 ACTIVE로 남아 시간을 계속 쌓고 있었음. 요청이 들어올 때
+        이 목록을 찾아서 그 자리에서 마감하면 별도 워커 없이도 같은 효과를 냄.
+        COMPLETED/SKIPPED는 이미 끝난 것이라 대상이 아님.
+
+        ⚠️ 2026-09-08 2차 반영: 처음엔 ACTIVE/PAUSED만 봤는데, 그러면 "카드만 뽑고 시작은
+        안 한 날"(READY)이 자정을 넘겨도 영원히 READY로 남았음 - 어제 것이 끝나지 않은 채로
+        DB에 계속 쌓임. 시작하지 않은 것도 그날이 지나면 끝난 것이므로 정산 대상에 포함함.
+        """
+
+        return await self._model.filter(
+            state__in=self.UNSETTLED_STATES,
+            selection__card_set__user_id=user_id,
+            selection__card_set__service_date__lt=service_date,
+        ).prefetch_related("selection__card_set")
+
+    async def reset_progress(self, challenge_id) -> None:
+        """⚠️ 2026-09-08 추가(포기 = 진행값 폐기): 포기(skip)한 챌린지의 진행값을 0으로 되돌림.
+
+        예전엔 skip()이 state만 바꾸고 진행값은 손대지 않았는데, 그러면 "포기 전에 일시정지를
+        눌렀는지"에 따라 결과가 달라졌음:
+          - 진행 8분 -> 그냥 포기       : accumulated가 0인 채 굳음(한 번도 확정 저장이 안 됨)
+          - 진행 8분 -> 일시정지 -> 포기 : accumulated=480이 그대로 남아, 다시 도전하면 8분부터 시작
+        "포기하면 그때까지 달성한 건 없앤다"는 정책에 맞춰 두 경로 모두 0에서 다시 시작하도록
+        명시적으로 초기화함. 없앤 값 자체는 SKIP 이벤트 payload에 남기므로 기록은 보존됨
+        (challenge_events는 append-only - challenge_service.skip() 참고).
+        """
+
+        await self._model.filter(id=challenge_id).update(
+            accumulated_duration_seconds=0,
+            accumulated_count=0,
+            started_at=None,
+            last_paused_at=None,
+        )
+
     async def update_started_at(self, challenge_id, started_at) -> None:
         """C02/C09 "시작하기" - 지금 구간이 시작된 시각 기록."""
         await self._model.filter(id=challenge_id).update(started_at=started_at)
@@ -79,6 +130,22 @@ class ChallengeRepository:
     async def set_final_duration(self, challenge_id, final_seconds: int) -> None:
         """완료(complete) 순간 - 그때까지의 진짜 경과 시간을 그대로 확정 저장."""
         await self._model.filter(id=challenge_id).update(accumulated_duration_seconds=max(final_seconds, 0))
+
+    async def set_final_count(self, challenge_id, final_count: int) -> None:
+        """⚠️ 2026-09-08 반영: manual_check(직접 체크로 완료) 전용 - COUNT형(target_count가
+        있는 SENSOR_STEPS 등) 완료 순간 목표치를 그대로 확정 저장."""
+        await self._model.filter(id=challenge_id).update(accumulated_count=max(final_count, 0))
+
+    async def set_accumulated_duration_and_clear_start(self, challenge_id, final_seconds: int) -> None:
+        """⚠️ 2026-09-07 반영(N2 타이머 리셋 버그 수정): 일시정지(pause) 시 절대값으로
+        확정 저장 - add_accumulated_duration_and_clear_start(F()+extra 더하기 방식)를
+        쓰면, "이번 구간 경과"를 캡 적용된 값에서 역산하다가 음수가 나올 수 있는
+        구조적 결함이 있었음(아래 challenge_service.pause() 주석 참고)."""
+
+        await self._model.filter(id=challenge_id).update(
+            accumulated_duration_seconds=max(final_seconds, 0),
+            started_at=None,
+        )
 
     async def create_event(self, challenge_id, event_type, idempotency_key, version, payload=None, occurred_at=None):
         """idempotency_key UNIQUE 위반 시 tortoise.exceptions.IntegrityError가 그대로 올라감.

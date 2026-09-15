@@ -10,8 +10,11 @@ import com.tmtn.app.network.TuntunScoreApi
 
 object ApiClient {
 
-    // TODO: 팀원들과 같은 Wi-Fi에서 테스트할 때는 이 주소를 바꿔야 함
-    private const val BASE_URL = "https://last-broiling-tartly.ngrok-free.dev/api/v1/"
+    // ⚠️ 2026-09-14 변경 - EC2 팀 내부 HTTP 테스트 배포. 도메인·SSL 아직 없어서 IP+HTTP로
+    // 연결(AndroidManifest.xml에 usesCleartextTraffic="true"가 이미 있어서 별도 설정 불필요).
+    // 이 IP는 Elastic IP로 고정 할당돼 있어서, EC2 인스턴스를 중지(Stop) 후 재시작(Start)해도
+    // 안 바뀜(예전엔 자동 할당 IP라 재부팅마다 바뀔 위험이 있었음).
+    private const val BASE_URL = "http://54.144.123.148/api/v1/"
 
     // ⚠️ 2026-09-02 리뷰 반영: 예전엔 이메일·비밀번호가 여기 평문으로 박혀 있어서 git
     // 히스토리에 그대로 남았음(서버 쪽 실제 비밀번호는 별도로 교체 필요). 이제 local.properties
@@ -34,7 +37,10 @@ object ApiClient {
 
     // ⚠️ 2026-09-03 리뷰 반영: CookieJar가 없어서 로그인 응답의 refresh_token 쿠키가
     // 저장조차 안 되고 있었음(리프레시 흐름 자체가 불가능한 상태였음).
-    private val cookieJar = InMemoryCookieJar()
+    // ⚠️ 2026-09-08 반영: InMemoryCookieJar(메모리 전용)에서 PersistentCookieJar(암호화
+    // 저장소)로 교체. 앱을 완전히 종료해도 refresh_token이 남아서, 서버의 14일 수명이
+    // 실제로 "14일 미사용 시 재로그인"으로 동작함.
+    private val cookieJar = PersistentCookieJar
 
     // refresh 호출 전용 - authenticator를 안 달아서 재시도가 재시도를 부르는 루프가 안 생김.
     // cookieJar는 메인 클라이언트와 공유해서 같은 refresh_token을 씀.
@@ -44,6 +50,16 @@ object ApiClient {
         .build()
 
     private val tokenAuthenticator = TokenAuthenticator(BASE_URL, refreshOkHttpClient)
+
+    /**
+     * ⚠️ 2026-09-08 QA 반영: 로그아웃·계정 삭제 시 access token과 refresh_token 쿠키를 같이
+     * 비움. 예전엔 TokenHolder만 지우고 쿠키는 남겨둬서, 삭제된 계정의 refresh_token으로
+     * 자동 갱신이 돌 수 있는 상태였음.
+     */
+    fun clearSession() {
+        TokenHolder.clear()
+        cookieJar.clear()
+    }
 
     private val okHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
@@ -68,6 +84,8 @@ object ApiClient {
     val recordApi: RecordApi by lazy { retrofit.create(RecordApi::class.java) }
     val profileApi: ProfileApi by lazy { retrofit.create(ProfileApi::class.java) }
     val tuntunScoreApi: TuntunScoreApi by lazy { retrofit.create(TuntunScoreApi::class.java) }
+    val exerciseMissionApi: ExerciseMissionApi by lazy { retrofit.create(ExerciseMissionApi::class.java) }
+    val debugApi: DebugApi by lazy { retrofit.create(DebugApi::class.java) }
     /**
      * 실제 온보딩 화면(A03~A10)이 생겨서, 이제 이 함수는 "온보딩 건너뛰고 바로 기능 테스트"
      * 하고 싶을 때 쓰는 용도로만 남겨둠. 최초 온보딩 흐름 자체는 OnboardingState가 담당.

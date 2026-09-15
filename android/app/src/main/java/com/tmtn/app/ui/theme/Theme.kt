@@ -17,15 +17,38 @@ private val TmtnLightColorScheme = lightColorScheme(
     primary = ColorPrimary,
     onPrimary = ButtonPrimaryLabel,
     secondary = ColorSecondary,
+    onSecondary = ColorOnSurface,
     secondaryContainer = ColorSecondaryContainer,
+    onSecondaryContainer = ColorOnSurface,
     background = ColorBackground,
+    onBackground = ColorOnSurface,
     surface = ColorSurface,
+    surfaceVariant = ColorSelectionSurface,
+    surfaceDim = ColorSurface,
+    surfaceBright = ColorBackground,
+    surfaceContainerLowest = ColorBackground,
+    surfaceContainerLow = ColorSurface,
+    surfaceContainer = ColorSurface,
+    surfaceContainerHigh = ColorSelectionSurface,
+    surfaceContainerHighest = ColorOutlineVariant,
+    primaryContainer = ColorSelectionSurface,
+    onPrimaryContainer = ColorOnSurface,
+    tertiary = ColorWood,
+    onTertiary = ColorOnSurface,
+    tertiaryContainer = ColorWoodContainer,
+    onTertiaryContainer = ColorOnSurface,
+    inverseSurface = ColorOnSurface,
+    inverseOnSurface = ColorBackground,
+    inversePrimary = ColorSecondaryContainer,
     onSurface = ColorOnSurface,
     onSurfaceVariant = ColorOnSurfaceVariant,
     outline = ColorOutline,
     outlineVariant = ColorOutlineVariant,
     error = ColorError,
+    onError = Color.White,
     errorContainer = ColorErrorContainer,
+    onErrorContainer = ColorError,
+    surfaceTint = Color.Transparent,
 )
 
 data class TmtnColors(
@@ -82,12 +105,12 @@ private val DefaultTmtnColors = TmtnColors(
 
 val LocalTmtnColors = staticCompositionLocalOf { DefaultTmtnColors }
 
-// ⚠️ 2026-09-04 QA(P0-6) 반영: "고대비" 설정 - onSurfaceVariant/outlineVariant처럼 연한
-// 색으로 쓰던 보조 텍스트·테두리를 onSurface에 가깝게 당겨서 대비를 키움. 나머지 색은
-// 그대로 둠(색 자체를 바꾸는 게 아니라 "연한 색을 덜 연하게"만 하는 최소한의 개입).
+// High contrast strengthens muted labels, boundaries and orange numeric text.
+// The standard palette keeps the Figma accent #FF7A1A.
 private val HighContrastTmtnColors = DefaultTmtnColors.copy(
     onSurfaceVariant = ColorOnSurface,
     outlineVariant = ColorOutline,
+    secondary = ColorOnSurface,
 )
 
 val LocalTmtnTextScale = staticCompositionLocalOf { 1f }
@@ -103,11 +126,16 @@ fun TMTNv1Theme(content: @Composable () -> Unit) {
     val seniorMode = AccessibilitySettingsHolder.seniorMode.value
     val textScale = textScaleHintToFactor(AccessibilitySettingsHolder.textScaleHint.value)
 
-    MaterialTheme(colorScheme = TmtnLightColorScheme) {
-        CompositionLocalProvider(
+    CompositionLocalProvider(
             LocalTmtnColors provides (if (seniorMode) HighContrastTmtnColors else DefaultTmtnColors),
             LocalTmtnTextScale provides textScale,
-        ) {
+    ) {
+        val colors = LocalTmtnColors.current
+        MaterialTheme(colorScheme = TmtnLightColorScheme.copy(
+            onSurfaceVariant = colors.onSurfaceVariant,
+            outlineVariant = colors.outlineVariant,
+            secondary = colors.secondary,
+        ), typography = tmtnTypography()) {
             content()
         }
     }
