@@ -1,3 +1,12 @@
+"""⚠️ 2026-09-14 버그 수정 - 진짜 빈 DB(처음부터 마이그레이션을 순서대로 실행)에서는
+daily_card_sets에 rerolled_at 컬럼 자체가 없는 상태로 이 마이그레이션에 도달해서
+"Can't DROP 'rerolled_at'; check that column/key exists"로 실패했음(EC2 신규 배포에서
+발견). 기존 개발 DB에서는 이 컬럼이 실제로 있었어서 지금까지 안 드러났던 문제.
+
+⚠️ 1차 수정(DROP COLUMN IF EXISTS)이 문법 오류였음 - MySQL은 컬럼 DROP에 IF EXISTS를
+지원하지 않음(PostgreSQL 문법과 혼동). information_schema를 직접 확인해서 있을 때만
+DROP하는 동적 SQL(PREPARE/EXECUTE)로 다시 고침 - 컬럼 유무와 무관하게 항상 성공함."""
+
 from tortoise import BaseDBAsyncClient
 
 RUN_IN_TRANSACTION = True
@@ -5,8 +14,27 @@ RUN_IN_TRANSACTION = True
 
 async def upgrade(db: BaseDBAsyncClient) -> str:
     return """
-        ALTER TABLE `daily_card_sets` DROP COLUMN `rerolled_at`;
-        ALTER TABLE `daily_record_notes` ADD `is_given_up` BOOL NOT NULL DEFAULT 0;"""
+        SET @col_exists := (
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = 'daily_card_sets' AND column_name = 'rerolled_at'
+        );
+        SET @drop_sql := IF(@col_exists > 0,
+            'ALTER TABLE `daily_card_sets` DROP COLUMN `rerolled_at`',
+            'SELECT 1');
+        PREPARE stmt FROM @drop_sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+
+        SET @col_exists2 := (
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = 'daily_record_notes' AND column_name = 'is_given_up'
+        );
+        SET @add_sql := IF(@col_exists2 = 0,
+            'ALTER TABLE `daily_record_notes` ADD `is_given_up` BOOL NOT NULL DEFAULT 0',
+            'SELECT 1');
+        PREPARE stmt2 FROM @add_sql;
+        EXECUTE stmt2;
+        DEALLOCATE PREPARE stmt2;"""
 
 
 async def downgrade(db: BaseDBAsyncClient) -> str:
