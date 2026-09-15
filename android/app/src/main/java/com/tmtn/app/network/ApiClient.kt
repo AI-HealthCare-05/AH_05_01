@@ -10,8 +10,11 @@ import com.tmtn.app.network.TuntunScoreApi
 
 object ApiClient {
 
-    // TODO: 팀원들과 같은 Wi-Fi에서 테스트할 때는 이 주소를 바꿔야 함
-    private const val BASE_URL = "https://last-broiling-tartly.ngrok-free.dev/api/v1/"
+    // ⚠️ 2026-09-14 변경 - EC2 팀 내부 HTTP 테스트 배포. 도메인·SSL 아직 없어서 IP+HTTP로
+    // 연결(AndroidManifest.xml에 usesCleartextTraffic="true"가 이미 있어서 별도 설정 불필요).
+    // 이 IP는 Elastic IP로 고정 할당돼 있어서, EC2 인스턴스를 중지(Stop) 후 재시작(Start)해도
+    // 안 바뀜(예전엔 자동 할당 IP라 재부팅마다 바뀔 위험이 있었음).
+    private const val BASE_URL = "http://54.144.123.148/api/v1/"
 
     // ⚠️ 2026-09-02 리뷰 반영: 예전엔 이메일·비밀번호가 여기 평문으로 박혀 있어서 git
     // 히스토리에 그대로 남았음(서버 쪽 실제 비밀번호는 별도로 교체 필요). 이제 local.properties

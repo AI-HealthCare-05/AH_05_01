@@ -83,7 +83,11 @@ def _issue_login_response(http_request: Request, tokens: dict, content: dict | N
         # ⚠️ 2026-09-08: 예전엔 ENV==PROD 일 때만 secure=True 였는데, 지금 개발도 ngrok(https)
         # 으로 붙기 때문에 https 요청이면 항상 secure를 켠다. http로 붙는 로컬 테스트에서는
         # secure를 켜면 쿠키가 아예 저장되지 않으므로 그때만 끔.
-        secure=http_request.url.scheme == "https" or config.ENV == Env.PROD,
+        # ⚠️ 2026-09-14 추가 - EC2 팀 내부 HTTP 테스트 배포(ENV=PROD, 도메인/SSL 아직 없음)를
+        # 위해 COOKIE_ALLOW_INSECURE를 명시적으로 켰을 때만 PROD여도 secure 강제를 풀어줌.
+        # 기본값(False)에서는 기존과 완전히 동일하게 동작 - 실제 운영 보호는 안 바뀜.
+        secure=http_request.url.scheme == "https"
+        or (config.ENV == Env.PROD and not config.COOKIE_ALLOW_INSECURE),
         domain=_cookie_domain_for(http_request),
         # ⚠️ 2026-09-08 반영: 두 군데가 틀려 있었음.
         # 1) 리프레시 토큰 쿠키인데 access_token의 만료값을 넣고 있었음(수명이 서로 다름).

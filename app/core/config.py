@@ -18,6 +18,15 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="allow")
 
     ENV: Env = Env.LOCAL
+    # ⚠️ 2026-09-14 추가 - EC2 팀 내부 HTTP 테스트 배포용(도메인/SSL 없이 IP+HTTP로만
+    # 먼저 연결). ENV=PROD면 refresh_token 쿠키가 항상 secure=True로 나가는데, HTTP로
+    # 접속하면 Secure 쿠키는 브라우저/OkHttp가 아예 저장을 안 해서 "로그인은 되는데
+    # 액세스 토큰 만료 후 자동 갱신이 실패"하는 문제가 생김. 그렇다고 ENV를 LOCAL로
+    # 바꾸면 이 설정에 걸린 다른 로직(CORS, 로그 레벨 등)까지 같이 바뀔 수 있어서 위험함
+    # - 그래서 "HTTP 테스트를 허용한다"는 의도를 이 플래그 하나로 명시적으로 분리함.
+    # 기본값 False(=운영 안전 유지) - 이번처럼 HTTP로만 팀 내부 테스트할 때만 .env에서
+    # 명시적으로 True로 켤 것. 실제 도메인+HTTPS 배포로 넘어가면 반드시 다시 False로.
+    COOKIE_ALLOW_INSECURE: bool = False
     SECRET_KEY: str = f"default-secret-key{uuid.uuid4().hex}"
     TIMEZONE: zoneinfo.ZoneInfo = field(default_factory=lambda: zoneinfo.ZoneInfo("Asia/Seoul"))
     TEMPLATE_DIR: str = os.path.join(Path(__file__).resolve().parent.parent, "templates")
