@@ -17,13 +17,7 @@ import java.io.File
 class ScoreNewspaperUiTest {
     @get:Rule val compose = createComposeRule()
     private fun fixture() = ReferenceState().apply {
-        score.value = TuntunScoreV2Response(
-            80.0, 76.0, 54.0, 62.0, 91.0, 84.0, 98.0, 2, "questionnaire",
-            listOf("physical" to "신체", "diabetes" to "당뇨", "hypertension" to "고혈압", "lifestyle" to "생활습관").mapIndexed { i, (key, label) ->
-                TuntunComponentScoreV2(key, label, listOf(76.0,54.0,62.0,91.0)[i], true, "보통", "$label 영역의 참고 안내예요.", "test")
-            }, 4, listOf("physical","diabetes","hypertension","lifestyle"), emptyList(), false, true,
-            "2026-09-04", "2026-09-10", 4, "pending_evidence", "test", "test", null, "비진단용 참고 정보", null, true,
-        )
+        score.value = peerFixture(80.0)
         editorial.inputs.value = EditorialLoad.Ready(ScoreInputsResponse("1993년 4월", "남성", 172.0, 68.5, "주 2회 · 적당히", 0, 60, 15))
         editorial.weekly.value = EditorialLoad.Ready(WeeklyReportResponse("2026-09-04", "2026-09-10",
             (4..10).map { day -> CalendarDayItem("2026-09-${day.toString().padStart(2,'0')}", if (day in listOf(4,6,8,10)) "COMPLETED" else "REST") },
@@ -55,7 +49,7 @@ class ScoreNewspaperUiTest {
         compose.onNodeWithTag("news-practice").performScrollTo()
         compose.onNodeWithContentDescription("9월 10일, 실천 완료").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("news-life").assertDoesNotExist()
-        compose.runOnIdle { assertEquals(80.0, state.score.value!!.tuntunIndex!!, 0.0) }
+        compose.runOnIdle { assertEquals(80.0, state.score.value!!.peerCompositeScore!!, 0.0) }
     }
 
     @Test fun failedSupportingDataNeverErasesTheScoreOrPretendsToBeEmptyRecords() {

@@ -52,9 +52,10 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "약관 동의", onBack = if (state.accountCreated) null else {
-            { state.step.value = OnboardingStep.A04_VERIFY }
+            { state.leaveConsent() }
         })
-        StepProgressHeader(3, 3, "약관 동의")
+        val consentSteps = if (state.isGoogleSignup) 2 else 3
+        StepProgressHeader(consentSteps, consentSteps, "약관 동의")
 
         Column(
             modifier = Modifier
@@ -64,24 +65,6 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // ⚠️ 2026-09-11 추가 - 구글 로그인 경로로 왔을 때만 표시. 디자인 핸드오프
-            // (TMTN-google-signin-handoff-20260910, A17/A18)의 "인증으로 확인한 실제
-            // 계정 주소" 카드. 이메일 가입 경로(state.isGoogleSignup=false)는 이미
-            // A03에서 직접 이메일을 입력했으니 다시 보여줄 필요가 없어서 그대로 숨김.
-            if (state.isGoogleSignup) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(colors.surface, RoundedCornerShape(12.dp))
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text("Google 계정 확인 완료", style = TmtnType.label, color = colors.onSurface)
-                        Text(state.email.value, style = TmtnType.body, color = colors.onSurfaceVariant)
-                    }
-                }
-            }
             // 모두 동의
             Row(
                 modifier = Modifier
@@ -141,7 +124,7 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
                     onViewClick = { state.step.value = OnboardingStep.A14_TERMS_DETAIL },
                 )
                 Text(
-                    "달리기·걷기 미션을 하는 동안에만 위치를 받아 거리를 잽니다. 어디를 걸었는지 경로는 저장하지 않습니다.",
+                    "걷기·달리기 미션에서 이동 거리를 잴 때 사용해요. 미션을 시작하기 전에 위치 권한을 요청합니다.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
                 )
@@ -162,9 +145,14 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
             }
 
             TmtnPrimaryButton(
-                text = if (state.isLoading.value) "가입을 마무리하고 있어요" else "동의하고 가입 완료",
-                onClick = { scope.launch { state.submitConsents() } },
-                enabled = state.allMandatoryAgreed && !state.isLoading.value,
+                text = if (state.googleReauthRequired.value) "Google 계정 다시 선택" else "동의하고 가입 완료",
+                onClick = {
+                    if (state.googleReauthRequired.value) {
+                        state.cancelGoogleSignup(); state.step.value = OnboardingStep.AUTH_CHOICE
+                    } else scope.launch { state.submitConsents() }
+                },
+                enabled = (state.allMandatoryAgreed || state.googleReauthRequired.value) && !state.isLoading.value,
+                loading = state.isLoading.value,
                 disabledReason = if (!state.allMandatoryAgreed) "필수 항목을 확인해 주세요." else null,
             )
         }

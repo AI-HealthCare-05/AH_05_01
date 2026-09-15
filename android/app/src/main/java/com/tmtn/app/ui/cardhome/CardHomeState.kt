@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.cardhome
 
+import com.tmtn.app.ui.common.failWithMessage
+import com.tmtn.app.ui.common.userMessageOr
 import androidx.compose.runtime.mutableStateOf
 import com.tmtn.app.network.ApiClient
 import com.tmtn.app.network.model.CalendarDayItem
@@ -59,13 +61,19 @@ enum class CardHomeStep {
  * 오늘의 카드 흐름 전체(B01~B09) 상태.
  * Navigation Compose 없이 온보딩과 동일한 방식(상태값으로 화면 전환)으로 구현.
  */
-class CardHomeState {
+class CardHomeState(
+    private val serviceDateProvider: suspend () -> String = { currentServiceDateString() },
+    private val missionApiProvider: () -> com.tmtn.app.network.CardHomeApi = { ApiClient.cardHomeApi },
+) {
     var step = mutableStateOf(CardHomeStep.LOADING)
     var isLoading = mutableStateOf(false)
     var errorMessage = mutableStateOf<String?>(null)
+    private var completionAttempt: Pair<String, String>? = null
 
     // 오늘의 카드 세트
     var setId = mutableStateOf<String?>(null)
+    var cardServiceDate = mutableStateOf<String?>(null)
+    private var homeReturnRefreshRunning = false
     var optionIds = mutableStateOf<List<String>>(emptyList())
     var drawState = mutableStateOf<String?>(null) // "AWAITING_SELECTION" / "SELECTED"
     var todayChallengeState = mutableStateOf<String?>(null) // "READY"/"ACTIVE"/"PAUSED"/"COMPLETED"/"SKIPPED"
@@ -91,6 +99,7 @@ class CardHomeState {
 
     // 댐(재료) 요약 - B01/B01b 상단에 표시
     var companionStage = mutableStateOf(0)
+    var companionLoaded = mutableStateOf(false)
     var companionMaterialsNeeded = mutableStateOf<Int?>(null)
     var companionNextStageLabel = mutableStateOf<String?>(null)
     // 홈 화면 "댐" 요약 행의 오른쪽 빈 공간에 재료 개수를 보여주기 위한 값 (RecentSummaryListCard 참고).
@@ -98,16 +107,12 @@ class CardHomeState {
     // ⚠️ 2026-09-08 QA(9번) 반영: 기본값 true - 아직 동의 목록을 못 불러온 순간(홈 로딩
     // 직후 잠깐)에 실수로 센서 미션을 막아버리지 않기 위함. 실제로 거부한 게 확인되면
     // loadLocationConsent()가 false로 갱신함.
-    var locationConsentGranted = mutableStateOf(true)
-    // ⚠️ 2026-09-13 추가 - 지현님 팀 제안 반영: SENSOR_PERMISSION_FALLBACK 화면의 문구를
-    // "권한 거부"(설정에서 복구 가능)와 "하드웨어 미지원"(직접 체크만 가능)으로 구분.
-    // "PERMISSION" | "HARDWARE"
+    var locationConsentGranted = mutableStateOf(false)
+    var locationConsentLoaded = mutableStateOf(false)
     var sensorFallbackReason = mutableStateOf("PERMISSION")
 
-    // ⚠️ 2026-09-10 반영: 실모델(또래 백분위, tuntun-score/peer/v2) 연동. 기존
-    // tuntunIndexBand("관심/보통/양호")·tuntunIndexPeriodLabel(주간 기간)은 새 계약에
-    // 없는 개념이라 제거함 - ScorePercentilePresentation이 tuntunIndexPresentationValue를
-    // "0~100, 높을수록 건강한 쪽" 백분위로 해석해서 "100명 중 N번째쯤"을 그려줌.
+    // ⚠️ 홈 "틈튼지수" 요약 카드 - 예전엔 "68"/"보통 구간" 등이 전부 하드코딩된 예시였음.
+    // /tuntun-score/peer/v2의 peerCompositeScore를 읽음. 종합 점수를 비교 순위로 변환하지 않음.
     var tuntunIndexValue = mutableStateOf<Int?>(null)
     var tuntunIndexPresentationValue = mutableStateOf<Double?>(null)
     // ⚠️ PR #12 리뷰(P0) 반영: 홈 카드가 배지 없이 상수 Mock 점수를 그대로 보여주고 있었음.
@@ -126,11 +131,14 @@ class CardHomeState {
     // 전용이지만 QA 중 계속 혼란을 줌). 시뮬레이션 값이 있으면 그걸 파싱해서 쓰고, 없으면
     // (null 또는 "-") 기존처럼 기기 오늘을 씀.
     fun displayDateLabel(): java.time.LocalDate {
+        cardServiceDate.value?.let { date ->
+            runCatching { java.time.LocalDate.parse(date) }.getOrNull()?.let { return it }
+        }
         val simulated = debugSimulatedToday.value
         if (simulated != null && simulated != "-") {
             runCatching { java.time.LocalDate.parse(simulated) }.getOrNull()?.let { return it }
         }
-        return java.time.LocalDate.now()
+        return java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul"))
     }
 
     // B16/B17: 쉬어가기
@@ -174,8 +182,9 @@ class CardHomeState {
         // 있으니(연속 기록·최근 7일·재료·댐 진행 전부 정상 동작 확인됨), 회고를 마치면
         // 곧바로 홈으로 보내서 그 축하를 사용자가 직접 나가서 찾지 않아도 되게 함.
         revealedCard.value = revealedCard.value?.copy(state = "COMPLETED")
-        val pending = runCatching { ApiClient.cardHomeApi.getStageUpPending() }
-            .getOrNull()?.let { if (it.isSuccessful) it.body() else null }
+        val pending = try { missionApiProvider().getStageUpPending().let { if (it.isSuccessful) it.body() else null } }
+            catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) { null }
         if (pending != null) {
             stageUpPending.value = pending
             step.value = CardHomeStep.STAGE_UP
@@ -184,11 +193,27 @@ class CardHomeState {
         }
     }
 
-    // G07: "자란 댐 보러 가기"/"닫기" 둘 다 - 봤다고 표시하고 홈으로(P1-4와 같은 이유)
-    suspend fun acknowledgeStageUp() {
-        runCatching { ApiClient.cardHomeApi.markStageUpSeen() }
-        stageUpPending.value = null
-        loadToday()
+    // The seen receipt does not grant a reward; keep the news visible if this request fails.
+    suspend fun acknowledgeStageUp(openDam: (() -> Unit)? = null) {
+        if (isLoading.value) return
+        isLoading.value = true
+        errorMessage.value = null
+        try {
+            val response = missionApiProvider().markStageUpSeen()
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            companionStage.value = stageUpPending.value?.new_stage ?: companionStage.value
+            stageUpPending.value = null
+            if (openDam != null) {
+                // Refresh home next time it is entered, without delaying the destination behind extra GETs.
+                setId.value = null
+                step.value = CardHomeStep.HOME
+                openDam()
+            } else loadToday()
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (e: Exception) {
+            errorMessage.value = e.userMessageOr("복구 소식을 확인하지 못했어요. 다시 눌러 주세요.")
+        } finally { isLoading.value = false }
     }
 
     suspend fun loadToday() {
@@ -196,34 +221,38 @@ class CardHomeState {
         errorMessage.value = null
         runCatching {
             val response = ApiClient.cardHomeApi.getTodayCards()
-            if (!response.isSuccessful) error(parseErrorMessage(response))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             response.body()!!
         }.onSuccess { window ->
-            setId.value = window.set_id
-            optionIds.value = window.option_back_ids
-            drawState.value = window.draw_state
-            todayChallengeId.value = window.challenge_id
-            todayChallengeState.value = window.challenge_state
-            isTodayRestDay.value = window.is_rest_day
+            applyHomeWindow(window)
             // ⚠️ 2026-09-07 반영: G3(카드 미선택 상태의 포기, B19) - daily_record_notes.
             // is_given_up이 카드 재조회 응답(CardWindowResponse)에 이미 노출돼 있었는데
             // 여기서 안 받아오고 있었음.
-            isTodayGivenUp.value = window.is_given_up
-            pickedIndex.value = null
-            showConfirmDialog.value = false
             // ⚠️ 쉬어가기 상태가 daily_record_notes에만 있고 카드 재조회 응답엔 없어서,
             // 앱을 재시작하거나 다른 탭 갔다 오면 쉬어가기 표시가 사라지던 버그를 고침 —
             // isTodayRestDay만 반영하고, 실제 화면 표시는 CardHomeScreen(홈)이 그 안에서
             // 마스코트 카드만 "쉼" 버전으로 바꿔서 보여줌(틈튼지수 요약 등 나머지는 그대로 유지).
             step.value = CardHomeStep.HOME
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "오늘의 카드를 가져오지 못했어요."
+            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+            errorMessage.value = e.userMessageOr("오늘의 카드를 가져오지 못했어요.")
             step.value = CardHomeStep.ERROR
         }
         // ⚠️ PR #12 리뷰(P1) 반영: 이 4개가 순차 suspend 호출이라 홈 진입이 왕복 5회
         // 직렬(ngrok 경유면 체감됨)이었음 - 서로 의존관계가 없어서 coroutineScope로
         // 묶어 동시에 보내면 가장 오래 걸리는 1개 시간만큼만 걸림.
         coroutineScope {
+            launch {
+                val id = todayChallengeId.value
+                if (id == null) revealedCard.value = null else {
+                    if (revealedCard.value?.challenge_id != id) revealedCard.value = null
+                    try {
+                        val response = ApiClient.cardHomeApi.revealChallenge(id)
+                        if (response.isSuccessful && todayChallengeId.value == id) revealedCard.value = response.body()
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                    catch (_: Exception) { /* The existing card action remains available for retry. */ }
+                }
+            }
             launch { loadCompanion() }
             launch { loadTuntunIndexSummary() }
             launch { loadRecentWeek() }
@@ -237,6 +266,57 @@ class CardHomeState {
             // 어긋났음. 홈 로드 시에도 정확한 값을 받아오게 함.
             launch { loadStreak() }
         }
+    }
+
+    private fun applyHomeWindow(window: com.tmtn.app.network.model.CardWindowResponse) {
+        if (setId.value != window.set_id) hasMemoToday.value = null
+        setId.value = window.set_id
+        cardServiceDate.value = window.service_date
+        optionIds.value = window.option_back_ids
+        drawState.value = window.draw_state
+        todayChallengeId.value = window.challenge_id
+        todayChallengeState.value = window.challenge_state
+        isTodayRestDay.value = window.is_rest_day
+        isTodayGivenUp.value = window.is_given_up
+        pickedIndex.value = null
+        showConfirmDialog.value = false
+        revealedCard.value = revealedCard.value?.takeIf { it.challenge_id == window.challenge_id }?.let {
+            it.copy(state = window.challenge_state ?: it.state)
+        }
+    }
+
+    private fun homeCanRefresh(): Boolean = step.value == CardHomeStep.HOME && !isLoading.value &&
+        !showRestDaySheet.value && !showRestCancelSheet.value && !showRestToGiveUpSheet.value &&
+        !showGiveUpConfirmSheet.value && !showCheckGiveUpDialog.value && !showConfirmDialog.value
+
+    /** Keep the visible home and its scroll while checking the existing daily-card endpoint. */
+    suspend fun refreshHomeOnReturn() {
+        if (homeReturnRefreshRunning || !homeCanRefresh()) return
+        homeReturnRefreshRunning = true
+        val previousSet = setId.value
+        try {
+            val api = missionApiProvider()
+            val response = api.getTodayCards()
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            val window = response.body() ?: error("Empty card window")
+            val card = window.challenge_id?.let { id ->
+                try {
+                    val reveal = api.revealChallenge(id)
+                    reveal.body()?.takeIf { reveal.isSuccessful && it.challenge_id == id }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                catch (_: Exception) { null }
+            }
+            // A card, dialog or another day may have opened while the request was in flight.
+            if (!homeCanRefresh() || setId.value != previousSet) return
+            applyHomeWindow(window)
+            if (card != null) revealedCard.value = card
+            errorMessage.value = null
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (_: Exception) {
+            if (homeCanRefresh() && setId.value == previousSet) {
+                errorMessage.value = "오늘의 소식을 새로 가져오지 못했어요. 다시 돌아오면 확인할게요."
+            }
+        } finally { homeReturnRefreshRunning = false }
     }
 
     suspend fun loadStreak() {
@@ -319,7 +399,7 @@ class CardHomeState {
         errorMessage.value = null
         runCatching {
             val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!response.isSuccessful) error(parseErrorMessage(response))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             response.body()!!
         }.onSuccess { card ->
             revealedCard.value = card
@@ -329,7 +409,8 @@ class CardHomeState {
             // 뜨는 축하 화면은 goToCompletedOrCelebrate()가 따로 처리하므로 이 함수와는 무관.
             step.value = CardHomeStep.REVEALED
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "미션 정보를 가져오지 못했어요."
+            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+            errorMessage.value = e.userMessageOr("미션 정보를 가져오지 못했어요.")
         }
         isLoading.value = false
     }
@@ -343,13 +424,14 @@ class CardHomeState {
         errorMessage.value = null
         runCatching {
             val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!response.isSuccessful) error(parseErrorMessage(response))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             response.body()!!
         }.onSuccess { card ->
             revealedCard.value = card
             step.value = stepForRevealedCard(card)
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "미션 정보를 가져오지 못했어요."
+            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+            errorMessage.value = e.userMessageOr("미션 정보를 가져오지 못했어요.")
         }
         isLoading.value = false
     }
@@ -365,13 +447,14 @@ class CardHomeState {
     suspend fun refreshRevealedCard() {
         val challengeId = revealedCard.value?.challenge_id ?: return
         runCatching {
-            val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!response.isSuccessful) error(parseErrorMessage(response))
+            val response = missionApiProvider().revealChallenge(challengeId)
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             response.body()!!
         }.onSuccess { card ->
             revealedCard.value = card
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "미션 정보를 가져오지 못했어요."
+            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+            errorMessage.value = e.userMessageOr("미션 정보를 가져오지 못했어요.")
         }
     }
 
@@ -387,7 +470,7 @@ class CardHomeState {
         val challengeId = revealedCard.value?.challenge_id ?: return
         runCatching {
             val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!response.isSuccessful) error(parseErrorMessage(response))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             response.body()!!
         }.onSuccess { card ->
             revealedCard.value = card
@@ -401,10 +484,13 @@ class CardHomeState {
     // ⚠️ 2026-09-08 QA(9번) 반영: LOCATION_DATA_USAGE(위치정보, 선택 동의) 여부를 조회해서
     // SensorIntroScreen이 센서 미션 시작 자체를 막을 수 있게 함.
     suspend fun loadLocationConsent() {
+        locationConsentLoaded.value = false
+        locationConsentGranted.value = false
         runCatching {
             val response = ApiClient.profileApi.listConsents()
             if (response.isSuccessful) response.body() else null
         }.getOrNull()?.let { consents ->
+            locationConsentLoaded.value = true
             locationConsentGranted.value = consents.any {
                 it.purpose == "LOCATION_DATA_USAGE" && it.status == "AGREED"
             }
@@ -417,6 +503,7 @@ class CardHomeState {
             if (response.isSuccessful) response.body() else null
         }.getOrNull()?.let { body ->
             companionStage.value = body.current_stage
+            companionLoaded.value = true
             companionMaterialsNeeded.value = body.materials_needed_for_next
             companionNextStageLabel.value = body.stages.firstOrNull { !it.completed }?.label
             companionMaterials.value = body.materials
@@ -441,7 +528,7 @@ class CardHomeState {
             return
         }
         val index = body.peerCompositeScore
-        if (body.scoreAvailable && index != null) {
+        if (body.scoreAvailable && !body.isMock && index != null && index.isFinite() && index in 0.0..100.0) {
             tuntunIndexPresentationValue.value = index
             tuntunIndexValue.value = index.roundToInt()
             tuntunIndexIsMock.value = body.isMock
@@ -481,15 +568,18 @@ class CardHomeState {
     fun resetPick() {
         pickedIndex.value = null
         showConfirmDialog.value = false
+        errorMessage.value = null
     }
 
     // B04 -> B05: 확정 다이얼로그 열기
     fun openConfirmDialog() {
+        errorMessage.value = null
         showConfirmDialog.value = true
     }
 
     // B05: "확정하기" -> 실제 서버 호출
     suspend fun confirmCard() {
+        if (isLoading.value) return
         val sid = setId.value ?: return
         val index = pickedIndex.value ?: return
         val optionId = optionIds.value.getOrNull(index) ?: return
@@ -497,16 +587,33 @@ class CardHomeState {
         isLoading.value = true
         errorMessage.value = null
         runCatching {
-            val response = ApiClient.cardHomeApi.selectCard(sid, optionId)
-            if (!response.isSuccessful) error(parseErrorMessage(response))
-            response.body()!!
+            val api = missionApiProvider()
+            val response = api.selectCard(sid, optionId)
+            if (response.code() == 409) {
+                // A previous confirmation may have succeeded while its reply was lost.
+                val windowResponse = api.getTodayCards()
+                val window = windowResponse.body()?.takeIf { windowResponse.isSuccessful && it.set_id == sid && it.draw_state == "SELECTED" }
+                val existingId = window?.challenge_id
+                    ?: failWithMessage("고른 카드를 확인하지 못했어요. 홈에서 다시 확인해 주세요.")
+                val existing = api.revealChallenge(existingId)
+                existing.body()?.takeIf { existing.isSuccessful && it.challenge_id == existingId }
+                    ?: failWithMessage("고른 카드를 가져오지 못했어요. 다시 눌러 주세요.")
+            } else {
+                if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+                response.body() ?: failWithMessage("카드를 가져오지 못했어요. 다시 눌러 주세요.")
+            }
         }.onSuccess { reveal ->
+            com.tmtn.app.audio.TmtnAudio.play(com.tmtn.app.audio.TmtnSound.Paper, "${reveal.challenge_id}:reveal")
             revealedCard.value = reveal
+            todayChallengeId.value = reveal.challenge_id
+            todayChallengeState.value = reveal.state
+            drawState.value = "SELECTED"
             showConfirmDialog.value = false
             step.value = CardHomeStep.REVEALED
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "카드 확정에 실패했어요."
-            showConfirmDialog.value = false
+            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+            errorMessage.value = e.userMessageOr("카드 확정에 실패했어요.")
+            showConfirmDialog.value = true
         }
         isLoading.value = false
     }
@@ -520,14 +627,16 @@ class CardHomeState {
             val response = ApiClient.cardHomeApi.completeChallenge(
                 challengeId, UUID.randomUUID().toString(), CompleteChallengeRequestBody()
             )
-            if (!response.isSuccessful) error(parseErrorMessage(response))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             response.body()!!
         }.onSuccess { result ->
             pointsAwarded.value = result.points_awarded
+            com.tmtn.app.audio.TmtnAudio.play(com.tmtn.app.audio.TmtnSound.Reward, "$challengeId:complete")
             awardedFiveElement.value = result.five_element
             goToCompletedOrCelebrate()
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "완료 처리에 실패했어요."
+            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+            errorMessage.value = e.userMessageOr("완료 처리에 실패했어요.")
         }
         isLoading.value = false
     }
@@ -557,15 +666,11 @@ class CardHomeState {
     }
 
     // B16 -> B17: "오늘 쉬어가기" 확정 - 실제 서버 호출 (기록 캘린더 API 재사용)
-    suspend fun confirmRestDay() {
-        isLoading.value = true
-        errorMessage.value = null
-        val today = currentServiceDateString() // ⚠️ 서버 날짜 기준(테스트 시뮬레이션 반영) - "YYYY-MM-DD"
-        runCatching {
-            val response = ApiClient.cardHomeApi.markRestDay(RestDayRequest(service_date = today))
-            if (!response.isSuccessful) error(parseErrorMessage(response))
-            response.body()!!
-        }.onSuccess { streak ->
+    suspend fun confirmRestDay(): Boolean = transitionMission("쉼으로 저장하지 못했어요. 다시 눌러 주세요.") {
+        val today = serviceDateProvider()
+            val response = missionApiProvider().markRestDay(RestDayRequest(service_date = today))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            val streak = response.body() ?: failWithMessage("쉼으로 저장하지 못했어요. 다시 눌러 주세요.")
             restDaysUsedThisWeek.value = streak.rest_days_used_this_week
             restDaysRemainingThisWeek.value = streak.rest_days_remaining_this_week
             currentStreak.value = streak.current_streak
@@ -576,17 +681,15 @@ class CardHomeState {
             // 것처럼" 보인다는 피드백을 받음. 이제 홈으로 바로 보내고, 홈 안의 마스코트
             // 카드만 "쉼" 버전으로 바뀌게 함(CardHomeScreen.kt 참고).
             step.value = CardHomeStep.HOME
-        }.onFailure { e ->
-            errorMessage.value = e.message ?: "쉼 표시에 실패했어요."
-        }
-        isLoading.value = false
     }
 
     fun closeRestDaySheet() {
+        if (isLoading.value) return
         // ⚠️ 예전엔 여기서도 step.value = CardHomeStep.HOME으로 보내서, RevealScreen이나
         // CheckChallengeScreen에서 열었어도 "닫기"만 누르면 무조건 홈으로 튕겼음. 이제
         // 오버레이라 그냥 닫기만 하면 원래 보고 있던 화면이 자연스럽게 그대로 보임.
         showRestDaySheet.value = false
+        errorMessage.value = null
     }
 
     // ===== 2026-09-07 반영: 상태전이 정책 REST<->GIVE_UP 전환·재시작 =====
@@ -594,48 +697,36 @@ class CardHomeState {
     // C25 · "쉬어가기 취소하고 도전하기" - REST -> 도전 복귀(+1회 복구). 시트 열림 자체는
     // showRestCancelSheet로 관리하고, 화면 전환(DECK_PICK vs 진행 화면)은 drawState를 보고
     // 호출부(CardHomeFlow.kt)가 결정함 - 여기서는 서버 호출 + 잔여횟수·상태만 갱신.
-    suspend fun cancelRestDay() {
-        isLoading.value = true
-        errorMessage.value = null
-        val today = currentServiceDateString()
-        runCatching {
-            val response = ApiClient.cardHomeApi.cancelRestDay(today)
-            if (!response.isSuccessful) error(parseErrorMessage(response))
-            response.body()!!
-        }.onSuccess { streak ->
+    suspend fun cancelRestDay(): Boolean = transitionMission("쉬어가기를 취소하지 못했어요. 다시 눌러 주세요.") {
+        val today = serviceDateProvider()
+            val response = missionApiProvider().cancelRestDay(today)
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            val streak = response.body() ?: failWithMessage("쉬어가기를 취소하지 못했어요. 다시 눌러 주세요.")
             restDaysUsedThisWeek.value = streak.rest_days_used_this_week
             restDaysRemainingThisWeek.value = streak.rest_days_remaining_this_week
             currentStreak.value = streak.current_streak
             isTodayRestDay.value = false
-        }.onFailure { e ->
-            errorMessage.value = e.message ?: "쉬어가기 취소에 실패했어요."
-        }
-        isLoading.value = false
     }
 
     // C27 · "포기로 바꾸기" - REST -> GIVE_UP(쓴 쉬어가기 1회 복구, 대신 연속 기록은 끊김).
     // switchToGiveUp()이 "쉬어가기 취소 + 포기 기록"을 서버에서 하나의 트랜잭션으로 처리함
     // (record_service.py 주석 참고) - 클라이언트에서 cancelRestDay + quitChallenge를 따로
     // 두 번 부르지 않음(중간 실패 시 상태 불일치 방지).
-    suspend fun switchRestToGiveUp() {
-        isLoading.value = true
-        errorMessage.value = null
-        val today = currentServiceDateString()
-        runCatching {
-            val response = ApiClient.cardHomeApi.switchToGiveUp(RestDayRequest(service_date = today))
-            if (!response.isSuccessful) error(parseErrorMessage(response))
-            response.body()!!
-        }.onSuccess { streak ->
+    suspend fun switchRestToGiveUp(): Boolean = transitionMission("오늘 기록을 바꾸지 못했어요. 다시 눌러 주세요.") {
+        val today = serviceDateProvider()
+            val response = missionApiProvider().switchToGiveUp(RestDayRequest(service_date = today))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            val streak = response.body() ?: failWithMessage("오늘 기록을 바꾸지 못했어요. 다시 눌러 주세요.")
             restDaysUsedThisWeek.value = streak.rest_days_used_this_week
             restDaysRemainingThisWeek.value = streak.rest_days_remaining_this_week
             currentStreak.value = streak.current_streak
             isTodayRestDay.value = false
             isTodayGivenUp.value = true
-            loadToday()
-        }.onFailure { e ->
-            errorMessage.value = e.message ?: "포기로 바꾸는 데 실패했어요."
-        }
-        isLoading.value = false
+            todayChallengeState.value = todayChallengeId.value?.let { "SKIPPED" }
+            revealedCard.value = revealedCard.value?.copy(state = "SKIPPED", elapsed_seconds = 0, accumulated_count = 0)
+            timerElapsedSeconds.value = 0
+            timerIsPaused.value = true
+            step.value = CardHomeStep.HOME
     }
 
     // RevealScreen의 "다시 도전하기"(SKIPPED에서 재도전) - G2로 서버가 SKIPPED에서도
@@ -649,16 +740,17 @@ class CardHomeState {
         errorMessage.value = null
         runCatching {
             val response = ApiClient.cardHomeApi.startChallenge(challengeId)
-            if (!response.isSuccessful) error(parseErrorMessage(response))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             val revealResponse = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!revealResponse.isSuccessful) error(parseErrorMessage(revealResponse))
+            if (!revealResponse.isSuccessful) failWithMessage(parseErrorMessage(revealResponse))
             revealResponse.body()!!
         }.onSuccess { card ->
             revealedCard.value = card
             isTodayGivenUp.value = false
             step.value = stepForRevealedCard(card)
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "다시 시작하지 못했어요."
+            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+            errorMessage.value = e.userMessageOr("다시 시작하지 못했어요.")
         }
         isLoading.value = false
     }
@@ -674,113 +766,133 @@ class CardHomeState {
         errorMessage.value = null
         runCatching {
             val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!response.isSuccessful) error(parseErrorMessage(response))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             response.body()!!
         }.onSuccess { card ->
             revealedCard.value = card
             step.value = stepForRevealedCard(card)
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "미션 정보를 가져오지 못했어요."
+            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+            errorMessage.value = e.userMessageOr("미션 정보를 가져오지 못했어요.")
         }
         isLoading.value = false
     }
 
     // ===== C그룹: 챌린지 진행 (타이머형) =====
 
-    // C02 -> C03: 시작
-    // C02 -> C03: 시작 - 실제 서버 시작 API 호출 (여기서부터 서버가 READY -> ACTIVE로 바뀜)
-    suspend fun startTimer() {
-        val challengeId = revealedCard.value?.challenge_id ?: return
+    // Server acknowledgement comes before the local timer transition. A failed request
+    // keeps the current clock and state so the same action can be retried safely.
+    private suspend fun transitionMission(fallback: String, action: suspend () -> Unit): Boolean {
+        if (isLoading.value) return false
         isLoading.value = true
         errorMessage.value = null
-        runCatching {
-            val response = ApiClient.cardHomeApi.startChallenge(challengeId)
-            if (!response.isSuccessful) error(parseErrorMessage(response))
-        }.onSuccess {
-            timerElapsedSeconds.value = 0
+        return try { action(); true }
+        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (error: Exception) { errorMessage.value = error.userMessageOr(fallback); false }
+        finally { isLoading.value = false }
+    }
+
+    suspend fun startTimer() {
+        val card = revealedCard.value ?: return
+        transitionMission("시작하지 못했어요. 연결을 확인하고 다시 눌러 주세요.") {
+            val response = missionApiProvider().startChallenge(card.challenge_id)
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            timerElapsedSeconds.value = response.body()?.accumulated_duration_seconds ?: card.elapsed_seconds
             timerIsPaused.value = false
-            // ⚠️ revealedCard.state를 서버와 맞춰줘야, 나중에 뒤로가기 후 다시 "이 행동
-            // 시작하기"를 눌렀을 때(onStartAction) 이미 ACTIVE인 걸 알고 TIMER_START(0:00,
-            // 시작하기 버튼)로 또 안 보내고 CHALLENGE_TIMER_RUNNING으로 바로 이어줄 수 있음.
-            // 이걸 안 갱신하면 서버는 ACTIVE인데 클라만 모르고 startChallenge를 또 호출해서
-            // "이미 ACTIVE라 READY/PAUSED에서만 가능한 시작 전이가 거부됨(409)"으로 이어짐.
-            revealedCard.value = revealedCard.value?.copy(state = "ACTIVE")
+            revealedCard.value = card.copy(state = "ACTIVE")
             step.value = CardHomeStep.CHALLENGE_TIMER_RUNNING
-        }.onFailure { e ->
-            errorMessage.value = e.message ?: "시작하지 못했어요."
         }
-        isLoading.value = false
     }
 
-    // C03 -> C04: 일시정지 - 실제 서버 일시정지 API 호출
     suspend fun pauseTimer() {
-        val challengeId = revealedCard.value?.challenge_id
-        timerIsPaused.value = true
-        revealedCard.value = revealedCard.value?.copy(state = "PAUSED")
-        step.value = CardHomeStep.CHALLENGE_TIMER_PAUSED
-        if (challengeId != null) {
-            runCatching { ApiClient.cardHomeApi.pauseChallenge(challengeId) }
+        val card = revealedCard.value ?: return
+        transitionMission("잠시 멈추지 못했어요. 연결을 확인하고 다시 눌러 주세요.") {
+            val response = missionApiProvider().pauseChallenge(card.challenge_id)
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            response.body()?.let { timerElapsedSeconds.value = it.accumulated_duration_seconds }
+            timerIsPaused.value = true
+            revealedCard.value = card.copy(state = "PAUSED", elapsed_seconds = timerElapsedSeconds.value)
+            step.value = CardHomeStep.CHALLENGE_TIMER_PAUSED
         }
     }
 
-    // C04 -> C03: 이어서 하기 - 실제 서버 재시작 API 호출 (지금까지 쌓인 시간은 그대로 유지)
     suspend fun resumeTimer() {
-        val challengeId = revealedCard.value?.challenge_id
-        if (challengeId != null) {
-            runCatching { ApiClient.cardHomeApi.startChallenge(challengeId) }
+        val card = revealedCard.value ?: return
+        transitionMission("다시 시작하지 못했어요. 잰 시간은 그대로예요.") {
+            val response = missionApiProvider().startChallenge(card.challenge_id)
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            response.body()?.let { timerElapsedSeconds.value = it.accumulated_duration_seconds }
+            revealedCard.value = card.copy(state = "ACTIVE")
+            timerIsPaused.value = false
+            step.value = CardHomeStep.CHALLENGE_TIMER_RUNNING
         }
-        revealedCard.value = revealedCard.value?.copy(state = "ACTIVE")
-        timerIsPaused.value = false
-        step.value = CardHomeStep.CHALLENGE_TIMER_RUNNING
     }
 
-    // C19: "그만두기" - 실제 서버에 건너뛰기로 기록 (오늘 이 행동은 쉼으로 남음)
-    suspend fun quitChallenge() {
-        val challengeId = revealedCard.value?.challenge_id
-        showQuitDialog.value = false
-        if (challengeId != null) {
-            runCatching {
-                ApiClient.cardHomeApi.skipChallenge(
-                    challengeId,
-                    com.tmtn.app.network.model.SkipChallengeRequest(reason = "사용자가 중단함")
-                )
-            }
+    suspend fun quitChallenge(onSaved: () -> Unit = {}): Boolean {
+        val card = revealedCard.value ?: return false
+        val saved = transitionMission("중단하지 못했어요. 미션은 그대로 열려 있어요.") {
+            val response = missionApiProvider().skipChallenge(card.challenge_id,
+                com.tmtn.app.network.model.SkipChallengeRequest(reason = "사용자가 중단함"))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            revealedCard.value = card.copy(state = "SKIPPED")
+            timerIsPaused.value = true
+            todayChallengeState.value = "SKIPPED"
         }
-        loadToday()
+        if (saved) {
+            showGiveUpConfirmSheet.value = false
+            showQuitDialog.value = false
+            showCheckGiveUpDialog.value = false
+            onSaved()
+            loadToday()
+        }
+        return saved
     }
 
-    // ⚠️ 2026-09-07 반영: 백엔드전달_상태전이 문서 - "중단(PAUSED)"과 "포기(GIVE_UP·SKIPPED)"를
-    // 앱이 구분 안 하고 있었음(그만두기가 항상 skip만 호출). "나중에 이어서 하기"는 진행값을
-    // 그대로 들고 있다가 다시 이어서 할 수 있는 상태(PAUSED)로 보내야 함 - 이미 있는 pause API를
-    // 재사용하되, 일시정지 화면(TIMER_PAUSED)에 머무르지 않고 곧바로 홈으로 나가는 게 다른 점
-    // (문서의 B22 "중단 · 이어서 하기 대기" 홈 화면에 해당).
     suspend fun pauseAndGoHome() {
-        val challengeId = revealedCard.value?.challenge_id
-        showQuitDialog.value = false
-        if (challengeId != null) {
-            runCatching { ApiClient.cardHomeApi.pauseChallenge(challengeId) }
+        val card = revealedCard.value ?: return
+        val saved = transitionMission("저장하지 못했어요. 이 화면에서 다시 시도할 수 있어요.") {
+            // An unstarted check mission and an already paused mission need no transition.
+            if (card.state == "ACTIVE") {
+                val response = missionApiProvider().pauseChallenge(card.challenge_id)
+                if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+                response.body()?.let { timerElapsedSeconds.value = it.accumulated_duration_seconds }
+                revealedCard.value = card.copy(state = "PAUSED", elapsed_seconds = timerElapsedSeconds.value)
+                todayChallengeState.value = "PAUSED"
+            }
+            timerIsPaused.value = true
+            showQuitDialog.value = false
+            showCheckGiveUpDialog.value = false
+            step.value = CardHomeStep.HOME
         }
-        loadToday()
+        if (saved) loadToday()
     }
 
     // C03/C04 -> C05 -> (성공하면) C20: 목표를 채운 뒤 완료 처리
     suspend fun completeTimerChallenge(manualCheck: Boolean = false) {
-        step.value = CardHomeStep.CHALLENGE_PROCESSING
+        if (isLoading.value) return
         val challengeId = revealedCard.value?.challenge_id ?: return
+        step.value = CardHomeStep.CHALLENGE_PROCESSING
+        val attempt = "$challengeId:$manualCheck"
+        if (completionAttempt?.first != attempt) completionAttempt = attempt to UUID.randomUUID().toString()
         isLoading.value = true
         errorMessage.value = null
         runCatching {
-            val response = ApiClient.cardHomeApi.completeChallenge(
-                challengeId, UUID.randomUUID().toString(), CompleteChallengeRequestBody(manual_check = manualCheck)
+            val response = missionApiProvider().completeChallenge(
+                challengeId, completionAttempt!!.second, CompleteChallengeRequestBody(manual_check = manualCheck)
             )
-            if (!response.isSuccessful) error(parseErrorMessage(response))
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             response.body()!!
         }.onSuccess { result ->
             pointsAwarded.value = result.points_awarded
             awardedFiveElement.value = result.five_element
             step.value = CardHomeStep.CHALLENGE_RETROSPECT
+            com.tmtn.app.audio.TmtnAudio.play(com.tmtn.app.audio.TmtnSound.Reward, "$challengeId:complete")
         }.onFailure { e ->
-            errorMessage.value = e.message ?: "완료 처리에 실패했어요."
+            if (e is kotlinx.coroutines.CancellationException) {
+                isLoading.value = false
+                throw e
+            }
+            errorMessage.value = e.userMessageOr("완료 처리에 실패했어요.")
             // ⚠️ 여기서 무조건 CHALLENGE_TIMER_RUNNING으로 보내던 게 버그였음. CHECK형은
             // 원래 타이머 화면에 들어간 적도 없는데 실패하면 갑자기 타이머가 도는 화면으로
             // 튕겨서, "완료하기 눌렀는데 왜 타이머가 시작되냐"는 혼란 + 그 화면에서 다시
@@ -791,6 +903,7 @@ class CardHomeState {
             // "시간" 목표(예: 300m -> 18000초=5시간)로 된 타이머가 도는 화면이 뜨는 버그였음.
             // exec_type이 SENSOR_*면 SENSOR_MEASURING으로 돌려보냄.
             step.value = when {
+                manualCheck -> CardHomeStep.CHALLENGE_CHECK_CONFIRM
                 revealedCard.value?.exec_type == "CHECK" -> CardHomeStep.CHALLENGE_CHECK_CONFIRM
                 revealedCard.value?.exec_type?.startsWith("SENSOR_") == true -> CardHomeStep.SENSOR_MEASURING
                 else -> CardHomeStep.CHALLENGE_TIMER_RUNNING
@@ -801,13 +914,27 @@ class CardHomeState {
 
     // C20: 한 줄 회고 저장 (기록 캘린더의 메모 API 재사용) - 저장/건너뛰기 둘 다 결국 완료 화면으로
     suspend fun submitRetrospect(memo: String?) {
-        if (!memo.isNullOrBlank()) {
-            val today = currentServiceDateString() // ⚠️ 서버 날짜 기준(테스트 시뮬레이션 반영)
-            runCatching {
-                ApiClient.cardHomeApi.updateDayMemo(today, MemoUpdateRequest(memo = memo))
-            }.onSuccess { hasMemoToday.value = true }
+        if (isLoading.value) return
+        errorMessage.value = null
+        if (memo.isNullOrBlank()) {
+            goToCompletedOrCelebrate()
+            return
         }
-        goToCompletedOrCelebrate()
+        isLoading.value = true
+        try {
+            val response = missionApiProvider().updateDayMemo(
+                currentServiceDateString(), MemoUpdateRequest(memo = memo.trim().take(100)),
+            )
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            hasMemoToday.value = true
+            goToCompletedOrCelebrate()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            errorMessage.value = "메모를 저장하지 못했어요. 입력한 내용은 그대로예요. 다시 저장해 주세요."
+        } finally {
+            isLoading.value = false
+        }
     }
 
     // B07: "한 줄 남기기" 버튼을 보여줄지 판단 - 오늘 이미 회고를 남겼으면 버튼 자체를 숨김.

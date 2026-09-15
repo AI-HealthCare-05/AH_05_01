@@ -46,6 +46,8 @@ val ColorOnDisabled = Color(0xFF9C9E9F)
 // ⚠️ 2026-09-11 추가 - V17 디자인 핸드오프: 차콜 #16181C(주 버튼), 선택면 #F2F4F6(하단 탭 선택 표시).
 val ColorCharcoal = Color(0xFF16181C)
 val ColorSelectedSurface = Color(0xFFF2F4F6)
+// Delivered controls use the same existing selected-surface token.
+val ColorSelectionSurface = ColorSelectedSurface
 
 // 버튼
 val ButtonPrimaryContainer = ColorPrimary

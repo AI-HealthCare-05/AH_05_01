@@ -3,6 +3,8 @@ package com.tmtn.app.ui.cardhome
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,14 +16,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.network.ApiClient
 import com.tmtn.app.sensor.SensorDataHolder
@@ -41,192 +47,104 @@ private fun formatMmSs(totalSeconds: Int): String {
     return "%02d:%02d".format(m, s)
 }
 
-private data class SensorDisplay(val value: String, val target: String, val progress: Float, val isActive: Boolean)
 
-/** Figma C09 · 자동 측정 · 공통 안내 */
+/** Figma B24 1314:3862 / B48 1314:4518. Permissions follow the selected model. */
 @Composable
 fun SensorIntroScreen(
     state: CardHomeState,
-    scope: kotlinx.coroutines.CoroutineScope,
-    hasSensorPermissions: () -> Boolean,
+    scope: CoroutineScope,
+    hasSensorPermissions: (String) -> Boolean,
     onStartSensorTracking: (challengeId: String, execType: String, resumeCount: Int, targetValue: Int) -> Unit,
-    // ⚠️ 2026-09-08 QA(N6) 반영: 여기서 처음으로 시스템 권한 다이얼로그를 띄움(앱 시작
-    // 시점이 아니라).
-    onRequestPermissions: () -> Unit = {},
+    onRequestPermissions: (String) -> Unit = {},
 ) {
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value ?: return
     val context = androidx.compose.ui.platform.LocalContext.current
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "오늘의 행동", onBack = { state.step.value = CardHomeStep.REVEALED })
-
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
-            // ⚠️ 2026-09-11 반영: V17 디자인 - "실제 움직임 인식 모델로 측정하는 미션"에만
-            // 배지 표시(SENSOR_WALKING_DURATION/RUNNING_DURATION/RUNNING_DISTANCE만 대상 -
-            // 걸음수·계단처럼 순수 하드웨어 카운터에는 안 보임).
-            if (com.tmtn.app.ui.common.isModelRecognitionExecType(card.exec_type)) {
-                com.tmtn.app.ui.common.ModelMissionBadge()
+    val distance = com.tmtn.app.sensor.SensorPermissions.needsLocation(card.exec_type)
+    val duration = card.exec_type.endsWith("_DURATION")
+    val permissionsGranted = hasSensorPermissions(card.exec_type)
+    var starting by androidx.compose.runtime.remember(card.challenge_id) { androidx.compose.runtime.mutableStateOf(false) }
+    var awaitingPermission by androidx.compose.runtime.remember(card.challenge_id) { androidx.compose.runtime.mutableStateOf(false) }
+    var requestedOnce by androidx.compose.runtime.remember(card.challenge_id) { androidx.compose.runtime.mutableStateOf(false) }
+    var startError by androidx.compose.runtime.remember(card.challenge_id) { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    val begin: () -> Unit = {
+        if (!com.tmtn.app.ui.common.hasRequiredSensor(context, card.exec_type)) {
+            state.sensorFallbackReason.value = "HARDWARE"
+            state.step.value = CardHomeStep.SENSOR_PERMISSION_FALLBACK
+        } else if (!starting) {
+            starting = true
+            startError = null
+            scope.launch {
+                try {
+                    val resume = if (duration) card.elapsed_seconds else card.accumulated_count
+                    if (card.state != "ACTIVE") {
+                        val response = ApiClient.cardHomeApi.startChallenge(card.challenge_id)
+                        if (!response.isSuccessful) error("미션을 시작하지 못했어요. 다시 시도해 주세요.")
+                        state.revealedCard.value = card.copy(state = "ACTIVE")
+                    }
+                    onStartSensorTracking(card.challenge_id, card.exec_type, resume, card.target_value)
+                    state.step.value = CardHomeStep.SENSOR_MEASURING
+                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                catch (_: Exception) { startError = "측정을 시작하지 못했어요. 연결을 확인하고 다시 눌러 주세요." }
+                finally { starting = false }
             }
-            // ⚠️ 2026-09-06 QA(P1-7) 반영: SENSOR형도 target_value/unit이 한 번도
-            // 안 쓰였음 - "아침 산책하기"가 몇 분인지, 몇 걸음인지 안 보였음.
-            Text("목표 ${card.target_value}${card.unit}", style = TmtnType.body, color = colors.onSurfaceVariant)
-            // ⚠️ 2026-09-13 추가(팀 QA 지적) - 제자리걸음은 "제자리인지"를 센서가 구분
-            // 못 하고 시작 후 걸음 증가분을 그대로 셈. 사용자가 오해 없이 정확히 측정되게
-            // 안내(회피 유도로 읽히지 않게 "정확한 측정을 위해"로 프레이밍).
-            if (card.exec_type == "SENSOR_STEPS_IN_PLACE") {
-                Text(
-                    "정확한 측정을 위해 제자리에서 걸어 주세요. 이동하며 걸으면 걸음이 더 세어질 수 있어요.",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
-                )
+        }
+    }
+    androidx.activity.compose.BackHandler(enabled = starting) { }
+    LaunchedEffect(permissionsGranted, awaitingPermission) {
+        if (awaitingPermission && permissionsGranted) { awaitingPermission = false; begin() }
+    }
+    Column(Modifier.fillMaxSize()) {
+        TmtnTopBar(if (distance) "거리 측정 준비" else "움직임 측정 준비", { if (!starting) state.step.value = CardHomeStep.REVEALED })
+        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Text(when {
+                distance -> "움직인 거리만\n차곡차곡 셀게요."
+                card.exec_type == "SENSOR_RUNNING_DURATION" -> "뛸 때만\n시간이 쌓여요."
+                duration -> "걸을 때만\n시간이 쌓여요."
+                else -> "움직이는 만큼\n함께 셀게요."
+            }, style = TmtnType.headline, color = colors.onSurface)
+            Text("오늘의 카드 · ${card.title}", style = TmtnType.body, color = colors.onSurfaceVariant)
+            Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(24.dp))
+                .border(1.5.dp, colors.secondary, RoundedCornerShape(24.dp)).padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("틈튼 움직임 인식", style = TmtnType.label, color = colors.onSurface)
+                Text("준비됐나요?", style = TmtnType.body, color = colors.onSurfaceVariant)
+                Text(if (duration && card.unit == "분") formatMmSs(card.target_value * 60) else "${card.target_value} ${card.unit}", style = TmtnType.display, color = colors.onSurface)
+                Text(if (duration) "목표 활동 시간" else "오늘의 목표", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text("완료하면 ${MATERIAL_NAMES[card.five_element]?.first ?: "재료"} 1개", style = TmtnType.label, color = colors.onSurface)
             }
-            // ⚠️ 2026-09-14 추가 - 팀장님과 협의된 안전 안내 문구(CSV "수행안내_안전문구",
-            // guide_text). 틈새 운동 상세 화면엔 이미 나오고 있었는데(ExerciseMissionScreens.kt),
-            // "오늘의 카드" 준비 화면엔 빠져 있었음 - 위 "정확한 측정을 위해~" 문구(측정
-            // 방식 안내)와는 별개로, 이 문구는 실제 안전(미끄럼 방지 등)을 다룸.
-            if (card.guide_text.isNotBlank()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(if (distance) "1  실외의 안전한 곳에서 시작해요" else "1  휴대전화를 주머니에 넣어요", style = TmtnType.label, color = colors.onSurface)
+                Text(if (distance) "정확한 위치와 달리는 움직임이 확인될 때 거리를 더해요." else "몸의 움직임을 잘 읽을 수 있는 곳에 넣어 주세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(if (distance) "2  신호가 약하면 잠시 기다려요" else "2  움직이기 시작하면 함께 셀게요", style = TmtnType.label, color = colors.onSurface)
+                Text(if (duration) "멈추면 자동 대기, 다시 움직이면 이어서 측정해요." else if (distance) "신호가 돌아오면 기존 기록에서 이어서 측정해요." else "움직임이 인식되는 만큼 기록에 더해요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            }
+            if (!card.guide_text.isNullOrBlank()) {
                 Text(card.guide_text, style = TmtnType.body, color = colors.onSurfaceVariant)
             }
-
-            // ⚠️ 2026-09-08 QA(9번) 반영: "위치정보 수집·이용 동의"(선택 동의)를 거부해도
-            // 센서 미션이 그대로 활성화돼 있었음. 동의가 없으면 안내 배너를 먼저 보여주고,
-            // 아래 "시작하기"도 시스템 권한 요청 없이 곧장 "직접 체크로" 안내로 감.
-            if (!state.locationConsentGranted.value) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(colors.disabledContainer, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text("위치정보 동의가 꺼져 있어요", style = TmtnType.label, color = colors.onSurface)
-                    Text(
-                        "자동 측정 대신 직접 체크로 완료할 수 있어요. 동의는 내 정보 > 약관·동의에서 다시 켤 수 있어요.",
-                        style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    )
+            if (card.exec_type == "SENSOR_STEPS_IN_PLACE") {
+                Text("휴대전화를 주머니에 넣고 제자리에서 걸어 주세요. 움직임에 따라 인식에 차이가 있을 수 있어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            }
+            if (distance) {
+                Text("거리 측정에는 위치정보 동의와 정확한 위치 권한이 필요해요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+                if (!state.locationConsentLoaded.value) {
+                    Text("위치정보 동의를 확인하지 못했어요.", style = TmtnType.label, color = colors.onSurface)
+                    TmtnTonalButton("동의 상태 다시 확인", { scope.launch { state.loadLocationConsent() } })
+                } else if (!state.locationConsentGranted.value) {
+                    Text("내 정보 > 동의 관리에서 위치정보 동의를 켤 수 있어요. 지금은 직접 체크로 진행해도 돼요.", style = TmtnType.body, color = colors.onSurfaceVariant)
                 }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-            ) {
-                Text("이 미션은 자동으로 측정해요", style = TmtnType.label, color = colors.onSurface)
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text("무엇을 읽고 무엇을 읽지 않나요", style = TmtnType.label, color = colors.onSurface)
-                Text("읽습니다: 움직인 시간 · 걸음 수", style = TmtnType.body, color = colors.onSurfaceVariant)
-                Text("읽지 않습니다: 위치 기록 · 심박 · 연락처 · 사진", style = TmtnType.body, color = colors.onSurfaceVariant)
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text("이렇게 동작해요", style = TmtnType.label, color = colors.onSurface)
-                Text(
-                    "· 시작 버튼을 누른 뒤부터 측정하고, 끝내기를 누르면 멈춰요.\n" +
-                        "· 움직임이 멈추면 시간이 자동으로 쉬고, 다시 움직이면 이어서 세요.\n" +
-                        "· 앱을 닫아도 알림으로 상태를 보여드려요.",
-                    style = TmtnType.body, color = colors.onSurfaceVariant,
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.rewardContainer, RoundedCornerShape(16.dp))
-                    .padding(16.dp),
-            ) {
-                Text(
-                    "절전 모드나 앱을 강제로 종료하면 측정이 멈출 수 있습니다. 배터리를 조금 더 씁니다.",
-                    style = TmtnType.label, color = colors.onSurface,
-                )
-            }
-
-            TmtnPrimaryButton(
-                // ⚠️ 2026-09-04 반영: "측정 시작"이라 타이머형("시작하기")·체크형과 문구가
-                // 달라서 통일감이 없었음 - 자가진단/타이머/센서 다 "시작하기"로 통일.
-                text = "시작하기",
-                onClick = {
-                    if (!state.locationConsentGranted.value) {
-                        // ⚠️ 2026-09-08 QA(9번) 반영: 동의가 없으면 시스템 권한 요청 자체를
-                        // 안 하고 곧장 "직접 체크로" 폴백 안내로 보냄.
-                        state.sensorFallbackReason.value = "PERMISSION"
-                        state.step.value = CardHomeStep.SENSOR_PERMISSION_FALLBACK
-                    } else if (hasSensorPermissions() && !com.tmtn.app.ui.common.hasRequiredSensor(context, card.exec_type)) {
-                        // ⚠️ 2026-09-13 버그 수정(팀 QA 지적) - 권한은 다 있어도 이 기기에
-                        // 필요한 하드웨어 센서(TYPE_STEP_COUNTER 등) 자체가 없으면 측정
-                        // 화면으로 보내봐야 영원히 0에서 안 올라감. 권한 체크 다음으로,
-                        // 센서 가용성도 같은 폴백 화면으로 보내서 "직접 체크"로 대체함.
-                        state.sensorFallbackReason.value = "HARDWARE"
-                        state.step.value = CardHomeStep.SENSOR_PERMISSION_FALLBACK
-                    } else if (hasSensorPermissions()) {
-                        // ⚠️ 2026-09-06 반영: exec_type에 따라 "이어서 셀" 기준값이 다름 -
-                        // 걸음수·계단·거리(COUNT형)는 accumulated_count(개수), 걷기·뛰기
-                        // 시간(DURATION형)은 elapsed_seconds(초)를 넘겨야 정확함.
-                        val resumeValue = when (card.exec_type) {
-                            "SENSOR_WALKING_DURATION", "SENSOR_RUNNING_DURATION" -> card.elapsed_seconds
-                            else -> card.accumulated_count
-                        }
-                        // 서버에 "시작" 알린 뒤에만 실제 센서 서비스를 켬 - 순서 중요
-                        // (서버 READY -> ACTIVE 전환 없이 GPS/센서부터 켜면 완료 시 목표 판정이 꼬임).
-                        scope.launch {
-                            // ⚠️ 2026-09-04 반영: 이 화면은 서비스가 꺼진 뒤(앱을 완전히
-                            // 나갔다 들어오는 등) "이미 ACTIVE인 챌린지"를 다시 보여줄 때도
-                            // 옴 - 그때 startChallenge()를 또 부르면 서버가 이미 ACTIVE인 걸
-                            // 다시 시작시키려다 막아서(409) "측정을 시작하지 못했어요" 오류가
-                            // 났음. 이미 ACTIVE면 서버 재호출 없이 로컬 추적만 다시 이어붙임.
-                            if (card.state == "ACTIVE") {
-                                // ⚠️ 2026-09-06 반영: 서버가 이미 갖고 있던 최신 진행값을
-                                // 같이 넘겨서, 로컬 센서가 0부터 리셋되지 않고 그 값부터
-                                // 이어서 세게 함 - "5초로 되돌아간 것처럼 보이던" 버그의 실제 수정.
-                                onStartSensorTracking(card.challenge_id, card.exec_type, resumeValue, card.target_value)
-                                state.step.value = CardHomeStep.SENSOR_MEASURING
-                                return@launch
-                            }
-                            val response = ApiClient.cardHomeApi.startChallenge(card.challenge_id)
-                            if (response.isSuccessful) {
-                                onStartSensorTracking(card.challenge_id, card.exec_type, resumeValue, card.target_value)
-                                state.step.value = CardHomeStep.SENSOR_MEASURING
-                            } else {
-                                state.errorMessage.value = "측정을 시작하지 못했어요."
-                            }
-                        }
-                    } else if (!state.hasRequestedSensorPermissionsOnce.value) {
-                        // ⚠️ 2026-09-08 QA(N6) 반영: 권한이 없다고 곧장 폴백 화면(직접
-                        // 체크로 대체)으로 보내던 걸, 여기서 처음이면 먼저 시스템 권한
-                        // 다이얼로그를 띄우도록 바꿈. 그래도 거부되면(사용자가 다시
-                        // "시작하기"를 누를 때) 아래 분기로 폴백 화면을 보여줌.
-                        state.hasRequestedSensorPermissionsOnce.value = true
-                        onRequestPermissions()
-                    } else {
-                        // ⚠️ 시스템 권한 다이얼로그까지 띄웠는데도 거부된 경우 - 설정에서
-                        // 복구 가능하므로 PERMISSION.
-                        state.sensorFallbackReason.value = "PERMISSION"
-                        state.step.value = CardHomeStep.SENSOR_PERMISSION_FALLBACK
-                    }
-                },
-            )
-            TmtnTextButton(text = "직접 체크로 할래요", onClick = { state.step.value = CardHomeStep.CHALLENGE_CHECK })
+            } else Text("신체 활동 접근이 필요해요. 이 미션은 위치 없이 측정할 수 있어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            com.tmtn.app.ui.onboarding.OnboardingErrorMessage(startError)
+            TmtnPrimaryButton(if (starting) "측정 준비 중…" else "움직임 측정 시작", {
+                when {
+                    distance && !state.locationConsentGranted.value -> { state.sensorFallbackReason.value = "PERMISSION"; state.step.value = CardHomeStep.SENSOR_PERMISSION_FALLBACK }
+                    permissionsGranted -> begin()
+                    !requestedOnce -> { requestedOnce = true; awaitingPermission = true; onRequestPermissions(card.exec_type) }
+                    else -> { state.sensorFallbackReason.value = "PERMISSION"; state.step.value = CardHomeStep.SENSOR_PERMISSION_FALLBACK }
+                }
+            }, enabled = !starting && (!distance || state.locationConsentLoaded.value))
+            TmtnTonalButton("직접 체크로 할래요", { state.step.value = CardHomeStep.CHALLENGE_CHECK }, enabled = !starting)
         }
     }
 }
@@ -242,49 +160,6 @@ fun SensorIntroScreen(
  * isRunningActive는 세션 on/off 플래그라 멈춰 서 있어도 계속 true였음. 실시간 감지
  * 여부는 isWalkingDetectedNow/isRunningDetectedNow로 따로 봄.
  */
-private fun computeSensorDisplay(
-    execType: String,
-    targetValue: Int,
-    steps: Int,
-    floors: Int,
-    distanceM: Float,
-    runningSeconds: Int,
-    isRunningActive: Boolean,
-    walkingSeconds: Int,
-    isRunningDetectedNow: Boolean,
-    isWalkingDetectedNow: Boolean,
-    isFloorsClimbedDetectedNow: Boolean,
-    isStepDetectedNow: Boolean,
-): SensorDisplay {
-    return when (execType) {
-        "SENSOR_WALKING_DURATION" -> {
-            val target = targetValue * 60
-            SensorDisplay(formatMmSs(walkingSeconds), "목표 ${formatMmSs(target)}", (walkingSeconds.toFloat() / target).coerceIn(0f, 1f), isWalkingDetectedNow)
-        }
-        "SENSOR_RUNNING_DISTANCE" -> {
-            val targetKm = targetValue / 1000f
-            val km = distanceM / 1000f
-            SensorDisplay("%.2f km".format(km), "목표 %.2f km".format(targetKm), (km / targetKm).coerceIn(0f, 1f), isRunningActive)
-        }
-        "SENSOR_RUNNING_DURATION" -> {
-            val target = targetValue * 60
-            SensorDisplay(formatMmSs(runningSeconds), "목표 ${formatMmSs(target)}", (runningSeconds.toFloat() / target).coerceIn(0f, 1f), isRunningDetectedNow)
-        }
-        // ⚠️ 2026-09-07 반영: isActive를 하드코딩 true로 둬서, 가만히 있어도 "움직임을
-        // 확인했어요"가 계속 떴음(QA). 실시간 감지 여부로 교체.
-        //
-        // ⚠️ 2026-09-09 QA 반영: 기압 센서 배치 인정 방식 특성상 한 번에 여러 칸이
-        // 몰아서 올라가면서 목표치를 훌쩍 넘어버리는 경우가 있었음("13/10칸" 식으로
-        // 넘어가 보임) - 실제 측정값(floors, 서버 동기화·완료 판정용)은 그대로 두고,
-        // 화면에 보여주는 숫자만 목표치에서 캡을 씌움.
-        "SENSOR_FLOORS_CLIMBED" -> {
-            val displayFloors = floors.coerceAtMost(targetValue)
-            SensorDisplay("$displayFloors 계단", "목표 ${targetValue}계단", (floors.toFloat() / targetValue).coerceIn(0f, 1f), isFloorsClimbedDetectedNow)
-        }
-        else -> SensorDisplay("$steps 걸음", "목표 ${targetValue}보", 0f, isStepDetectedNow)
-    }
-}
-
 /** Figma C10/C12/C14 통합 · 자동 측정 · 측정 중 (exec_type별로 주요 수치만 다르게 표시)
  *
  * ⚠️ 2026-09-04 추가 요구사항 반영:
@@ -306,10 +181,25 @@ fun SensorMeasuringScreen(
     onResumeSensorTracking: () -> Unit,
     // ⚠️ 2026-09-08 반영: 완료 직전에 서버로 즉시 동기화를 요청하는 콜백. 30초 배치
     // 주기를 기다리지 않고, 지금 로컬에서 측정한 최신값을 서버가 알게 함.
-    onForceSyncSensor: () -> Unit = {},
+    onForceSyncSensor: suspend () -> Boolean = { true },
 ) {
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value ?: return
+    var finishing by androidx.compose.runtime.remember(card.challenge_id) { androidx.compose.runtime.mutableStateOf(false) }
+    val serviceReady by SensorDataHolder.isServiceRunning.collectAsState()
+    val serviceError by SensorDataHolder.serviceError.collectAsState()
+    if (serviceError != null) {
+        Column(Modifier.fillMaxSize()) {
+            TmtnTopBar("측정 다시 시작", { state.step.value = CardHomeStep.REVEALED })
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Text("잠깐 멈췄어요.\n다시 준비해 볼까요?", style = TmtnType.headline, color = colors.onSurface)
+                Text(serviceError!!, style = TmtnType.body, color = colors.onSurfaceVariant)
+                TmtnPrimaryButton("측정 준비로 돌아가기", { SensorDataHolder.setServiceError(null); state.step.value = CardHomeStep.SENSOR_INTRO })
+                TmtnTonalButton("직접 체크로 할래요", { SensorDataHolder.setServiceError(null); state.step.value = CardHomeStep.CHALLENGE_CHECK })
+            }
+        }
+        return
+    }
 
     // ⚠️ 2026-09-08 QA 반영(측정 화면 숫자가 안 올라가던 버그의 실제 원인): 예전엔 여기서
     // collectAsState()를 부르기만 하고 그 값을 화면에서 안 읽었음("구독만 해두면 recomposition이
@@ -328,7 +218,7 @@ fun SensorMeasuringScreen(
     val floors by SensorDataHolder.floorsClimbed.collectAsState()
     val distanceM by SensorDataHolder.runningDistanceM.collectAsState()
     val runningSeconds by SensorDataHolder.runningSeconds.collectAsState()
-    val isRunningActive by SensorDataHolder.isRunningActive.collectAsState()
+    val stepsInPlace by SensorDataHolder.stepInPlaceCount.collectAsState()
     val walkingSeconds by SensorDataHolder.walkingSeconds.collectAsState()
     val isRunningDetectedNow by SensorDataHolder.isRunningDetectedNow.collectAsState()
     val isWalkingDetectedNow by SensorDataHolder.isWalkingDetectedNow.collectAsState()
@@ -343,7 +233,7 @@ fun SensorMeasuringScreen(
         floors = floors,
         distanceM = distanceM,
         runningSeconds = runningSeconds,
-        isRunningActive = isRunningActive,
+        stepsInPlace = stepsInPlace,
         walkingSeconds = walkingSeconds,
         isRunningDetectedNow = isRunningDetectedNow,
         isWalkingDetectedNow = isWalkingDetectedNow,
@@ -354,8 +244,8 @@ fun SensorMeasuringScreen(
 
     // ⚠️ 요구사항 4: 목표치 도달하면 자동으로 측정을 멈춤. 이미 멈춰있으면(일시정지 상태)
     // 다시 안 부름 - isPaused를 키로 둬서 한 번만 실행되게 함.
-    LaunchedEffect(targetReached, isPaused) {
-        if (targetReached && !isPaused) {
+    LaunchedEffect(targetReached, isPaused, serviceReady) {
+        if (targetReached && !isPaused && serviceReady) {
             onPauseSensorTracking()
         }
     }
@@ -364,16 +254,10 @@ fun SensorMeasuringScreen(
         TmtnTopBar(title = "오늘의 행동", onBack = { state.step.value = CardHomeStep.REVEALED })
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(card.title, style = TmtnType.headline, color = colors.onSurface)
-            // ⚠️ 2026-09-11 반영: V17 디자인 - 준비/진행/대기/일시정지/완료 어느 상태에서도
-            // 배지는 유지되고, "인식 중" 여부는 아래 별도 상태 문구가 전달함(배지 자체가
-            // 숫자를 올리거나 "인식 중"으로 오인시키지 않음).
-            if (com.tmtn.app.ui.common.isModelRecognitionExecType(card.exec_type)) {
-                com.tmtn.app.ui.common.ModelMissionBadge()
-            }
 
             Row(
                 modifier = Modifier
@@ -383,6 +267,7 @@ fun SensorMeasuringScreen(
             ) {
                 Text(
                     when {
+                        !serviceReady -> "측정을 준비하고 있어요"
                         isPaused -> "일시정지됨"
                         display.isActive -> "움직임을 확인했어요"
                         else -> "움직임이 감지되지 않아요"
@@ -402,7 +287,10 @@ fun SensorMeasuringScreen(
             ) {
                 Text(display.value, style = TmtnType.display, color = colors.onSurface)
                 Text(display.target, style = TmtnType.body, color = colors.onSurfaceVariant)
-                Box(modifier = Modifier.fillMaxWidth().height(8.dp)) {
+                Box(modifier = Modifier.fillMaxWidth().height(8.dp).semantics {
+                    contentDescription = "오늘 미션 진행"
+                    progressBarRangeInfo = ProgressBarRangeInfo(display.progress, 0f..1f)
+                }) {
                     Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(colors.outline, RoundedCornerShape(4.dp)))
                     Box(
                         modifier = Modifier.fillMaxWidth(display.progress).height(8.dp)
@@ -422,7 +310,7 @@ fun SensorMeasuringScreen(
                     .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
                     .padding(16.dp),
             ) {
-                Text("앱을 닫아도 알림에서 상태를 볼 수 있어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+                Text("알림이 켜져 있으면 앱 밖에서도 측정 상태를 볼 수 있어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
             }
 
             // ⚠️ 요구사항 2·4: 목표 도달 전까지는 눌러서 직접 일시정지/재개할 수 있고,
@@ -430,7 +318,7 @@ fun SensorMeasuringScreen(
             TmtnTonalButton(
                 text = if (isPaused) "이어서 측정" else "일시정지",
                 onClick = { if (isPaused) onResumeSensorTracking() else onPauseSensorTracking() },
-                enabled = !targetReached,
+                enabled = serviceReady && !targetReached && !finishing,
             )
             // ⚠️ 2026-09-04 재수정: 서버가 target_duration/target_count에 도달하기 전에는
             // 완료(complete) 자체를 아예 막아둠(challenge_service.py) - 그래서 "측정 끝내기"가
@@ -446,28 +334,37 @@ fun SensorMeasuringScreen(
             TmtnOutlinedButton(
                 text = "측정 끝내기",
                 onClick = { state.showQuitDialog.value = true },
-                enabled = isPaused,
+                enabled = serviceReady && isPaused && !finishing,
             )
             if (state.showQuitDialog.value) {
                 SensorGiveUpDialog(state, scope, onStopSensorTracking)
             }
             // ⚠️ 요구사항 5: 목표치에 도달했을 때만 활성화.
             TmtnPrimaryButton(
-                text = "완료하기",
+                text = if (finishing) "기록 저장 중…" else "완료하기",
                 onClick = {
+                    if (finishing) return@TmtnPrimaryButton
+                    finishing = true
+                    state.errorMessage.value = null
+                    state.step.value = CardHomeStep.CHALLENGE_PROCESSING
                     // ⚠️ 2026-09-08 반영: 30초 배치 동기화 타이밍에만 기대다가, 계단을 다
                     // 오르고 곧바로 완료를 누르면 서버가 아직 오래된 값(예: 9칸)만 알고
                     // 있는 상태에서 "목표 미달성"으로 튕기는 문제가 있었음(로그로 확인 -
                     // 완료 시점엔 누적=0이었다가 한참 뒤에야 반영됨). 완료 직전에 서버로
                     // 즉시 동기화를 요청하고, 그게 처리될 시간을 준 다음에 완료를 시도함.
-                    onForceSyncSensor()
-                    onStopSensorTracking()
                     scope.launch {
-                        kotlinx.coroutines.delay(1500)
-                        state.completeTimerChallenge()
+                        try {
+                            if (!onForceSyncSensor()) {
+                                state.errorMessage.value = "기록을 아직 보내지 못했어요. 잰 값은 그대로예요. 연결을 확인하고 다시 완료해 주세요."
+                                state.step.value = CardHomeStep.SENSOR_MEASURING
+                                return@launch
+                            }
+                            state.completeTimerChallenge()
+                            if (state.step.value == CardHomeStep.CHALLENGE_RETROSPECT) onStopSensorTracking()
+                        } finally { finishing = false }
                     }
                 },
-                enabled = targetReached,
+                enabled = serviceReady && targetReached && !finishing,
             )
         }
     }
@@ -477,39 +374,13 @@ fun SensorMeasuringScreen(
  * 그리고 "자정 전이면 다시 도전 가능"이라는 정책 원칙을 여기서도 안내함. */
 @Composable
 private fun SensorGiveUpDialog(state: CardHomeState, scope: CoroutineScope, onStopSensorTracking: () -> Unit) {
-    val colors = LocalTmtnColors.current
-    AlertDialog(
-        onDismissRequest = { state.showQuitDialog.value = false },
-        containerColor = colors.surface,
-        title = { Text("오늘 미션을 포기할까요?", style = TmtnType.bodyLarge, color = colors.onSurface) },
-        text = {
-            Text(
-                "지금까지 잰 기록은 남습니다. 자정 전이면 언제든 다시 도전할 수 있어요. " +
-                    "자정을 넘기면 미완료로 연속 기록이 끊깁니다.",
-                style = TmtnType.caption, color = colors.onSurfaceVariant,
-            )
-        },
-        confirmButton = {
-            Text(
-                "오늘 미션 포기", style = TmtnType.label, color = colors.error,
-                modifier = Modifier.clickable {
-                    onStopSensorTracking()
-                    scope.launch { state.quitChallenge() }
-                }
-                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                    .wrapContentSize(Alignment.Center)
-                    .padding(8.dp),
-            )
-        },
-        dismissButton = {
-            Text(
-                "계속하기", style = TmtnType.label, color = colors.primary,
-                modifier = Modifier.clickable { state.showQuitDialog.value = false }
-                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                    .wrapContentSize(Alignment.Center)
-                    .padding(8.dp),
-            )
-        },
+    com.tmtn.app.ui.common.TmtnConfirmationDialog(
+        title = "오늘 미션을 포기할까요?",
+        message = "오늘 미션을 접으면 재료를 받지 않아요. 오늘 안에는 다시 도전할 수 있고, 측정은 처음부터 시작해요.",
+        confirmLabel = "오늘 미션 포기", cancelLabel = "계속하기",
+        busy = state.isLoading.value, error = state.errorMessage.value,
+        onConfirm = { scope.launch { state.quitChallenge(onSaved = onStopSensorTracking) } },
+        onDismiss = { state.showQuitDialog.value = false; state.errorMessage.value = null },
     )
 }
 
@@ -597,9 +468,7 @@ fun SensorResultScreen(state: CardHomeState, scope: CoroutineScope) {
         "SENSOR_WALKING_DURATION" -> "오늘 ${formatMmSs(walkingSeconds)} 움직였어요"
         "SENSOR_RUNNING_DISTANCE" -> "오늘 %.2fkm 달렸어요".format(distanceM / 1000f)
         "SENSOR_RUNNING_DURATION" -> "오늘 ${formatMmSs(runningSeconds)} 달렸어요"
-        // ⚠️ 2026-09-09 QA 반영: 실제 측정값이 목표를 넘어가는 경우("13계단 올랐어요"인데
-        // 목표는 10칸) 표시가 어색해서, 완료 요약도 목표치에서 캡을 씌움.
-        "SENSOR_FLOORS_CLIMBED" -> "오늘 ${floors.coerceAtMost(card.target_value)}계단 올랐어요"
+        "SENSOR_FLOORS_CLIMBED" -> "오늘 ${floors}계단 올랐어요"
         else -> "오늘 ${steps}걸음 걸었어요"
     }
 
@@ -607,7 +476,7 @@ fun SensorResultScreen(state: CardHomeState, scope: CoroutineScope) {
         TmtnTopBar(title = "오늘 완료", onBack = { })
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Column(

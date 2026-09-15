@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,50 +51,27 @@ fun A01SplashScreen(state: OnboardingState) {
 
 /** Figma A02 · 시작 (로그인·가입) (node 99:21) */
 @Composable
-fun A02StartScreen(state: OnboardingState, scope: CoroutineScope, onLoginSuccess: () -> Unit) {
-    val colors = LocalTmtnColors.current
-    // ⚠️ 2026-09-10: Credential Manager의 계정 선택 시트는 화면 위에 떠야 해서 Activity
-    // 컨텍스트가 필요함. setContent가 MainActivity 안에 있으므로 여기 LocalContext가 그 Activity임.
-    val context = LocalContext.current
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Spacer(Modifier.height(24.dp))
-        com.tmtn.app.ui.common.TmtnMascot(com.tmtn.app.R.drawable.beaver_standing, "인사하는 비버",
-            Modifier.fillMaxWidth().height(240.dp))
-        Text("하루 한 장의 실천", style = TmtnType.headline, color = colors.onSurface, textAlign = TextAlign.Center)
-        Text("작은 실천이 쌓여 비버의 댐이 자라요.",
-            style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(16.dp))
-        TmtnPrimaryButton("이메일로 시작하기", onClick = { state.step.value = OnboardingStep.A03_SIGNUP })
-        // ⚠️ 2026-09-10 추가: 구글 계정 연동 로그인.
-        // 가입·로그인 겸용 버튼임 - 처음 오는 사람에겐 가입, 이미 있는 사람에겐 로그인으로
-        // 서버가 알아서 갈라줌. 처음이면 계정을 바로 만들지 않고 약관 동의(A06)부터 태움.
-        TmtnGoogleButton(
-            onClick = { scope.launch { state.loginWithGoogle(context, onLoginSuccess) } },
-            enabled = !state.isLoading.value,
-        )
-        TmtnTextButton("이미 계정이 있어요", onClick = { state.step.value = OnboardingStep.A05_LOGIN })
-    }
+fun A02StartScreen(state: OnboardingState) {
+    WelcomeStory(onSignup = { state.step.value = OnboardingStep.AUTH_CHOICE },
+        onLogin = { state.step.value = OnboardingStep.A05_LOGIN })
 }
 
 /** Figma A05 · 로그인 (node 99:129, 재방문자용) */
 @Composable
 fun A05LoginScreen(state: OnboardingState, scope: CoroutineScope, onLoginSuccess: () -> Unit) {
     val colors = LocalTmtnColors.current
-    val context = LocalContext.current
     var email by state.email
     var password by state.password
     val passwordFocus = remember { FocusRequester() }
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "로그인", onBack = { state.step.value = OnboardingStep.A02_START })
+        TmtnTopBar(title = "로그인", onBack = { state.step.value = OnboardingStep.AUTH_CHOICE })
 
         Column(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
@@ -123,15 +99,12 @@ fun A05LoginScreen(state: OnboardingState, scope: CoroutineScope, onLoginSuccess
                 onClick = { scope.launch { state.login(onLoginSuccess) } },
                 // ⚠️ 2026-09-06 QA(P1-8) 반영: 이메일·비밀번호 둘 다 비운 채로도 그대로
                 // 서버에 전송돼서 "요청이 실패했어요 (404)" 같은 원인 불명 에러로 이어졌음.
-                enabled = email.isNotBlank() && password.isNotBlank(),
+                enabled = email.isNotBlank() && password.isNotBlank() && !state.googlePicking.value && !state.isLoading.value,
             )
 
-            // ⚠️ 2026-09-10 추가: 구글로 가입한 사람이 이 화면에서 비밀번호를 아무리 쳐도
-            // 로그인이 안 됨(그 계정엔 비밀번호가 없어서 서버가 409로 안내함). 여기에도
-            // 같은 버튼을 둬서 바로 넘어갈 수 있게 함.
-            TmtnGoogleButton(
-                onClick = { scope.launch { state.loginWithGoogle(context, onLoginSuccess) } },
-                enabled = !state.isLoading.value,
+            GoogleContinueButton(
+                onClick = { keyboardController?.hide(); scope.launch { state.loginWithGoogle(context, onLoginSuccess) } },
+                enabled = com.tmtn.app.auth.GoogleSignInHelper.isConfigured() && !state.googlePicking.value && !state.isLoading.value,
             )
 
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {

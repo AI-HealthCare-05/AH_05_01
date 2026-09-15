@@ -55,7 +55,7 @@ fun CompletedScreen(state: CardHomeState) {
         TmtnTopBar(title = "오늘의 카드", onBack = { state.step.value = CardHomeStep.HOME })
 
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (isSkipped || card == null) {
@@ -141,7 +141,7 @@ fun CardErrorScreen(state: CardHomeState, scope: CoroutineScope) {
         TmtnTopBar(title = "오늘의 카드", onBack = { state.step.value = CardHomeStep.HOME })
 
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Box(
@@ -160,9 +160,9 @@ fun CardErrorScreen(state: CardHomeState, scope: CoroutineScope) {
                 )
             }
 
-            Text("카드를 가져오지 못했습니다", style = TmtnType.title, color = colors.onSurface)
+            Text("카드를 가져오지 못했어요", style = TmtnType.headline, color = colors.onSurface)
             Text(
-                "잠시 뒤 다시 시도해 주세요. 어제까지의 기록은 그대로 남아 있습니다.",
+                "잠시 뒤 다시 열어 주세요. 지금까지의 기록은 그대로 있어요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
 
@@ -174,16 +174,13 @@ fun CardErrorScreen(state: CardHomeState, scope: CoroutineScope) {
                     .padding(16.dp),
             ) {
                 Text(
-                    state.errorMessage.value ?: "오류 코드 CARD-503",
+                    state.errorMessage.value ?: "연결을 확인한 뒤 다시 눌러 주세요.",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
             }
 
-            TmtnPrimaryButton(text = "다시 시도", onClick = { scope.launch { state.loadToday() } })
-            // TODO: C01(챌린지 진행 화면, C그룹) 아직 안 만들어서 지금은 동작 없음
-            androidx.compose.material3.TextButton(onClick = { }) {
-                Text("오늘은 직접 행동 고르기", style = TmtnType.label, color = colors.primary)
-            }
+            TmtnPrimaryButton(text = if (state.isLoading.value) "다시 불러오는 중…" else "다시 시도", onClick = { scope.launch { state.loadToday() } }, enabled = !state.isLoading.value)
+            com.tmtn.app.ui.onboarding.TmtnTonalButton("홈으로 돌아가기", { state.errorMessage.value = null; state.step.value = CardHomeStep.HOME })
         }
     }
 }

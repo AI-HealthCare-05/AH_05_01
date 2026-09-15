@@ -264,7 +264,7 @@ fun ExerciseMissionRunningScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "틈새 운동", onBack = { })
+        TmtnTopBar(title = "틈새 운동", onBack = { state.step.value = CardHomeStep.EXTRA_DETAIL })
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),

@@ -77,12 +77,16 @@ private fun previousStepFor(step: CardHomeStep): CardHomeStep? = when (step) {
     CardHomeStep.SENSOR_PERMISSION_FALLBACK -> CardHomeStep.REVEALED
     CardHomeStep.SENSOR_RESULT -> null
 
-    // ⚠️ 2026-09-11 추가 - 틈새 운동. LIST는 완료 화면(COMPLETED)에서 왔으니 거기로,
-    // DETAIL은 목록으로. RUNNING/REWARD 중엔 뒤로가기로 조용히 세션이 사라지면 안 되므로
-    // 막음(측정 화면과 같은 원칙).
+    // ⚠️ 2026-09-11 추가, 2026-09-15 정정 - 틈새 운동. LIST는 완료 화면(COMPLETED)에서
+    // 왔으니 거기로, DETAIL은 목록으로. RUNNING은 애초에 "측정 화면과 같은 원칙"으로 막을
+    // 생각이었는데, 실제 오늘의 카드 측정 화면(SENSOR_MEASURING/CHALLENGE_TIMER_RUNNING)은
+    // 둘 다 뒤로가기가 열려 있어서 원칙이 안 맞았음(QA 지적) - 화면을 벗어나면
+    // DisposableEffect가 센서를 정지시키니(그만두기와 동일 효과) 열어도 안전함.
+    // REWARD(보상 화면)는 오늘의 카드의 완료 후 화면들(CHALLENGE_RETROSPECT/STAGE_UP)과
+    // 같은 성격이라 그대로 막아둠.
     CardHomeStep.EXTRA_LIST -> CardHomeStep.COMPLETED
     CardHomeStep.EXTRA_DETAIL -> CardHomeStep.EXTRA_LIST
-    CardHomeStep.EXTRA_RUNNING -> null
+    CardHomeStep.EXTRA_RUNNING -> CardHomeStep.EXTRA_DETAIL
     CardHomeStep.EXTRA_REWARD -> null
 }
 
@@ -101,9 +105,9 @@ fun CardHomeFlow(
     // 만들지 않고 MainActivity(탭 전환과 무관하게 살아있는 상위 컴포저블)가 만들어서
     // 넘겨주는 방식으로 바꿔서, 탭을 오가도 같은 CardHomeState 인스턴스가 그대로 유지되게 함.
     state: CardHomeState,
-    hasSensorPermissions: () -> Boolean,
+    hasSensorPermissions: (String) -> Boolean,
     // ⚠️ 2026-09-08 QA(N6) 반영: SensorIntroScreen 참고.
-    onRequestSensorPermissions: () -> Unit = {},
+    onRequestSensorPermissions: (String) -> Unit = {},
     onStartSensorTracking: (challengeId: String, execType: String, resumeCount: Int, targetValue: Int) -> Unit,
     onStopSensorTracking: () -> Unit,
     // ⚠️ 2026-09-11 추가 - 틈새 운동(제자리걸음) 전용. 오늘의 카드 센서 추적과 독립적.
@@ -120,12 +124,13 @@ fun CardHomeFlow(
     onPauseSensorTracking: () -> Unit = {},
     onResumeSensorTracking: () -> Unit = {},
     // ⚠️ 2026-09-08 추가: 완료 직전 강제 동기화 - SensorMeasuringScreen 참고.
-    onForceSyncSensor: () -> Unit = {},
+    onForceSyncSensor: suspend () -> Boolean = { true },
     onOpenSettings: () -> Unit,
     onImmersiveChange: (Boolean) -> Unit = {},
     // ⚠️ 2026-09-08 QA 반영: 홈의 "틈튼지수 자세히" 캡션이 그냥 Text라 클릭 자체가 안
     // 되고 있었음(TODO만 남아있던 미구현). 틈튼지수 탭(MainTab.REFERENCE)으로 전환.
     onOpenTuntunScore: () -> Unit = {},
+    onOpenDam: () -> Unit = {},
     // ⚠️ 온보딩 완료 직후 "오늘의 카드 보러 가기"를 누르면, 홈(마스코트 카드)에서
     // "오늘의 카드 고르기"를 한 번 더 누르게 하는 대신 카드 고르는 화면으로 바로 이어줌.
     startAtDeckPick: Boolean = false,
@@ -133,6 +138,12 @@ fun CardHomeFlow(
 ) {
     val colors = LocalTmtnColors.current
     val scope = rememberCoroutineScope()
+    com.tmtn.app.ui.common.OnAppForeground {
+        scope.launch { state.refreshHomeOnReturn() }
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { onImmersiveChange(false) }
+    }
 
     LaunchedEffect(Unit) {
         // ⚠️ 2026-09-07 반영(위 state 파라미터 주석과 짝): state가 이제 MainActivity에서
@@ -204,6 +215,7 @@ fun CardHomeFlow(
 
     // 시스템 뒤로가기(제스처/버튼) - 화면 안의 "←" 버튼과 똑같이 동작하게.
     val previousStep = previousStepFor(state.step.value)
+    androidx.activity.compose.BackHandler(enabled = state.step.value == CardHomeStep.CHALLENGE_PROCESSING) { }
     // ⚠️ 2026-09-07 반영: 쉬어가기·전환 시트들(showRestDaySheet 등)은 step과 별개인
     // 오버레이라서, 시트가 열려 있어도 아래 when(state.step.value)는 그걸 전혀 모름 -
     // 홈(HOME)에서 시트를 열면 previousStepFor(HOME)이 null이라 뒤로가기가 그대로
@@ -212,13 +224,13 @@ fun CardHomeFlow(
     if (state.showRestDaySheet.value) {
         BackHandler { state.closeRestDaySheet() }
     } else if (state.showRestCancelSheet.value) {
-        BackHandler { state.showRestCancelSheet.value = false }
+        BackHandler { if (!state.isLoading.value) { state.showRestCancelSheet.value = false; state.errorMessage.value = null } }
     } else if (state.showRestToGiveUpSheet.value) {
-        BackHandler { state.showRestToGiveUpSheet.value = false }
+        BackHandler { if (!state.isLoading.value) { state.showRestToGiveUpSheet.value = false; state.errorMessage.value = null } }
     } else if (state.showGiveUpConfirmSheet.value) {
-        BackHandler { state.showGiveUpConfirmSheet.value = false }
+        BackHandler { if (!state.isLoading.value) { state.showGiveUpConfirmSheet.value = false; state.errorMessage.value = null } }
     } else if (state.showCheckGiveUpDialog.value) {
-        BackHandler { state.showCheckGiveUpDialog.value = false }
+        BackHandler { if (!state.isLoading.value) { state.showCheckGiveUpDialog.value = false; state.errorMessage.value = null } }
     } else {
         when (state.step.value) {
             CardHomeStep.STAGE_UP -> BackHandler { scope.launch { state.acknowledgeStageUp() } }
@@ -272,10 +284,11 @@ fun CardHomeFlow(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
+      Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
         when (state.step.value) {
             CardHomeStep.LOADING -> LoadingScreen()
-            CardHomeStep.HOME -> HomeStepDispatch(state, scope, onOpenTuntunScore)
+            CardHomeStep.HOME -> HomeStepDispatch(state, scope, onOpenTuntunScore, onOpenDam)
             CardHomeStep.DECK_PICK -> DeckPickScreen(
                 state, scope,
                 onBack = { state.step.value = CardHomeStep.HOME; state.resetPick() },
@@ -309,8 +322,9 @@ fun CardHomeFlow(
                 if (pending != null) {
                     com.tmtn.app.ui.dam.StageUpCelebrationScreen(
                         pending = pending,
-                        onGoToDam = { scope.launch { state.acknowledgeStageUp() } },
+                        onGoToDam = { scope.launch { state.acknowledgeStageUp(onOpenDam) } },
                         onClose = { scope.launch { state.acknowledgeStageUp() } },
+                        busy = state.isLoading.value,
                     )
                 }
             }
@@ -346,12 +360,14 @@ fun CardHomeFlow(
         // 같은 오버레이 방식 - showRestDaySheet 오버레이와 동일한 자리.
         if (state.showRestCancelSheet.value) {
             RestCancelSheet(
+                busy = state.isLoading.value,
+                errorMessage = state.errorMessage.value,
                 dateLabel = state.displayDateLabel().toKoreanDateLabel(),
                 restTicketValue = "${state.restDaysRemainingThisWeek.value}회 → " +
                     "${(state.restDaysRemainingThisWeek.value + 1).coerceAtMost(2)}회",
                 onCancelRestAndChallenge = {
                     scope.launch {
-                        state.cancelRestDay()
+                        if (!state.cancelRestDay()) return@launch
                         state.showRestCancelSheet.value = false
                         // ⚠️ 2026-09-07 반영: B18/B19(카드 미선택)에서 열렸으면 고를 카드가
                         // 아직 없으니 DECK_PICK으로, B20/B23(카드 이미 뽑음)에서 열렸으면
@@ -364,12 +380,14 @@ fun CardHomeFlow(
                         }
                     }
                 },
-                onKeepResting = { state.showRestCancelSheet.value = false },
-                onDismiss = { state.showRestCancelSheet.value = false },
+                onKeepResting = { state.showRestCancelSheet.value = false; state.errorMessage.value = null },
+                onDismiss = { state.showRestCancelSheet.value = false; state.errorMessage.value = null },
             )
         }
         if (state.showRestToGiveUpSheet.value) {
             RestToGiveUpSheet(
+                busy = state.isLoading.value,
+                errorMessage = state.errorMessage.value,
                 dateLabel = state.displayDateLabel().toKoreanDateLabel(),
                 // ⚠️ 2026-09-08 QA(N1, 배포 차단) 반영: 여기만 "쓴 횟수"(restDaysUsedThisWeek)
                 // 기준으로 계산해서 "1회 → 0회"(복구인데 숫자가 줄어듦)로 보였음. 바로 위
@@ -378,14 +396,14 @@ fun CardHomeFlow(
                 // 맞았고(리포트에서도 확인됨), 이 문자열 조립부만 기준이 안 맞았음. 통일함.
                 restTicketValue = "${state.restDaysRemainingThisWeek.value}회 → " +
                     "${(state.restDaysRemainingThisWeek.value + 1).coerceAtMost(2)}회 · 1회 돌아옴",
-                onKeepResting = { state.showRestToGiveUpSheet.value = false },
+                onKeepResting = { state.showRestToGiveUpSheet.value = false; state.errorMessage.value = null },
                 onSwitchToGiveUp = {
                     scope.launch {
-                        state.switchRestToGiveUp()
+                        if (!state.switchRestToGiveUp()) return@launch
                         state.showRestToGiveUpSheet.value = false
                     }
                 },
-                onDismiss = { state.showRestToGiveUpSheet.value = false },
+                onDismiss = { state.showRestToGiveUpSheet.value = false; state.errorMessage.value = null },
             )
         }
         // ⚠️ 2026-09-07 반영: C26(오늘 포기 확인) - HomePausedScreen(B22)의 "오늘 포기"에서 씀.
@@ -393,35 +411,31 @@ fun CardHomeFlow(
         // quitChallenge()(포기 = SKIPPED 기록)를 그대로 재사용함.
         if (state.showGiveUpConfirmSheet.value) {
             GiveUpConfirmSheet(
+                busy = state.isLoading.value, errorMessage = state.errorMessage.value,
                 dateLabel = state.displayDateLabel().toKoreanDateLabel(),
+                restDaysRemaining = state.restDaysRemainingThisWeek.value,
                 onRestInstead = {
                     state.showGiveUpConfirmSheet.value = false
+                    state.errorMessage.value = null
                     scope.launch { state.openRestDaySheet() }
                 },
                 onGiveUp = {
-                    state.showGiveUpConfirmSheet.value = false
                     scope.launch { state.quitChallenge() }
                 },
-                onDismiss = { state.showGiveUpConfirmSheet.value = false },
+                onDismiss = { state.showGiveUpConfirmSheet.value = false; state.errorMessage.value = null },
             )
         }
 
-        state.errorMessage.value?.let { message ->
-            if (state.step.value != CardHomeStep.ERROR) {
-                Surface(
-                    color = colors.errorContainer,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(20.dp),
-                ) {
-                    Text("⚠️ $message", style = TmtnType.caption, color = colors.error, modifier = Modifier.padding(12.dp))
-                }
-            }
+      }
+        val modalOwnsFeedback = (state.step.value == CardHomeStep.DECK_PICK && state.showConfirmDialog.value) ||
+            state.showRestDaySheet.value || state.showRestCancelSheet.value || state.showRestToGiveUpSheet.value || state.showGiveUpConfirmSheet.value ||
+            state.showQuitDialog.value || state.showCheckGiveUpDialog.value
+        if (state.step.value != CardHomeStep.ERROR && !modalOwnsFeedback) {
+            com.tmtn.app.ui.onboarding.OnboardingErrorMessage(state.errorMessage.value)
         }
 
-        if (state.isLoading.value) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = colors.primary)
-            }
+        if (state.isLoading.value && state.step.value != CardHomeStep.CHALLENGE_PROCESSING && !modalOwnsFeedback) {
+            com.tmtn.app.ui.onboarding.OnboardingSavingDialog()
         }
     }
 }
@@ -446,7 +460,7 @@ fun CardHomeFlow(
  *   걸 안정적으로 판단할 신호(어제 상태를 따로 불러와 비교하는 로직)가 아직 없음.
  */
 @Composable
-private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScore: () -> Unit = {}) {
+private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScore: () -> Unit = {}, onOpenDam: () -> Unit = {}) {
     val isSelected = state.drawState.value == "SELECTED"
     val challengeState = state.todayChallengeState.value
     val isRestDay = state.isTodayRestDay.value
@@ -458,7 +472,7 @@ private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpen
 
     when {
         // 완료는 새 화면 세트(B18~B26)에 대응 항목이 없음 - 기존 B01/B01b의 완료 처리를 그대로 씀.
-        isCompleted -> CardHomeScreen(state, scope, onOpenTuntunScore)
+        isCompleted -> CardHomeScreen(state, scope, onOpenTuntunScore, onOpenDam = onOpenDam)
 
         // B18 · 카드 미선택 · 쉬어가기
         !isSelected && isRestDay -> HomeRestNoCardScreen(
@@ -527,7 +541,7 @@ private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpen
         )
 
         // 그 외(카드 미선택 + 평범한 상태, 진행 중인데 쉼/포기 아님 등) - 기존 B01/B01b.
-        else -> CardHomeScreen(state, scope, onOpenTuntunScore)
+        else -> CardHomeScreen(state, scope, onOpenTuntunScore, onOpenDam = onOpenDam)
     }
 }
 

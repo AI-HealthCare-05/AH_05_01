@@ -47,7 +47,7 @@ private class LaunchTracks(json: String) {
     }
 }
 
-/** Full 132-frame performance, started only after the system splash is removed.
+/** A brief final-pose greeting, started only after the system splash is removed.
  * The caller composes the destination underneath, so completion never exposes an empty window.
  */
 @Composable
@@ -59,10 +59,11 @@ fun TmtnLaunchOverlay(
 ) {
     val latestFinished by rememberUpdatedState(onFinished)
     val latestExitStarted by rememberUpdatedState(onExitStarted)
-    val frame = remember { Animatable(0f) }
+    val frame = remember { Animatable(108f) }
     val opacity = remember { Animatable(1f) }
+    var finished by remember { mutableStateOf(false) }
     LaunchedEffect(ready, reducedMotion) {
-        if (!ready) return@LaunchedEffect
+        if (!ready || finished) return@LaunchedEffect
         // Anchor playback to a visible frame, not Activity creation or a fixed navigation timer.
         withFrameNanos { }
         if (reducedMotion) {
@@ -70,11 +71,13 @@ fun TmtnLaunchOverlay(
             withFrameNanos { }
             opacity.animateTo(0f, tween(TmtnMotion.PressMillis, easing = TmtnMotion.EaseOut))
         } else {
-            frame.animateTo(132f, tween(((132f - frame.value) / 60f * 1000).toInt(), easing = LinearEasing))
+            // Keep the original face and settle into its final pose; don't replay a 2.2s intro.
+            frame.animateTo(132f, tween(240, easing = TmtnMotion.EaseOut))
             latestExitStarted()
             withFrameNanos { }
-            opacity.animateTo(0f, tween(TmtnMotion.EnterMillis, easing = TmtnMotion.EaseOut))
+            opacity.animateTo(0f, tween(120, easing = TmtnMotion.EaseOut))
         }
+        finished = true
         latestFinished()
     }
     Box(

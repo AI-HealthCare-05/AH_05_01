@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
 
 /** Figma B01·B01b · 홈 (오늘 카드 미선택/선택됨은 draw_state로 구분) */
 @Composable
-fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScore: () -> Unit = {}, showDebugTools: Boolean = true) {
+fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScore: () -> Unit = {}, showDebugTools: Boolean = true, onOpenDam: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
     val isSelected = state.drawState.value == "SELECTED"
 
@@ -62,7 +62,7 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScor
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("틈튼", style = TmtnType.title, color = colors.onSurface)
+            Text("홈", style = TmtnType.label, color = colors.onSurface)
             Text(
                 "알림", style = TmtnType.label, color = colors.onSurfaceVariant,
                 // ⚠️ 2026-09-06 QA(접근성) 반영: 패딩이 아예 없어서 터치 영역이 약 20dp였음.
@@ -72,6 +72,8 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScor
                     .wrapContentSize(Alignment.Center),
             )
         }
+        Text(if (state.todayChallengeState.value == "COMPLETED") "오늘의 카드, 잘 마쳤어요." else if (isSelected) "오늘 고른 작은 행동." else "오늘도 한 틈씩.",
+            style = TmtnType.headline, color = colors.onSurface)
         Text(state.displayDateLabel().format(java.time.format.DateTimeFormatter.ofPattern("M월 d일 EEEE", java.util.Locale.KOREAN)), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
         // ⚠️ 2026-09-07 반영: 상태전이 정책 신규 홈 화면(B18~B26, HomeStateScreens.kt)에는
@@ -82,8 +84,31 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScor
         if (showDebugTools) DebugDayBanner(state, scope)
 
         MascotCard(state, isSelected, scope)
+        ExtraExerciseHomeEntry(state)
+        HomeDamLink(state, onOpenDam)
         TmtnIndexSummaryCard(state, onOpenTuntunScore)
-        RecentSummaryListCard(state)
+    }
+}
+
+/** Latest extra-exercise feature remains reachable from the refreshed home. */
+@Composable
+internal fun ExtraExerciseHomeEntry(state: CardHomeState) {
+    val colors = LocalTmtnColors.current
+    val completed = state.todayChallengeState.value == "COMPLETED"
+    androidx.compose.runtime.LaunchedEffect(completed) {
+        if (completed) state.loadExerciseMissionsToday()
+    }
+    Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(20.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("틈새 운동", style = TmtnType.label, color = colors.onSurface)
+        if (completed) {
+            val today = state.exerciseMissionsToday.value
+            Text(if (today != null) "오늘 ${today.used} / ${today.limit}회 · 추가로 받은 재료" else "조금 더 움직이고 싶은 날, 재료를 하나 더.",
+                style = TmtnType.body, color = colors.onSurfaceVariant)
+            com.tmtn.app.ui.onboarding.TmtnTonalButton("틈새 운동 둘러보기", { state.openExerciseMissionList() })
+        } else {
+            Text("오늘의 카드를 마치면 열려요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+        }
     }
 }
 
@@ -96,6 +121,14 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
     val isPaused = state.todayChallengeState.value == "PAUSED"
     val isReady = state.todayChallengeState.value == "READY"
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        val selectedCard = state.revealedCard.value.takeIf { isSelected && it?.challenge_id == state.todayChallengeId.value }
+        if (selectedCard != null) {
+            HomeMissionCard(selectedCard, completed = isCompleted) {
+                TmtnPrimaryButton(if (isCompleted || isGivenUp) "오늘 카드 다시 보기" else if (isPaused) "이어서 실천하기" else "이 카드 실천하기",
+                    onClick = { scope.launch { state.continueTodayMission() } })
+            }
+            Spacer(Modifier.height(4.dp))
+        } else {
         TmtnHomeHero(
             image = when {
                 isCompleted -> com.tmtn.app.R.drawable.beaver_cheer
@@ -115,7 +148,7 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
             },
             status = when {
                 isCompleted -> "오늘 실천 완료"
-                isGivenUp -> "오늘 미션 포기"
+                isGivenUp -> "오늘은 여기까지"
                 isPaused -> "잠시 중단"
                 isReady -> "카드 선택 완료"
                 isSelected -> "미션 진행 중"
@@ -127,12 +160,13 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
                 isGivenUp -> "오늘은 여기까지"
                 isPaused -> "이어서 해볼까요?"
                 isReady -> "시작해 볼까요?"
-                isSelected -> "조금씩 쌓는 중"
+                isSelected -> "한 곳씩 메우는 중"
                 isRestDay -> "편하게 쉬어요"
                 else -> ""
             },
         )
-        TmtnPrimaryButton(
+        }
+        if (selectedCard == null) TmtnPrimaryButton(
             text = when {
                 isCompleted || isGivenUp || isSelected -> "오늘 카드 다시 보기"
                 isRestDay -> "오늘 미션 해보기"

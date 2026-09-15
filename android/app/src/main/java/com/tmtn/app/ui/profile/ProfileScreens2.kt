@@ -55,9 +55,9 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
     var isPregnant by remember(user) { mutableStateOf(user?.is_pregnant) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "신체 정보", onBack = onBack)
+        TmtnTopBar(title = "몸 정보", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("기본 정보", style = TmtnType.title, color = colors.onSurface)
@@ -96,16 +96,17 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
                 label = "몸무게 (kg)", keyboardType = KeyboardType.Number,
             )
 
-            Text("저장하면 틈튼지수에 반영돼요. 지난 기록은 그대로 남아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            Text("다음 틈튼지수 계산에 사용해요. 지난 기록은 그대로 남아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             val saveBlockedReason = when {
-                heightText.toIntOrNull() == null -> "키를 입력해 주세요."
-                weightText.toIntOrNull() == null -> "몸무게를 입력해 주세요."
+                (heightText.toIntOrNull() ?: 0) <= 0 -> "키를 입력해 주세요."
+                (weightText.toIntOrNull() ?: 0) <= 0 -> "몸무게를 입력해 주세요."
+                gender == null -> "성별을 선택해 주세요."
                 gender == "FEMALE" && isPregnant == null -> "임신 여부를 선택해 주세요."
                 else -> null
             }
             TmtnPrimaryButton(
-                text = "저장하고 다시 계산",
+                text = if (state.isLoading.value) "저장 중…" else "몸 정보 저장",
                 onClick = {
                     val h = heightText.toIntOrNull()
                     val w = weightText.toIntOrNull()
@@ -119,11 +120,12 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
                             (currentGender != user?.gender || pregnancyToSave != user?.is_pregnant)
                         ) {
                             state.saveGenderAndPregnancy(currentGender, pregnancyToSave)
+                            if (state.errorMessage.value != null) return@launch
                         }
                         if (h != null && w != null) state.saveHealthInput(h, w)
                     }
                 },
-                enabled = saveBlockedReason == null,
+                enabled = saveBlockedReason == null && !state.isLoading.value,
                 disabledReason = saveBlockedReason,
             )
         }
@@ -137,7 +139,7 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
     val existing = state.exerciseHabits.value
 
     var strengthCount by remember(existing) { mutableStateOf(existing?.strength_weekly_count ?: 0) }
-    var strengthIntensity by remember(existing) { mutableStateOf(existing?.strength_intensity ?: "MODERATE") }
+    var strengthIntensity by remember(existing) { mutableStateOf(existing?.strength_intensity) }
     var aerobicLow by remember(existing) { mutableStateOf(existing?.aerobic_low_minutes ?: 0) }
     var aerobicModerate by remember(existing) { mutableStateOf(existing?.aerobic_moderate_minutes ?: 0) }
     var aerobicHigh by remember(existing) { mutableStateOf(existing?.aerobic_high_minutes ?: 0) }
@@ -145,7 +147,7 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "운동 정보", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             com.tmtn.app.ui.common.TmtnExerciseFields(
@@ -157,12 +159,14 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
             Text("저장하면 틈튼지수에 반영돼요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             TmtnPrimaryButton(
-                text = "저장하고 다시 계산",
+                text = if (state.isLoading.value) "저장 중…" else "운동 정보 저장",
                 onClick = {
                     scope.launch {
                         state.saveExerciseHabits(strengthCount, strengthIntensity, aerobicLow, aerobicModerate, aerobicHigh)
                     }
                 },
+                enabled = !state.isLoading.value && (strengthCount == 0 || strengthIntensity != null),
+                disabledReason = if (strengthCount > 0 && strengthIntensity == null) "근력운동의 강도를 골라 주세요." else null,
             )
         }
     }

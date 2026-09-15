@@ -30,7 +30,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 
-/** Figma A08 · 필수 입력 · 운동 정보 (node 136:235), 2/2단계 */
+/** Figma A16 · 운동 정보 1314:2613. Scrollable fields and a persistent next action. */
 @Composable
 fun A08ExerciseScreen(state: OnboardingState, scope: CoroutineScope, hasSensorPermissions: () -> Boolean) {
     val colors = LocalTmtnColors.current
@@ -40,32 +40,33 @@ fun A08ExerciseScreen(state: OnboardingState, scope: CoroutineScope, hasSensorPe
     var modMin by state.aerobicModerateMinutes
     var highMin by state.aerobicHighMinutes
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "필수 입력", onBack = { state.step.value = OnboardingStep.A07_PROFILE })
-        StepProgressHeader(2, 2, "운동 정보")
+    Column(modifier = Modifier.fillMaxSize().imePadding()) {
+        TmtnTopBar(title = "운동 정보 · 2 / 2", onBack = { state.step.value = OnboardingStep.A07_PROFILE })
 
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth().weight(1f)
                 .verticalScroll(rememberScrollState())
-                .imePadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
 
 
-            Text("평소 운동량을 알려 주세요", style = TmtnType.headline, color = colors.onSurface)
-            Text("대략이면 충분해요. 틈튼지수 계산에 씁니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            Text("평소 운동량을\n알려 주세요.", style = TmtnType.headline, color = colors.onSurface)
+            Text("대략적인 일주일이면 돼요.\n운동량은 틈튼지수 계산에 참고해요.", style = TmtnType.body, color = colors.onSurfaceVariant)
 
             com.tmtn.app.ui.common.TmtnExerciseFields(
                 weeklyCount, { weeklyCount = it }, intensity, { intensity = it },
                 lowMin, { lowMin = it }, modMin, { modMin = it }, highMin, { highMin = it },
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+        }
+        Box(Modifier.fillMaxWidth().background(colors.background).padding(horizontal = 20.dp, vertical = 14.dp)) {
             TmtnPrimaryButton(
-                text = "필수 정보 저장하기",
+                text = if (state.isLoading.value) "정보 저장 중…" else "다음으로",
                 onClick = { scope.launch { state.submitExerciseHabits(hasSensorPermissions()) } },
+                enabled = !state.isLoading.value && (weeklyCount == 0 || intensity != null),
+                disabledReason = if (weeklyCount > 0 && intensity == null) "근력운동의 강도를 골라 주세요." else null,
             )
         }
     }
