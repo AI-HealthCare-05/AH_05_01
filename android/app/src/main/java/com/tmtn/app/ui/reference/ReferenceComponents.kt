@@ -95,7 +95,7 @@ internal fun ScorePaperMasthead(compact: Boolean = false) {
 
 @Composable
 internal fun ScoreHero(score: TuntunScorePeerV2Response, withMascot: Boolean, mascotImage: Int = R.drawable.beaver_card) {
-    val result = ScorePercentilePresentation.fromCurrent(score.peerCompositeScore, score.canShowOverall)
+    val result = ScorePercentilePresentation.fromCompositeScore(score)
     if (result != null) PercentileReading(result, withMascot, mascotImage)
     else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("정보를 더 입력해 주세요", style = TmtnType.title, color = LocalTmtnColors.current.onSurface)
@@ -139,7 +139,7 @@ internal fun ScoreActionRow(title: String, subtitle: String? = null, onClick: ()
 @Composable
 internal fun ScoreSummaryRow(component: PeerComponent, onClick: () -> Unit) {
     val colors = LocalTmtnColors.current
-    val result = ScorePercentilePresentation.fromCurrent(component.peerPercentile, component.hasResult)
+    val result = ScorePercentilePresentation.fromComponent(component)
     if (LocalDensity.current.fontScale * LocalTmtnTextScale.current > 1.35f) {
         ScoreActionRow(component.label, result?.primaryLabel ?: "정보 부족", onClick)
         return

@@ -54,7 +54,7 @@ internal fun ScoreBeaverStory(score: TuntunScorePeerV2Response, positions: List<
             // A verified future peer response can replace the waiting state without another layout.
             ScorePeerPositions(listOf(position), showHeading = false)
         } else {
-            val percentile = ScorePercentilePresentation.fromCurrent(component?.peerPercentile, component?.hasResult == true)
+            val percentile = ScorePercentilePresentation.fromComponent(component)
             Column(Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("${component?.label ?: "내"} 영역의 위치", style = TmtnType.body, color = colors.onSurfaceVariant)

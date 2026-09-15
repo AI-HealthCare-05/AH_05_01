@@ -24,7 +24,7 @@ internal fun ScoreNewspaperSummary(state: ReferenceState, onOpenExerciseInfo: ()
     waist: WaistEstimateUi) {
     val score = state.score.value ?: return
     val colors = LocalTmtnColors.current
-    val result = ScorePercentilePresentation.fromCurrent(score.peerCompositeScore, score.canShowOverall)
+    val result = ScorePercentilePresentation.fromCompositeScore(score)
     val large = LocalDensity.current.fontScale * LocalTmtnTextScale.current > 1.15f
     var showMethod by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(top = 24.dp, bottom = 28.dp),

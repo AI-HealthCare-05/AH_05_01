@@ -74,8 +74,8 @@ internal fun ScoreNewspaperScreen(
             NewsTabs(area) { area = it }
             Spacer(Modifier.height(24.dp))
             val component = score.components.firstOrNull { it.componentKey == area }
-            val result = if (area == "overall") ScorePercentilePresentation.fromCurrent(score.peerCompositeScore, score.canShowOverall)
-                else ScorePercentilePresentation.fromCurrent(component?.peerPercentile, component?.hasResult == true)
+            val result = if (area == "overall") ScorePercentilePresentation.fromCompositeScore(score)
+                else ScorePercentilePresentation.fromComponent(component)
             val peer = peerPositions.firstOrNull { it.key == area }
             val label = newsAreas.first { it.first == area }.second
             val position = peer?.positionFromHigherIndex ?: result?.takeUnless { it.isPreview }?.position

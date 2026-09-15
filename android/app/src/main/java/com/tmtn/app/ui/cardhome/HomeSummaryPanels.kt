@@ -37,8 +37,10 @@ import java.util.Locale
 @Composable
 internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
-    val result = ScorePercentilePresentation.fromCurrent(
-        state.tuntunIndexPresentationValue.value ?: state.tuntunIndexValue.value?.toDouble())
+    val result = ScorePercentilePresentation.fromCompositeScoreValue(
+        state.tuntunIndexPresentationValue.value ?: state.tuntunIndexValue.value?.toDouble(),
+        available = true,
+    )
     val shape = RoundedCornerShape(18.dp)
     Column(Modifier.fillMaxWidth().clip(shape).background(colors.surface)
         .border(1.dp, colors.outlineVariant, shape)) {

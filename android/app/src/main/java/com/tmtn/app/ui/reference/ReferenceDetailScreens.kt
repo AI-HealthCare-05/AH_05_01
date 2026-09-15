@@ -150,7 +150,11 @@ private fun ScoreMethodContent(score: TuntunScorePeerV2Response?) {
         Text("종합 지수는 계산 가능한 영역을 모아 보여줘요. 영역별 안내도 함께 확인해 주세요.",
             style = TmtnType.body, color = colors.onSurfaceVariant)
         ScoreRule()
-        if (ScorePercentilePresentation.fromCurrent(score?.peerCompositeScore)?.isPreview == false) {
+        // ⚠️ 2026-09-14 수정 - 예전엔 "종합점수가 순위 형태(MODEL_PERCENTILE)로 표시될 때만"
+        // 이 안내를 보여줬는데, 이제 종합점수는 항상 점수로 표시되므로 그 조건 자체가
+        // 의미가 없어짐. 실제로 "100명 중 몇 번째쯤" 표시가 남아있는 곳은 영역별 카드이므로,
+        // 영역 중 하나라도 순위가 있으면 이 설명을 보여주는 게 정확함.
+        if (score?.components?.any { it.hasResult } == true) {
             Text("비교 위치 읽기", style = TmtnType.bodyLarge, color = colors.onSurface)
             Text("‘100명 중 몇 번째쯤’은 비교 집단에서의 대략적인 위치예요. 실제 사람 수나 정확한 등수를 뜻하지 않아요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant)
