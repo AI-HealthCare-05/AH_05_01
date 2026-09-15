@@ -16,4 +16,9 @@ import android.app.Application
  * 필요 없음 — 특별히 다른 초기화 작업이 생기기 전까지는 이 클래스가 거의 빈 채로
  * 있어도 정상.
  */
-class TmtnApplication : Application()
+class TmtnApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        com.tmtn.app.audio.TmtnAudio.initialize(this)
+    }
+}

@@ -57,6 +57,13 @@ object GoogleSignInHelper {
         data class Failure(val message: String) : Result
     }
 
+    suspend fun clearCredentialState(context: Context) {
+        try {
+            CredentialManager.create(context).clearCredentialState(androidx.credentials.ClearCredentialStateRequest())
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (_: Exception) { /* App session is already signed out. */ }
+    }
+
     fun isConfigured(): Boolean = BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()
 
     /**

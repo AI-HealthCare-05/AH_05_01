@@ -3,6 +3,8 @@ package com.tmtn.app.ui.cardhome
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +26,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -76,10 +83,10 @@ fun CheckChallengeScreen(state: CardHomeState, scope: CoroutineScope) {
         }
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             if (material != null) {
                 Row(
@@ -112,13 +119,13 @@ fun CheckChallengeScreen(state: CardHomeState, scope: CoroutineScope) {
             // ⚠️ 2026-09-06 QA(P2) 반영: 바로 위 박스의 "직접 확인해 주세요"(제거함)와
             // 아래 문구가 같은 말을 두 번 하고 있었음 - 하나로 정리.
             Text(
-                "자동으로 완료되지 않습니다. 직접 확인해야 기록됩니다.",
+                "실천을 마쳤다면 아래에서 완료해 주세요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(20.dp))
             TmtnPrimaryButton(
-                text = "${card.title} · 완료하기",
+                text = "실천 완료하기",
                 // ⚠️ 예전엔 여기서 바로 completeTimerChallenge()를 불러서 클릭 한 번에 실제
                 // 완료 처리(서버 반영)까지 끝나버렸음. 자가진단 없이 바로 완료돼서 실수로
                 // 누르기 쉬웠음 - C01b(자가진단 확인) 화면을 하나 끼워서 한 번 더 확인하게 함.
@@ -137,56 +144,7 @@ fun CheckChallengeScreen(state: CardHomeState, scope: CoroutineScope) {
  * "그냥 홈으로 나가기"와 같음 - pauseAndGoHome() 그대로 재사용해도 안전함. */
 @Composable
 private fun CheckGiveUpDialog(state: CardHomeState, scope: CoroutineScope) {
-    val colors = LocalTmtnColors.current
-    AlertDialog(
-        onDismissRequest = { state.showCheckGiveUpDialog.value = false },
-        containerColor = colors.surface,
-        title = { Text("오늘 미션, 어떻게 할까요?", style = TmtnType.bodyLarge, color = colors.onSurface) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // ⚠️ 2026-09-08: CHECK형은 서버에 쌓이는 진행값이 없어서 포기해도 사라질
-                // 게 없음 - TIMER/SENSOR형과 달리 문구를 그대로 둠.
-                Text(
-                    "자정 전이면 언제든 다시 도전할 수 있어요.",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        "나중에 이어서 하기", style = TmtnType.caption, color = colors.onSurface,
-                        modifier = Modifier.clickable {
-                            state.showCheckGiveUpDialog.value = false
-                            scope.launch { state.pauseAndGoHome() }
-                        }
-                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .wrapContentSize(Alignment.CenterStart)
-                            .padding(8.dp),
-                    )
-                    Text(
-                        "오늘 미션 포기", style = TmtnType.caption, color = colors.error,
-                        modifier = Modifier.clickable {
-                            state.showCheckGiveUpDialog.value = false
-                            scope.launch { state.quitChallenge() }
-                        }
-                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .wrapContentSize(Alignment.CenterEnd)
-                            .padding(8.dp),
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Text(
-                "계속하기", style = TmtnType.bodyLarge, color = colors.primary,
-                modifier = Modifier.clickable { state.showCheckGiveUpDialog.value = false }
-                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                    .wrapContentSize(Alignment.Center)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-        },
-    )
+    MissionExitDialog(state, scope, checkOnly = true)
 }
 
 /** Figma C01b(신규) · CHECK형 자가진단 확인 - "완료하기"를 누른 뒤 실제로 서버에 완료 처리를
@@ -201,10 +159,10 @@ fun CheckCompleteConfirmScreen(state: CardHomeState, scope: CoroutineScope) {
         TmtnTopBar(title = "완료 확인", onBack = { state.step.value = CardHomeStep.CHALLENGE_CHECK })
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("정말 완료했나요?", style = TmtnType.headline, color = colors.onSurface)
+            Text("오늘의 실천,\n여기까지 해냈나요?", style = TmtnType.headline, color = colors.onSurface)
             Text(card.title, style = TmtnType.bodyLarge, color = colors.onSurfaceVariant)
 
             Column(
@@ -226,6 +184,7 @@ fun CheckCompleteConfirmScreen(state: CardHomeState, scope: CoroutineScope) {
             Spacer(modifier = Modifier.height(4.dp))
             TmtnPrimaryButton(
                 text = "네, 완료했어요",
+                enabled = !state.isLoading.value,
                 // ⚠️ 2026-09-08 반영: CHECK형뿐 아니라 SENSOR형이 "직접 체크로 할래요"로
                 // 들어와도 이 화면을 거치므로, 항상 manualCheck=true로 보냄 - 서버가 실측값
                 // 검증을 건너뛰고 사용자 확인 자체를 완료 조건으로 인정하게 함.
@@ -250,10 +209,10 @@ fun TimerStartScreen(state: CardHomeState, scope: CoroutineScope) {
         TmtnTopBar(title = "오늘의 행동", onBack = { state.step.value = CardHomeStep.REVEALED })
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
             if (material != null) {
                 Text(
                     "${material.first} 1개 · ${material.second}",
@@ -294,13 +253,13 @@ fun TimerStartScreen(state: CardHomeState, scope: CoroutineScope) {
             ) {
                 Text("완료 기준", style = TmtnType.label, color = colors.onSurfaceVariant)
                 Text(
-                    "목표 ${card.target_value}${card.unit}을 모두 채운 뒤 완료 버튼을 눌러야 기록됩니다.",
+                    "목표 ${card.target_value}${card.unit}을 채우면 완료할 수 있어요.",
                     style = TmtnType.body, color = colors.onSurface,
                 )
-                Text("시간이 다 되어도 자동으로 완료되지 않습니다.", style = TmtnType.body, color = colors.onSurface)
+                Text("끝났을 때 완료 버튼을 한 번 눌러 주세요.", style = TmtnType.body, color = colors.onSurface)
             }
 
-            TmtnPrimaryButton(text = "시작하기", onClick = { scope.launch { state.startTimer() } })
+            TmtnPrimaryButton(text = "시작하기", onClick = { scope.launch { state.startTimer() } }, enabled = !state.isLoading.value)
             // ⚠️ 2026-09-06 QA(P2) 반영: 같은 화면 안에서 "쌓여요"(반말)와 "기록됩니다"(존댓말)가
             // 섞여있던 것 중 하나 - 존댓말로 통일.
             TmtnTextButton(text = "오늘은 하기 어려워요", onClick = { state.step.value = CardHomeStep.REVEALED })
@@ -371,10 +330,10 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
         )
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             Column(
                 modifier = Modifier
@@ -382,13 +341,13 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
                     .background(colors.surface, RoundedCornerShape(16.dp))
                     // ⚠️ 2026-09-06 QA(P1-6) 반영: 주황은 "오늘"에만 쓰는 색인데 이 카드
                     // 테두리에도 쓰여서 규칙 위반이었음.
-                    .border(3.dp, colors.onSurface, RoundedCornerShape(16.dp))
+                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
-                    "시간이 흐르고 있어요", style = TmtnType.label, color = colors.onSurface,
+                    if (progress >= 1f) "목표를 채웠어요" else "시간이 흐르고 있어요", style = TmtnType.label, color = colors.onSurface,
                     modifier = Modifier
                         .background(colors.rewardContainer, RoundedCornerShape(999.dp))
                         .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -398,7 +357,10 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
                     "목표 ${card.target_value}${card.unit} · 남은 시간 ${formatMmSs(remaining)}",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
-                Box(modifier = Modifier.fillMaxWidth().height(10.dp)) {
+                Box(modifier = Modifier.fillMaxWidth().height(10.dp).semantics {
+                    contentDescription = "오늘 미션 진행"
+                    progressBarRangeInfo = ProgressBarRangeInfo(progress.coerceIn(0f, 1f), 0f..1f)
+                }) {
                     Box(modifier = Modifier.fillMaxWidth().height(10.dp).background(colors.outline, RoundedCornerShape(4.dp)))
                     Box(
                         // ⚠️ 2026-09-06 QA(P1-6) 반영: 진행바 채움도 주황이었음 - 무채색으로.
@@ -467,10 +429,10 @@ fun TimerPausedScreen(state: CardHomeState, scope: CoroutineScope) {
         TmtnTopBar(title = "오늘의 행동", onBack = { state.step.value = CardHomeStep.REVEALED })
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             Column(
                 modifier = Modifier
@@ -489,7 +451,12 @@ fun TimerPausedScreen(state: CardHomeState, scope: CoroutineScope) {
                 )
                 Text(formatMmSs(elapsed), style = TmtnType.display, color = colors.onSurface)
                 Text("목표 ${card.target_value}${card.unit}", style = TmtnType.body, color = colors.onSurfaceVariant)
-                Box(modifier = Modifier.fillMaxWidth().height(10.dp).background(colors.outline, RoundedCornerShape(4.dp)))
+                Box(modifier = Modifier.fillMaxWidth().height(10.dp).background(colors.outlineVariant, RoundedCornerShape(4.dp)).semantics {
+                    contentDescription = "멈춘 미션 진행"
+                    progressBarRangeInfo = ProgressBarRangeInfo((progressPercent / 100f).coerceIn(0f, 1f), 0f..1f)
+                }) {
+                    Box(Modifier.fillMaxWidth((progressPercent / 100f).coerceIn(0f, 1f)).height(10.dp).background(colors.onSurface, RoundedCornerShape(4.dp)))
+                }
                 Text("${progressPercent}%에서 멈춰 있어요", style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
@@ -500,13 +467,13 @@ fun TimerPausedScreen(state: CardHomeState, scope: CoroutineScope) {
                     .padding(16.dp),
             ) {
                 Text(
-                    "지금까지 기록된 ${formatMmSs(elapsed)}은 그대로 남습니다.",
+                    "지금까지 잰 ${formatMmSs(elapsed)}에서 이어갈 수 있어요.",
                     style = TmtnType.body, color = colors.onSurface,
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            TmtnPrimaryButton(text = "이어서 하기", onClick = { scope.launch { state.resumeTimer() } })
+            TmtnPrimaryButton(text = "이어서 하기", onClick = { scope.launch { state.resumeTimer() } }, enabled = !state.isLoading.value)
             TmtnOutlinedButton(text = "오늘은 여기까지 할래", onClick = { state.showQuitDialog.value = true })
         }
     }
@@ -526,7 +493,7 @@ fun ChallengeProcessingScreen(state: CardHomeState) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text(card?.title ?: "", style = TmtnType.headline, color = colors.onSurface)
+        Text(card?.title ?: "", style = TmtnType.sectionHeading, color = colors.onSurface)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -549,67 +516,46 @@ fun ChallengeProcessingScreen(state: CardHomeState) {
 /** Figma C19 · 챌린지 중단 확인 다이얼로그 */
 @Composable
 private fun QuitDialog(state: CardHomeState, scope: CoroutineScope) {
+    MissionExitDialog(state, scope, checkOnly = false)
+}
+
+/** Keep the user's choice, progress and any retry in one readable window. */
+@Composable
+internal fun MissionExitDialog(state: CardHomeState, scope: CoroutineScope, checkOnly: Boolean) {
     val colors = LocalTmtnColors.current
+    val busy = state.isLoading.value
+    val minTarget = 48.dp
+    val close: () -> Unit = {
+        if (!state.isLoading.value) {
+            state.showQuitDialog.value = false
+            state.showCheckGiveUpDialog.value = false
+            state.errorMessage.value = null
+        }
+    }
     AlertDialog(
-        onDismissRequest = { state.showQuitDialog.value = false },
-        containerColor = colors.surface,
-        // ⚠️ 2026-09-07 반영: 제목·본문이 "그만두면 다시 시작 못 한다"고 돼 있었는데,
-        // 정책 원칙(자정 전엔 아무것도 안 잠긴다)과 정반대였음 - 실제로는 "나중에 이어서
-        // 하기"(진행값 보존, 중단)와 "오늘 미션 포기"(오늘만 접기, 자정 전이면 다시 시작
-        // 가능)를 구분하는 게 맞음. 문구·선택지 둘 다 바로잡음.
-        //
-        // ⚠️ 2026-09-08 QA(N7) 반영: "나중에 이어서 하기"가 위에 풀폭으로 크게, 그 아래
-        // "계속하기"·"오늘 미션 포기"가 나란히 같은 크기였음 - 가장 안전한 선택(계속하기)이
-        // 가장 위험한 선택(포기)과 동급으로 보였음. AlertDialog의 confirmButton 자리
-        // (가장 강조되는 자리)에 "계속하기"를 두고, 나머지 둘은 본문 안에 작은 보조
-        // 옵션으로 내림.
-        title = { Text("오늘 미션, 어떻게 할까요?", style = TmtnType.bodyLarge, color = colors.onSurface) },
+        onDismissRequest = close, containerColor = colors.surface,
+        title = { Text("오늘 미션, 어떻게 할까요?", style = TmtnType.title, color = colors.onSurface) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // ⚠️ 2026-09-08 수정: 예전 문구는 "지금까지 잰 8분은 어떤 걸 골라도
-                // 남습니다"였는데 사실이 아니었음 - 포기(skip)는 서버에서 진행값을 0으로
-                // 지움(challenge_service.skip). 두 선택지의 결과가 정반대인데 같은 것처럼
-                // 안내하고 있었음. 실제 동작 그대로 적음.
-                Text(
-                    "지금까지 잰 ${formatMmSs(state.timerElapsedSeconds.value)}은 " +
-                        "\"나중에 이어서 하기\"를 고르면 그대로 남고, \"오늘 미션 포기\"를 고르면 사라집니다.",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
-                )
-                Text(
-                    "나중에 이어서 하기 → 지금 상태 그대로 두고 홈으로. 오늘 미션 포기 → 잰 시간이 0으로 " +
-                        "돌아가고, 자정을 넘기면 미완료로 연속 기록이 끊겨요. (자정 전이면 처음부터 다시 도전할 수 있어요)",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        "나중에 이어서 하기", style = TmtnType.caption, color = colors.onSurface,
-                        modifier = Modifier.clickable { scope.launch { state.pauseAndGoHome() } }
-                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .wrapContentSize(Alignment.CenterStart)
-                            .padding(8.dp),
-                    )
-                    Text(
-                        "오늘 미션 포기", style = TmtnType.caption, color = colors.error,
-                        // ⚠️ 2026-09-06 QA(접근성) 반영: 터치 영역이 48dp 미만이었음 - 최소 영역 확보.
-                        modifier = Modifier.clickable { scope.launch { state.quitChallenge() } }
-                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .wrapContentSize(Alignment.CenterEnd)
-                            .padding(8.dp),
-                    )
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(if (checkOnly) "오늘 안에는 다시 도전할 수 있어요."
+                    else "지금 멈추면 ${formatMmSs(state.timerElapsedSeconds.value)}부터 이어갈 수 있어요.",
+                    style = TmtnType.body, color = colors.onSurface)
+                TmtnTonalButton("나중에 이어서 하기", { scope.launch { state.pauseAndGoHome() } }, enabled = !busy)
+                if (!checkOnly) Text("포기하면 잰 시간이 초기화되고 연속 기록이 끊겨요. 오늘 안에는 처음부터 다시 도전할 수 있어요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant)
+                TextButton(onClick = { scope.launch { state.quitChallenge() } }, enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = minTarget)) {
+                    Text("오늘 미션 포기", style = TmtnType.label, color = if (busy) colors.onSurfaceVariant else colors.error)
                 }
+                if (busy) Text("변경 내용을 저장하고 있어요.", style = TmtnType.caption, color = colors.onSurface)
+                com.tmtn.app.ui.onboarding.OnboardingErrorMessage(state.errorMessage.value)
             }
         },
         confirmButton = {
-            Text(
-                "계속하기", style = TmtnType.bodyLarge, color = colors.primary,
-                modifier = Modifier.clickable { state.showQuitDialog.value = false }
-                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                    .wrapContentSize(Alignment.Center)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            )
+            TextButton(close, enabled = !busy, modifier = Modifier.heightIn(min = minTarget)) {
+                Text(if (!checkOnly && state.timerIsPaused.value) "돌아가기" else "계속하기", style = TmtnType.label,
+                    color = if (busy) colors.onSurfaceVariant else colors.onSurface)
+            }
         },
     )
 }

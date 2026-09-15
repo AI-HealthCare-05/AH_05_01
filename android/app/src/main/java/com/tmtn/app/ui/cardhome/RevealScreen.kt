@@ -49,11 +49,7 @@ val MATERIAL_NAMES = mapOf(
 @Composable
 fun MaterialIcon(element: String, size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
     val drawableId = when (element) {
-        "WOOD" -> com.tmtn.app.R.drawable.material_wood
-        "FIRE" -> com.tmtn.app.R.drawable.material_fire
-        "EARTH" -> com.tmtn.app.R.drawable.material_earth
-        "METAL" -> com.tmtn.app.R.drawable.material_metal
-        "WATER" -> com.tmtn.app.R.drawable.material_water
+        "WOOD", "FIRE", "EARTH", "METAL", "WATER" -> com.tmtn.app.ui.common.tmtnMaterialDrawable(element)
         else -> null
     }
     if (drawableId != null) {
@@ -110,7 +106,7 @@ fun RevealScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
-            NoteCard(card, state.displayDateLabel())
+            TmtnMissionCard(card, state.displayDateLabel())
         }
 
         // 하단 CTA

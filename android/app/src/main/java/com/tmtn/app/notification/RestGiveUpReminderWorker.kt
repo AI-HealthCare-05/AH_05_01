@@ -37,6 +37,8 @@ class RestGiveUpReminderWorker(
             val notificationConsented = consents.body()
                 ?.any { it.purpose == "NOTIFICATION" && it.status == "AGREED" } == true
             if (!notificationConsented) return@runCatching
+            val setting = ApiClient.profileApi.getNotificationSettings()
+            if (!setting.isSuccessful || !reminderAllowed(setting.body())) return@runCatching
 
             val today = ApiClient.cardHomeApi.getTodayCards()
             val card = today.body()
@@ -45,7 +47,7 @@ class RestGiveUpReminderWorker(
             if (isRestingOrGivenUp) {
                 showNotification()
             }
-        }
+        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
 
         NotificationScheduler.rescheduleTomorrow(
             applicationContext, NotificationScheduler.restGiveUpWorkName,
@@ -56,7 +58,7 @@ class RestGiveUpReminderWorker(
 
     private fun showNotification() {
         val context = applicationContext
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+        if (android.os.Build.VERSION.SDK_INT >= 33 && ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
             return
@@ -68,8 +70,8 @@ class RestGiveUpReminderWorker(
         )
         val notification = NotificationCompat.Builder(context, NotificationScheduler.CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("오늘, 아직 자정 전이에요")
-            .setContentText("마음이 바뀌면 지금이라도 다시 도전할 수 있어요.")
+            .setContentTitle("틈튼이는 여기서 기다릴게요")
+            .setContentText("쉬어 가도 좋아요. 오늘 다시 해보고 싶다면 카드를 펼쳐 주세요.")
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()

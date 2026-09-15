@@ -5,7 +5,7 @@ import org.junit.Test
 
 class ScorePercentileTest {
     @Test fun currentScoreUsesActualPointsWithoutClaimingRank() {
-        val result = ScorePercentilePresentation.fromCurrent(68.0)!!
+        val result = ScorePercentilePresentation.fromCompositeScoreValue(68.0, available = true)!!
         assertTrue(result.isPreview)
         assertEquals("68점", result.primaryLabel)
         assertEquals("틈튼지수 68점", result.reading)

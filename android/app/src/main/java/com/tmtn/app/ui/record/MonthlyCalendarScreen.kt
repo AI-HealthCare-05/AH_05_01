@@ -10,6 +10,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -91,7 +93,7 @@ fun MonthlyCalendarScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("기록", style = TmtnType.title, color = colors.onSurface, modifier = Modifier.weight(1f))
+            Text("기록", style = TmtnType.label, color = colors.onSurface, modifier = Modifier.weight(1f))
             Text("오늘", style = TmtnType.label, color = colors.onSurface,
                 modifier = Modifier.tmtnClickable(enabled = !state.isLoading.value) {
                     val current = YearMonth.now()
@@ -100,20 +102,17 @@ fun MonthlyCalendarScreen(
                 }.size(48.dp).wrapContentSize())
         }
 
-        RecordPeriodTabs(state.tab.value) { tab ->
-            if (onPeriodSelected != null) onPeriodSelected(tab) else {
-                state.tab.value = tab
-                if (tab == RecordTab.WEEKLY) scope.launch { state.loadWeekly() }
-            }
-        }
+        Text("쌓아 온 하루들.", style = TmtnType.headline, color = colors.onSurface)
+        Text("날짜를 눌러 그날의 실천을 돌아봐요.", style = TmtnType.body, color = colors.onSurfaceVariant)
 
         if (state.monthlyLoadFailed.value) {
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.rewardContainer, RoundedCornerShape(16.dp)).padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("일부 날짜를 불러오지 못했습니다", style = TmtnType.bodyLarge, color = colors.onSurface)
+                Text("기록을 불러오지 못했어요.", style = TmtnType.bodyLarge, color = colors.onSurface)
                 Text("연결을 확인한 뒤 다시 열어 주세요.", style = TmtnType.body, color = colors.onSurface)
+                com.tmtn.app.ui.onboarding.TmtnTonalButton("다시 불러오기", { scope.launch { state.loadMonthly() } }, enabled = !state.isLoading.value)
             }
         }
 
@@ -125,6 +124,12 @@ fun MonthlyCalendarScreen(
                 EmptyRecordCard(onGoPickCard)
             } else StreakCard(state)
         }
+        com.tmtn.app.ui.onboarding.TmtnTonalButton("최근 7일 돌아보기", {
+            if (onPeriodSelected != null) onPeriodSelected(RecordTab.WEEKLY) else {
+                state.tab.value = RecordTab.WEEKLY
+                scope.launch { state.loadWeekly() }
+            }
+        }, enabled = !state.isLoading.value)
     }
 }
 
@@ -190,18 +195,23 @@ private fun MonthCalendarCard(
             )
         }
 
+        val dateScale = androidx.compose.ui.platform.LocalDensity.current.fontScale * com.tmtn.app.ui.theme.LocalTmtnTextScale.current
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val gridWidth = maxOf(maxWidth, ((34 * dateScale.coerceAtLeast(1f) + 8) * 7).dp)
+        Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+        Column(Modifier.width(gridWidth), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf("월", "화", "수", "목", "금", "토", "일").forEach {
                 Text(it, style = TmtnType.caption, color = colors.onSurfaceVariant, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
             }
         }
 
-        // 42칸(6주) 고정 그리드 - HANDOFF 규칙.
+        // 달에 필요한 5~6주를 표시해 피그마의 달력 밀도를 유지한다.
         // ⚠️ 2026-09-04 디자인 스펙 반영: 이전/다음 달 날짜가 빈칸이었는데, 피그마 기준
         // 흐린 색으로 숫자를 그대로 보여줘야 함(첨부 이미지 27~31, 1~6 참고). 날짜 자체를
         // LocalDate로 계산해서, 이번 달이면 실제 상태로, 아니면 흐린 숫자만 표시.
         val leadingBlanks = firstDayOfWeek - 1
-        val totalCells = 42
+        val totalCells = ((leadingBlanks + ym.lengthOfMonth() + 6) / 7) * 7
         val monthStart = ym.atDay(1)
         val today = LocalDate.now()
         Column(Modifier.fillMaxWidth().graphicsLayer { alpha = monthAlpha.value }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -230,6 +240,9 @@ private fun MonthCalendarCard(
 
         }
 
+        }
+        }
+        }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             LegendDot(colors.onSurface, "실천")
             LegendDot(colors.disabledContainer, "쉼", outlineColor = colors.onSurface)
@@ -237,21 +250,22 @@ private fun MonthCalendarCard(
             LegendDot(Color.Transparent, "오늘", outlineColor = colors.secondary)
         }
         Text(
-            "${state.month.value}월 실천 ${calendar.completed_count}일 · 쉼 ${calendar.rest_count}일",
+            "${state.month.value}월 실천 ${calendar.completed_count}일 · 쉼 ${calendar.rest_count}일 · 미완료 ${calendar.days.count { it.status == "INCOMPLETE" }}일",
             style = TmtnType.caption, color = colors.onSurfaceVariant,
         )
     }
 }
 
 @Composable
-private fun DayCell(day: Int, status: String?, isToday: Boolean, isFuture: Boolean, onClick: () -> Unit) {
+internal fun DayCell(day: Int, status: String?, isToday: Boolean, isFuture: Boolean, onClick: () -> Unit) {
     val colors = LocalTmtnColors.current
+    val dateScale = androidx.compose.ui.platform.LocalDensity.current.fontScale * com.tmtn.app.ui.theme.LocalTmtnTextScale.current
     Box(
         modifier = Modifier
             .fillMaxWidth().heightIn(min = 48.dp)
             .tmtnClickable { onClick() }
             .semantics { contentDescription = "${day}일, " + when (status) { "COMPLETED" -> "실천"; "REST" -> "쉼"; "INCOMPLETE" -> "미완료"; else -> "기록 없음" } + if (isToday) ", 오늘" else "" }
-            .wrapContentSize(Alignment.Center).size(34.dp)
+            .wrapContentSize(Alignment.Center).size((34 * dateScale.coerceAtLeast(1f)).dp)
             // ⚠️ "오늘" 표시가 예전엔 when()의 마지막 분기라 그 날에 완료/쉼/미완료 같은
             // 상태가 하나라도 있으면 전혀 안 보였음(실천+오늘, 쉼+오늘, 미완료+오늘을 구분
             // 못 함). 오늘 표시를 바깥쪽 링으로 분리해서, 상태와 무관하게 항상 같이 보이게 함.

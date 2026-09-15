@@ -10,7 +10,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/** Bundled Pretendard typography; honors app text scale and Android font scaling. */
+/** User-approved Pretendard; Figma's Noto is its documented editor fallback (DESIGN.md). */
 val TmtnFontFamily = FontFamily(
     Font(R.font.pretendard_regular, FontWeight.Normal),
     Font(R.font.pretendard_medium, FontWeight.Medium),
@@ -19,14 +19,22 @@ val TmtnFontFamily = FontFamily(
 )
 
 object TmtnType {
+    // Figma 1314:4840, 1314:3813: 32/42 headline, 16/26 body, 14/20 label.
+    val actionLabel: TextStyle @Composable get() = scaled(16.sp, 24.sp, FontWeight.Bold)
+    val choiceLabel: TextStyle @Composable get() = scaled(15.sp, 21.sp, FontWeight.Bold)
     val display: TextStyle @Composable get() = scaled(36.sp, 44.sp, FontWeight.Bold)
-    val headline: TextStyle @Composable get() = scaled(28.sp, 36.sp, FontWeight.Bold)
+    val headline: TextStyle @Composable get() = scaled(32.sp, 42.sp, FontWeight.Bold)
+    val editorialHeadline: TextStyle @Composable get() = scaled(28.sp, 36.sp, FontWeight.Bold)
+    val sectionHeading: TextStyle @Composable get() = scaled(20.sp, 28.sp, FontWeight.SemiBold)
+    val inputHeadline: TextStyle @Composable get() = scaled(24.sp, 34.sp, FontWeight.Bold)
+    val missionName: TextStyle @Composable get() = scaled(18.sp, 26.sp, FontWeight.SemiBold)
+    val cardMessage: TextStyle @Composable get() = scaled(24.sp, 34.sp, FontWeight.Medium)
     val title: TextStyle @Composable get() = scaled(22.sp, 30.sp, FontWeight.SemiBold)
     val bodyLarge: TextStyle @Composable get() = scaled(18.sp, 28.sp, FontWeight.Medium)
-    val body: TextStyle @Composable get() = scaled(16.sp, 25.sp, FontWeight.Normal)
-    val label: TextStyle @Composable get() = scaled(14.sp, 21.sp, FontWeight.SemiBold)
-    val caption: TextStyle @Composable get() = scaled(14.sp, 21.sp, FontWeight.Medium)
-    val navigationLabel: TextStyle @Composable get() = scaled(13.sp, 18.sp, FontWeight.Medium)
+    val body: TextStyle @Composable get() = scaled(16.sp, 26.sp, FontWeight.Normal)
+    val label: TextStyle @Composable get() = scaled(14.sp, 20.sp, FontWeight.Bold)
+    val caption: TextStyle @Composable get() = scaled(14.sp, 20.sp, FontWeight.Medium)
+    val navigationLabel: TextStyle @Composable get() = scaled(12.sp, 20.sp, FontWeight.Medium)
 
     @Composable
     private fun scaled(baseSize: androidx.compose.ui.unit.TextUnit, baseLineHeight: androidx.compose.ui.unit.TextUnit, weight: FontWeight): TextStyle {

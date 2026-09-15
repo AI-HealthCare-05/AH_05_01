@@ -22,6 +22,14 @@ object SensorDataHolder {
 
     private val _isServiceRunning = MutableStateFlow(false)
     val isServiceRunning: StateFlow<Boolean> = _isServiceRunning
+    private val _serviceError = MutableStateFlow<String?>(null)
+    val serviceError: StateFlow<String?> = _serviceError
+    fun setServiceError(message: String?) { _serviceError.value = message }
+
+    // A local acknowledgement of the existing sync job; the complete endpoint still validates progress.
+    private val _syncAttempt = MutableStateFlow<Pair<String, Boolean>?>(null)
+    val syncAttempt: StateFlow<Pair<String, Boolean>?> = _syncAttempt
+    fun finishSyncAttempt(requestId: String, completed: Boolean) { _syncAttempt.value = requestId to completed }
 
     // ⚠️ 2026-09-04 추가: 센서 측정 "일시정지" - 자가타이머(TIMER)형의 일시정지와 같은
     // 개념을 센서형에도 적용. true면 실제 센서 리스너를 꺼둔 상태라, 그동안은
@@ -105,8 +113,20 @@ object SensorDataHolder {
     fun updateStepDetectedNow(value: Boolean) { _isStepDetectedNow.value = value }
     fun setSensorPaused(paused: Boolean) { _isSensorPaused.value = paused }
 
-    /** 걸음/계단(항상 측정되는 값들)을 초기화. 서비스를 완전히 중지할 때 사용. */
+    /** A stopped measurement must not leave counters, paused state or detections in the next session. */
     fun resetAll() {
+        _isServiceRunning.value = false
+        _serviceError.value = null
+        _syncAttempt.value = null
+        _isSensorPaused.value = false
+        _isStepInPlaceActive.value = false
+        _isStairInPlaceActive.value = false
+        _isRunningActive.value = false
+        _isWalkingActive.value = false
+        _isRunningDetectedNow.value = false
+        _isWalkingDetectedNow.value = false
+        _isFloorsClimbedDetectedNow.value = false
+        _isStepDetectedNow.value = false
         _stepCount.value = 0
         _floorsClimbed.value = 0
         _stepInPlaceCount.value = 0

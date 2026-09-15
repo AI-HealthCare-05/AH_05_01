@@ -63,8 +63,20 @@ class MissionSensorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent == null) { stopSelf(); return START_NOT_STICKY }
         createNotificationChannel()
-        startForeground(notificationId, buildNotification())
+        val measurement = if (intent.action == ACTION_START_RUNNING_DISTANCE) "SENSOR_RUNNING_DISTANCE"
+            else intent.getStringExtra(EXTRA_EXEC_TYPE) ?: CurrentChallengeHolder.execType
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                startForeground(notificationId, buildNotification(), SensorPermissions.serviceType(measurement, android.os.Build.VERSION.SDK_INT))
+            } else startForeground(notificationId, buildNotification())
+        } catch (_: SecurityException) {
+            SensorDataHolder.setServiceRunning(false)
+            SensorDataHolder.setServiceError("측정 권한을 확인해 주세요. 잰 기록은 남아 있어요.")
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
         // ⚠️ 2026-09-07 QA(걷기 미감지) 임시 진단 로그 - onStartCommand 자체가 몇 번,
         // 어떤 action으로 불리는지 확인용. 원인 확정되면 지워도 됨.
@@ -151,6 +163,12 @@ class MissionSensorService : Service() {
                         SensorDataHolder.updateStepCount(stepCounterManager.stepCount)
                         SensorDataHolder.updateStepDetectedNow(false)
                     }
+                    "SENSOR_STEPS_IN_PLACE" -> {
+                        stepInPlaceManager.stop()
+                        SensorDataHolder.updateStepInPlaceCount(stepInPlaceManager.stepCount)
+                        SensorDataHolder.setStepInPlaceActive(false)
+                        SensorDataHolder.updateStepDetectedNow(false)
+                    }
                 }
                 SensorDataHolder.setSensorPaused(true)
             }
@@ -164,15 +182,28 @@ class MissionSensorService : Service() {
                         SensorDataHolder.setRunningActive(true)
                     }
                     "SENSOR_RUNNING_DURATION" -> {
+                        runningCadenceManager.resumeFrom(runningCadenceManager.getCurrentTotalSeconds())
                         runningCadenceManager.start()
                         SensorDataHolder.setRunningActive(true)
                     }
                     "SENSOR_WALKING_DURATION" -> {
+                        walkingCadenceManager.resumeFrom(walkingCadenceManager.getCurrentTotalSeconds())
                         walkingCadenceManager.start()
                         SensorDataHolder.setWalkingActive(true)
                     }
-                    "SENSOR_FLOORS_CLIMBED" -> stairClimbManager.start()
-                    "SENSOR_STEPS" -> stepCounterManager.start()
+                    "SENSOR_FLOORS_CLIMBED" -> {
+                        stairClimbManager.resumeFrom(stairClimbManager.floorsClimbed)
+                        stairClimbManager.start()
+                    }
+                    "SENSOR_STEPS" -> {
+                        stepCounterManager.resumeFrom(stepCounterManager.stepCount)
+                        stepCounterManager.start()
+                    }
+                    "SENSOR_STEPS_IN_PLACE" -> {
+                        stepInPlaceManager.resumeFrom(stepInPlaceManager.stepCount)
+                        stepInPlaceManager.start()
+                        SensorDataHolder.setStepInPlaceActive(true)
+                    }
                 }
                 SensorDataHolder.setSensorPaused(false)
             }
@@ -182,7 +213,8 @@ class MissionSensorService : Service() {
             // 완료 판정을 내리는 문제(로그로 확인됨)를 없앰.
             ACTION_FORCE_SYNC_NOW -> {
                 val now = System.currentTimeMillis()
-                saveToLocalDbAndSync(
+                val requestId = intent.getStringExtra(EXTRA_SYNC_REQUEST_ID)
+                val syncJob = saveToLocalDbAndSync(
                     steps = stepCounterManager.stepCount,
                     floors = stairClimbManager.floorsClimbed,
                     stepInPlace = stepInPlaceManager.stepCount,
@@ -192,6 +224,10 @@ class MissionSensorService : Service() {
                     walkSeconds = walkingCadenceManager.getCurrentTotalSeconds(),
                     timestamp = now
                 )
+                if (requestId != null) {
+                    if (syncJob == null) SensorDataHolder.finishSyncAttempt(requestId, false)
+                    else syncJob.invokeOnCompletion { cause -> SensorDataHolder.finishSyncAttempt(requestId, cause == null) }
+                }
                 lastSavedAt = now
             }
 
@@ -370,6 +406,8 @@ class MissionSensorService : Service() {
             }
         }
 
+        SensorDataHolder.setSensorPaused(false)
+        SensorDataHolder.setServiceError(null)
         SensorDataHolder.setServiceRunning(true)
         startUpdateLoop()
     }
@@ -395,13 +433,17 @@ class MissionSensorService : Service() {
                 // ⚠️ 2026-09-07 QA 반영: "지금 이 순간 실제로 케이던스가 감지되는지"를
                 // 0.5초마다 같이 publish함 - isRunningActive/isWalkingActive(세션 on/off)와
                 // 구분해서 화면이 진짜 움직임 여부를 실시간으로 보여줄 수 있게 함.
-                SensorDataHolder.updateRunningDetectedNow(runningCadenceManager.isCurrentlyRunning)
+                SensorDataHolder.updateRunningDetectedNow(!SensorDataHolder.isSensorPaused.value &&
+                    if (CurrentChallengeHolder.execType == "SENSOR_RUNNING_DISTANCE") runningManager.isRecentlyActive()
+                    else runningCadenceManager.isCurrentlyRunning)
                 SensorDataHolder.updateWalkingDetectedNow(walkingCadenceManager.isCurrentlyWalking)
                 // ⚠️ 2026-09-07 반영: 계단/걸음수형은 이 실시간 감지 publish 자체가 없어서
                 // 화면(computeSensorDisplay)이 항상 true로 하드코딩돼 있었음(QA - 가만히
                 // 있어도 "움직임을 확인했어요").
                 SensorDataHolder.updateFloorsClimbedDetectedNow(stairClimbManager.isRecentlyActive())
-                SensorDataHolder.updateStepDetectedNow(stepCounterManager.isRecentlyActive())
+                SensorDataHolder.updateStepDetectedNow(!SensorDataHolder.isSensorPaused.value &&
+                    if (CurrentChallengeHolder.execType == "SENSOR_STEPS_IN_PLACE") stepInPlaceManager.isRecentlyActive()
+                    else stepCounterManager.isRecentlyActive())
 
                 walkingCadenceManager.checkTimeout()
                 runningCadenceManager.checkTimeout()
@@ -562,7 +604,7 @@ class MissionSensorService : Service() {
         fun mmss(totalSeconds: Int): String = "%d분 %02d초".format(totalSeconds / 60, totalSeconds % 60)
         return when (CurrentChallengeHolder.execType) {
             "SENSOR_WALKING_DURATION" -> "${mmss(walkingCadenceManager.getCurrentTotalSeconds())} · 자동 측정 중"
-            "SENSOR_RUNNING_DISTANCE" -> "%.2fkm · 자동 측정 중".format(runningManager.totalDistanceMeters / 1000f)
+            "SENSOR_RUNNING_DISTANCE" -> "${com.tmtn.app.ui.common.formatDistanceMeters(runningManager.totalDistanceMeters)} · 자동 측정 중"
             "SENSOR_RUNNING_DURATION" -> "${mmss(runningCadenceManager.getCurrentTotalSeconds())} · 자동 측정 중"
             "SENSOR_FLOORS_CLIMBED" -> {
                 val target = CurrentChallengeHolder.targetValue
@@ -584,6 +626,7 @@ class MissionSensorService : Service() {
         // 누적=0이었다가 한참 뒤에야 9->12로 반영됨). 완료 버튼을 누르는 순간 "지금 이
         // 값으로 당장 저장+동기화해라"를 서비스에 직접 요청하는 액션.
         const val ACTION_FORCE_SYNC_NOW = "com.tmtn.app.ACTION_FORCE_SYNC_NOW"
+        const val EXTRA_SYNC_REQUEST_ID = "EXTRA_SYNC_REQUEST_ID"
         const val EXTRA_CHALLENGE_ID = "EXTRA_CHALLENGE_ID"
         const val EXTRA_EXEC_TYPE = "EXTRA_EXEC_TYPE"
         // ⚠️ 2026-09-06 추가: 서버가 이미 배치 동기화로 갖고 있던 누적치 - 재개 시 이 값부터

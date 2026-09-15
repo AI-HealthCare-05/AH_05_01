@@ -1,6 +1,7 @@
 package com.tmtn.app.network
 
 import com.tmtn.app.network.model.DayDetailResponse
+import com.tmtn.app.network.model.ExerciseMissionRecordsResponse
 import com.tmtn.app.network.model.MonthlyCalendarResponse
 import com.tmtn.app.network.model.WeeklyReportResponse
 import retrofit2.Response
@@ -18,6 +19,13 @@ interface RecordApi {
 
     @GET("records/weekly")
     suspend fun getWeeklyReport(): Response<WeeklyReportResponse>
+
+    /** Read only: the deployed API already owns extra-exercise completion and rewards. */
+    @GET("exercise-mission-records")
+    suspend fun getExerciseMissionRecords(
+        @Query("from") from: String,
+        @Query("to") to: String,
+    ): Response<ExerciseMissionRecordsResponse>
 
     @GET("records/day/{date}")
     suspend fun getDayDetail(@Path("date") date: String): Response<DayDetailResponse>
