@@ -22,5 +22,10 @@ class HealthInputRepository:
     async def get_latest(self, user_id) -> HealthInputSnapshot | None:
         return await self._model.filter(user_id=user_id).order_by("-measured_at").first()
 
+    async def get_earliest(self, user_id) -> HealthInputSnapshot | None:
+        """⚠️ 2026-09-15 추가 - InitialHabitSnapshot(가입 시점 고정값) 계산용.
+        get_latest()와 반대로 가장 오래된(최초 입력) 스냅샷을 가져옴."""
+        return await self._model.filter(user_id=user_id).order_by("measured_at").first()
+
     async def get_history(self, user_id, limit: int = 20) -> list[HealthInputSnapshot]:
         return await self._model.filter(user_id=user_id).order_by("-measured_at").limit(limit)

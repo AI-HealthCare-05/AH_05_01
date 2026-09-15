@@ -13,11 +13,13 @@ from app.apis.v1.exercise_mission_routers import exercise_mission_router
 from app.apis.v1.health_routers import health_router
 from app.apis.v1.inquiry_routers import inquiry_router
 from app.apis.v1.notification_setting_routers import notification_setting_router
+from app.apis.v1.practice_score_routers import practice_score_router
 from app.apis.v1.prediction_routers import prediction_router
 from app.apis.v1.record_routers import record_router
 from app.apis.v1.sensor_routers import sensor_router
 from app.apis.v1.tuntun_score_routers import tuntun_score_router
 from app.apis.v1.user_routers import user_router
+from app.apis.v1.weekly_editorial_routers import weekly_editorial_router
 
 v1_routers = APIRouter(prefix="/api/v1")
 v1_routers.include_router(auth_router)
@@ -37,4 +39,6 @@ v1_routers.include_router(companion_router)
 v1_routers.include_router(record_router)
 v1_routers.include_router(inquiry_router)
 v1_routers.include_router(tuntun_score_router)
+v1_routers.include_router(practice_score_router)
+v1_routers.include_router(weekly_editorial_router)
 v1_routers.include_router(debug_router)
