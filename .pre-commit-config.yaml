@@ -1,0 +1,62 @@
+# 틈튼(TMTN) 팀 공통 pre-commit 설정
+#
+# 설치 (클론 후 한 번):
+#   uv run pre-commit install
+# 전체 검사:
+#   uv run pre-commit run --all-files
+#
+# ⚠️ ruff rev 는 uv.lock 의 ruff 버전과 반드시 같아야 합니다.
+#    다르면 "터미널에서 포맷했는데 커밋이 또 막힌다" 가 무한 반복됩니다.
+#    현재 uv.lock: ruff 0.14.14
+
+ci:
+  autoupdate_schedule: monthly
+
+default_language_version:
+  python: python3.13
+
+# 검사 대상에서 제외 — 생성물·마이그레이션·안드로이드 빌드 산출물
+exclude: |
+  (?x)^(
+      app/core/db/migrations/.*|
+      android/.*/build/.*|
+      android/gradle/wrapper/.*|
+      tmtn_ai/artifacts/.*|
+      .*\.lock
+  )$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key          # keystore·개인키 커밋 차단
+      - id: check-added-large-files     # 데이터·APK·모델 파일 차단
+        args: [--maxkb=1024]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending           # CRLF/LF 섞임 방지
+        args: [--fix=lf]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.14                       # ← uv.lock 과 동일해야 함
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+# ── 넣지 않은 것과 그 이유 ────────────────────────────────────
+#
+# mypy: 커밋마다 돌리기엔 느리고 전체 의존성이 필요합니다.
+#       CI(scripts/ci/check_mypy.sh)에서만 돌립니다.
+#
+# uv-export(requirements.txt 생성): 우리는 uv.lock + Docker 로 배포합니다.
+#       루트에 자동 생성된 requirements.txt 를 두면
+#       tmtn_ai 가 SHA-256 으로 동결해 둔 requirements.txt 와 헷갈립니다.
+#       필요해지면 그때 별도 PR 로 추가하세요.
+#
+# ktlint/detekt: 코틀린 린터는 9/14 배포 전에 넣지 마세요.
+#       기존 47개 파일이 전부 걸려서 그거 고치다 주가 끝납니다.
