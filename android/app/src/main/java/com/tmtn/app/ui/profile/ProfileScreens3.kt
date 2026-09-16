@@ -28,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.tmtn.app.network.model.AccessibilityUpdateRequest
 import com.tmtn.app.ui.onboarding.TmtnChip
 import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.LocalTmtnColors
@@ -135,86 +134,4 @@ fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
 private fun agreedDateText(agreedAt: String?): String {
     if (agreedAt == null) return ""
     return "${agreedAt.take(10)} 동의함"
-}
-
-/** Figma F12 · 접근성 설정 */
-@Composable
-@OptIn(ExperimentalLayoutApi::class)
-fun AccessibilityScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
-    val colors = LocalTmtnColors.current
-    val accessibility = state.accessibility.value
-    androidx.compose.runtime.LaunchedEffect(accessibility?.reduced_motion) {
-        accessibility?.let { com.tmtn.app.ui.theme.AccessibilitySettingsHolder.reducedMotion.value = it.reduced_motion }
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "접근성", onBack = onBack)
-        Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text("글자 크기", style = TmtnType.label, color = colors.onSurface)
-            FlowRow(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("NORMAL" to "보통", "LARGE" to "크게", "EXTRA_LARGE" to "아주 크게").forEach { (value, label) ->
-                    TmtnChip(
-                        text = label,
-                        selected = (accessibility?.preferred_text_scale_hint ?: "NORMAL") == value,
-                        enabled = !state.isLoading.value,
-                        onClick = { scope.launch { state.updateAccessibility(AccessibilityUpdateRequest(preferred_text_scale_hint = value)) } },
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text("미리보기", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                Text("점심 먹고 8분 걷기", style = TmtnType.bodyLarge, color = colors.onSurface)
-                Text("짧게 걸어도 오늘의 실천은 남아요.", style = TmtnType.body, color = colors.onSurfaceVariant)
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
-            ) {
-                AccessibilityToggleRow(
-                    "큰 버튼", "버튼을 더 편하게 누를 수 있어요",
-                    accessibility?.large_controls ?: false,
-                    enabled = !state.isLoading.value,
-                ) { scope.launch { state.updateAccessibility(AccessibilityUpdateRequest(large_controls = it)) } }
-                AccessibilityToggleRow(
-                    "동작 줄이기", "화면 전환 효과를 줄입니다",
-                    accessibility?.reduced_motion ?: false,
-                    enabled = !state.isLoading.value,
-                ) { scope.launch { state.updateAccessibility(AccessibilityUpdateRequest(reduced_motion = it)) } }
-                AccessibilityToggleRow(
-                    "고대비", "글자와 배경의 차이를 키웁니다",
-                    accessibility?.senior_mode ?: false,
-                    enabled = !state.isLoading.value,
-                ) { scope.launch { state.updateAccessibility(AccessibilityUpdateRequest(senior_mode = it)) } }
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(20.dp),
-            ) {
-                Text("기능과 정보의 순서는 어떤 설정에서도 같습니다.", style = TmtnType.body, color = colors.onSurface)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccessibilityToggleRow(title: String, sub: String, checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boolean) -> Unit) {
-    val colors = LocalTmtnColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth().toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, style = TmtnType.label, color = colors.onSurface)
-            Text(sub, style = TmtnType.caption, color = colors.onSurfaceVariant)
-        }
-        Switch(checked = checked, enabled = enabled, onCheckedChange = null)
-    }
 }

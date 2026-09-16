@@ -97,6 +97,21 @@ class OnboardingState(private val authApiProvider: () -> com.tmtn.app.network.Au
 
     // A08
     var strengthWeeklyCount = mutableStateOf(0)
+    // Weekdays are a local input aid only. null means restored count with unknown weekdays.
+    val strengthWeekdays = mutableStateOf<Set<Int>?>(emptySet())
+    fun toggleStrengthWeekday(day: Int) {
+        require(day in 0..6)
+        val previous = strengthWeekdays.value.orEmpty()
+        val next = if (day in previous) previous - day else previous + day
+        strengthWeekdays.value = next
+        strengthWeeklyCount.value = strengthCountForDays(next)
+        if (next.isEmpty()) strengthIntensity.value = null
+    }
+    fun clearStrengthWeekdays() {
+        strengthWeekdays.value = emptySet()
+        strengthWeeklyCount.value = 0
+        strengthIntensity.value = null
+    }
     var strengthIntensity = mutableStateOf<String?>(null)
     var aerobicLowMinutes = mutableStateOf(0)
     var aerobicModerateMinutes = mutableStateOf(0)
@@ -372,6 +387,7 @@ class OnboardingState(private val authApiProvider: () -> com.tmtn.app.network.Au
                 val exercise = ApiClient.profileApi.getLatestExerciseHabits()
                 if (exercise.isSuccessful) exercise.body()?.let {
                     strengthWeeklyCount.value = it.strength_weekly_count; strengthIntensity.value = it.strength_intensity
+                    strengthWeekdays.value = null
                     aerobicLowMinutes.value = it.aerobic_low_minutes; aerobicModerateMinutes.value = it.aerobic_moderate_minutes
                     aerobicHighMinutes.value = it.aerobic_high_minutes
                 }
@@ -421,18 +437,20 @@ class OnboardingState(private val authApiProvider: () -> com.tmtn.app.network.Au
     }
 
     // ===== A08 =====
+    internal fun exerciseHabitsRequest() = ExerciseHabitsRequest(
+        strength_weekly_count = strengthWeeklyCount.value,
+        strength_intensity = if (strengthWeeklyCount.value == 0) null else strengthIntensity.value,
+        aerobic_low_minutes = aerobicLowMinutes.value,
+        aerobic_moderate_minutes = aerobicModerateMinutes.value,
+        aerobic_high_minutes = aerobicHighMinutes.value,
+    )
+
     suspend fun submitExerciseHabits(hasSensorPermissions: Boolean) {
         runStep(
             block = {
                 runCatching {
                     val response = ApiClient.onboardingApi.submitExerciseHabits(
-                        ExerciseHabitsRequest(
-                            strength_weekly_count = strengthWeeklyCount.value,
-                            strength_intensity = if (strengthWeeklyCount.value == 0) null else strengthIntensity.value,
-                            aerobic_low_minutes = aerobicLowMinutes.value,
-                            aerobic_moderate_minutes = aerobicModerateMinutes.value,
-                            aerobic_high_minutes = aerobicHighMinutes.value
-                        )
+                        exerciseHabitsRequest()
                     )
                     if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
                 }

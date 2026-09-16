@@ -615,7 +615,7 @@ class MissionSensorService : Service() {
         fun mmss(totalSeconds: Int): String = "%d분 %02d초".format(totalSeconds / 60, totalSeconds % 60)
         return when (CurrentChallengeHolder.execType) {
             "SENSOR_WALKING_DURATION" -> "${mmss(walkingCadenceManager.getCurrentTotalSeconds())} · 자동 측정 중"
-            "SENSOR_RUNNING_DISTANCE" -> "%.2fkm · 자동 측정 중".format(runningManager.totalDistanceMeters / 1000f)
+            "SENSOR_RUNNING_DISTANCE" -> "${com.tmtn.app.ui.common.formatDistanceMeters(runningManager.totalDistanceMeters)} · 자동 측정 중"
             "SENSOR_RUNNING_DURATION" -> "${mmss(runningCadenceManager.getCurrentTotalSeconds())} · 자동 측정 중"
             "SENSOR_FLOORS_CLIMBED" -> {
                 val target = CurrentChallengeHolder.targetValue

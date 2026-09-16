@@ -29,14 +29,16 @@ internal fun BasicInfoScreen(state: ProfileState, scope: CoroutineScope, onBack:
     Column(Modifier.fillMaxSize().imePadding()) {
         TmtnTopBar("기본 정보", onBack)
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("나를 부르는 이름과\n기본 정보를 확인해요.", style = TmtnType.headline, color = colors.onSurface)
+            Text("나를 소개해 주세요.", style = TmtnType.editorialHeadline, color = colors.onSurface)
             Text("이름과 생년월은 필수 정보예요.", style = TmtnType.body, color = colors.onSurfaceVariant)
             TmtnTextField(name, { name = it.take(20) }, "이름 · 필수", supportingText = "1–20자", imeAction = ImeAction.Next)
+            Text("생년월", style = TmtnType.label, color = colors.onSurface, modifier = Modifier.padding(top = 8.dp))
             ResponsiveFieldPair(first = {
                 TmtnTextField(year, { year = it.filter(Char::isDigit).take(4) }, "태어난 연도", it, keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
             }, second = {
                 TmtnTextField(month, { month = it.filter(Char::isDigit).take(2) }, "월", it, keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
             })
+            Text("태어난 연도와 월까지만 입력해요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
             TmtnTextField(nickname, { nickname = it.take(20) }, "별명 · 선택", supportingText = "앱 화면에 표시돼요. 비워 두면 이름을 표시해요.", imeAction = ImeAction.Done)
             OnboardingErrorMessage(state.errorMessage.value)
         }
@@ -44,7 +46,7 @@ internal fun BasicInfoScreen(state: ProfileState, scope: CoroutineScope, onBack:
             TmtnTonalButton("취소", onBack, modifier = Modifier.weight(1f), enabled = !state.isLoading.value)
             TmtnPrimaryButton(if (state.isLoading.value) "저장 중…" else "저장", {
                 scope.launch { state.saveBasicInfo(name, nickname, year.toInt(), month.toInt()) }
-            }, modifier = Modifier.weight(1f), enabled = valid && !state.isLoading.value)
+            }, modifier = Modifier.weight(1f), enabled = valid, loading = state.isLoading.value)
         }
     }
 }

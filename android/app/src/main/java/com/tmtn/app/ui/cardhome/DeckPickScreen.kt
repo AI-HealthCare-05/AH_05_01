@@ -43,6 +43,26 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.text.style.TextAlign
+import com.tmtn.app.ui.theme.TmtnMotion
+import com.tmtn.app.ui.theme.rememberTmtnReducedMotion
+import com.tmtn.app.ui.theme.tmtnPressFeedback
+import com.tmtn.app.ui.theme.tmtnFocusOutline
 
 // Simplified Figma-approved card back: forest ground, ivory border, one beaver emblem.
 private val CardWoodDark = Color(0xFF12352A)
@@ -62,6 +82,7 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
         Column(
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
             Text(
@@ -73,11 +94,11 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
                 } else {
                     "${listOf("첫", "두", "세").getOrElse(picked) { "그" }} 번째 카드로 정할까?"
                 },
-                style = TmtnType.headline, color = colors.onSurface,
+                style = TmtnType.headline, color = colors.onSurface, textAlign = TextAlign.Center,
             )
 
             Row(
-                modifier = Modifier.fillMaxWidth().selectableGroup(),
+                modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(top = 12.dp, bottom = 8.dp).selectableGroup(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 state.optionIds.value.forEachIndexed { index, _ ->
@@ -92,13 +113,8 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
 
             if (picked == null) {
                 Text(
-                    "오늘은 어떤 실천을 만나게 될까요? 고른 한 장은 오늘 내내 함께해요.",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
-                )
-                TmtnPrimaryButton(text = "이 카드로 확정", onClick = {}, enabled = false)
-                Text(
-                    "카드를 한 장 고르면 확정할 수 있어요.",
-                    style = TmtnType.body, color = colors.onSurfaceVariant,
+                    "마음이 가는 한 장을 골라보세요.",
+                    style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
                 )
             } else {
                 SelectionIndicatorPill(index = picked)
@@ -106,12 +122,19 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
                     // ⚠️ 2026-09-06 QA(P1-2) 반영: 이미 고른 뒤 다른 카드를 눌러도 선택이
                     // 안 바뀌는 것 자체는 의도된 동작인데(하루 한 장 확정 전 실수 방지),
                     // 그 안내가 없어서 "눌렀는데 반응이 없다"로 오해했음.
-                    "다른 카드를 고르려면 ‘다시 고르기’를 눌러 주세요. 확정한 뒤에는 오늘 바꿀 수 없어요.",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                    "확정하면 오늘은 이 카드와 함께해요.",
+                    style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
                 )
-                TmtnPrimaryButton(text = "이 카드로 확정", onClick = { state.openConfirmDialog() })
-                TmtnTextButton(text = "다시 고르기", onClick = { state.resetPick() })
             }
+        }
+        Column(Modifier.fillMaxWidth().background(colors.background).padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("확정한 카드는 오늘 바꿀 수 없어요.", style = TmtnType.caption,
+                color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 8.dp))
+            TmtnPrimaryButton(text = "이 카드로 확정", onClick = { state.openConfirmDialog() },
+                enabled = picked != null && !state.isLoading.value)
+            if (picked != null) TmtnTextButton(text = "다시 고르기", onClick = { state.resetPick() }, enabled = !state.isLoading.value)
         }
     }
 
@@ -134,12 +157,12 @@ private fun SelectionIndicatorPill(index: Int) {
     val ordinal = listOf("첫", "두", "세").getOrElse(index) { "그" }
     Row(
         modifier = Modifier
-            .background(colors.surface, RoundedCornerShape(999.dp))
+            .background(colors.secondaryContainer, RoundedCornerShape(999.dp))
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(modifier = Modifier.size(12.dp).border(2.dp, colors.onSurface, CircleShape))
+        Icon(Icons.Default.Check, null, Modifier.size(18.dp), tint = colors.onSurface)
         Text("${ordinal} 번째 카드를 골랐어요", style = TmtnType.label, color = colors.onSurface)
     }
 }
@@ -147,25 +170,33 @@ private fun SelectionIndicatorPill(index: Int) {
 /** Figma "오늘의 카드 · 뒷면" - 초록 나무결 패턴 + 금색 TMTN 로고 알약 + 라디오 선택 표시. */
 @Composable
 private fun CardBackTile(selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, index: Int = 0, enabled: Boolean = true) {
+    val colors = LocalTmtnColors.current
+    val interactions = remember { MutableInteractionSource() }
+    val still = rememberTmtnReducedMotion() || LocalInputModeManager.current.inputMode == InputMode.Keyboard
+    val lift by animateFloatAsState(if (selected && !still) 1f else 0f,
+        animationSpec = if (still) snap() else spring(dampingRatio = 1f, stiffness = TmtnMotion.TouchStiffness), label = "picked card lift")
     Box(
         modifier = modifier
             .aspectRatio(.54f)
+            .graphicsLayer { translationY = -10.dp.toPx() * lift; scaleX = 1f + .025f * lift; scaleY = scaleX }
+            .tmtnPressFeedback(interactions, enabled)
+            .tmtnFocusOutline(interactions, RoundedCornerShape(12.dp), enabled)
             .background(CardWoodDark, RoundedCornerShape(12.dp))
             .then(
                 if (selected) {
-                    Modifier.border(2.dp, Color(0xFF315342), RoundedCornerShape(12.dp))
+                    Modifier.border(2.dp, colors.secondary, RoundedCornerShape(12.dp))
                 } else {
                     Modifier
                 }
             )
             .clip(RoundedCornerShape(12.dp))
-            .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .selectable(selected, enabled = enabled, role = Role.RadioButton, interactionSource = interactions, indication = null, onClick = onClick)
             .semantics { contentDescription = "${index + 1}번째 카드" },
     ) {
-        Image(painterResource(com.tmtn.app.R.drawable.mission_tarot_back), null, Modifier.fillMaxSize())
-        if (selected) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)
-            .background(Color(0xFF315342), RoundedCornerShape(50)).padding(horizontal = 9.dp, vertical = 4.dp)) {
-            Text("선택", style = TmtnType.label, color = Color.White)
+        Image(painterResource(com.tmtn.app.R.drawable.mission_tarot_back), null, Modifier.fillMaxSize().padding(if (selected) 3.dp else 0.dp))
+        if (selected) Box(Modifier.align(Alignment.TopEnd).padding(7.dp)
+            .size(24.dp).background(colors.secondary, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = colors.onSurface)
         }
 
     }

@@ -74,14 +74,13 @@ class JournalIntegrationUiTest {
         capture("daily-sentence")
     }
 
-    @Test fun waistRemainsASeparateTabAndNavigationIsReachable() {
+    @Test fun waistMovedToHomeAndCardEntryRemainsReachable() {
         var homeClicks = 0
         compose.setContent { Stage(onGo = { homeClicks++ }) }
-        compose.onNodeWithText("이번 호에 끼워둔 내 기록").performScrollTo()
+        compose.onNodeWithText("내 신체·운동 정보").performScrollTo()
+        compose.onNodeWithText("허리둘레", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithText("신문을 덮으며").assertDoesNotExist()
         capture("personal-record")
-        compose.onNodeWithText("허리둘레", useUnmergedTree = true).performScrollTo().performClick()
-        compose.onNodeWithText("79.2").performScrollTo().assertIsDisplayed()
-        capture("waist")
         compose.onNodeWithText("오늘의 카드로 가기", useUnmergedTree = true).performScrollTo().performClick()
         compose.runOnIdle { assertEquals(1, homeClicks) }
     }
@@ -94,18 +93,12 @@ class JournalIntegrationUiTest {
         compose.onAllNodesWithText("약 21등").assertCountEquals(0)
     }
 
-    @Test fun chosenStoryAndWaistTabSurviveEditionSwitching() {
+    @Test fun chosenDomainSurvivesEditionSwitching() {
         compose.setContent { Stage() }
         compose.onNodeWithText("당뇨", useUnmergedTree = true).performScrollTo().performClick()
-        capture("diabetes")
-        compose.onNodeWithText("허리둘레", useUnmergedTree = true).performScrollTo().performClick()
-        compose.onNodeWithText("네 가지 이야기", useUnmergedTree = true).performScrollTo().performClick()
-        compose.onNode(hasText("당뇨") and hasClickAction()).assertIsSelected()
-        compose.onNodeWithText("허리둘레", useUnmergedTree = true).performScrollTo().performClick()
         compose.onNode(hasText("일간면") and hasClickAction()).performClick()
         compose.onNode(hasText("주간면") and hasClickAction()).performClick()
-        compose.onNode(hasText("허리둘레") and hasClickAction()).assertIsSelected()
-        compose.onNodeWithText("79.2").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("당뇨") and hasClickAction()).assertIsSelected()
     }
 
     @Test fun largeTextWeeklyDatesRemainReadableAndSelectable() {

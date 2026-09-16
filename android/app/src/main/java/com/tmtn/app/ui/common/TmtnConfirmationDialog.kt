@@ -20,7 +20,7 @@ fun TmtnConfirmationDialog(
     destructive: Boolean = true, busyMessage: String = "변경 내용을 확인하고 있어요.",
 ) {
     val colors = LocalTmtnColors.current
-    val minTarget = if (AccessibilitySettingsHolder.largeControlsEnabled.value) 60.dp else 48.dp
+    val minTarget = 48.dp
     AlertDialog(onDismissRequest = { if (!busy) onDismiss() }, containerColor = colors.surface,
         title = { Text(title, style = TmtnType.title, color = colors.onSurface) },
         text = {

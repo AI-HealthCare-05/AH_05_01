@@ -2,7 +2,6 @@ package com.tmtn.app.ui.cardhome
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +18,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.network.model.ExerciseMissionOption
@@ -30,6 +32,7 @@ import com.tmtn.app.ui.onboarding.TmtnTextButton
 import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
+import com.tmtn.app.ui.theme.tmtnClickable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -43,19 +46,19 @@ import kotlinx.coroutines.launch
  * ⚠️ 2026-09-11 신규 - "오늘의 카드"를 완료해야만 실제로 시작할 수 있음. card_completed가
  * false면 목록 대신 안내만 보여줌(카드 완료 화면 B17로 다시 유도). */
 @Composable
-fun ExerciseMissionListScreen(state: CardHomeState, scope: CoroutineScope) {
+fun ExerciseMissionListScreen(state: CardHomeState, scope: CoroutineScope, loadToday: suspend () -> Unit = { state.loadExerciseMissionsToday() }) {
     val colors = LocalTmtnColors.current
     val today = state.exerciseMissionsToday.value
 
-    LaunchedEffect(Unit) { state.loadExerciseMissionsToday() }
+    LaunchedEffect(Unit) { loadToday() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "틈새 운동", onBack = { state.step.value = CardHomeStep.COMPLETED })
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("조금 더 움직이고\n싶은 날엔.", style = TmtnType.headline, color = colors.onSurface)
+            Text("조금 더 움직여볼까요?", style = TmtnType.title, color = colors.onSurface, modifier = Modifier.semantics { heading() })
 
             if (today == null) {
                 Text("불러오는 중이에요...", style = TmtnType.body, color = colors.onSurfaceVariant)
@@ -101,26 +104,28 @@ fun ExerciseMissionListScreen(state: CardHomeState, scope: CoroutineScope) {
 }
 
 @Composable
-private fun ExerciseMissionOptionCard(option: ExerciseMissionOption, enabled: Boolean, onClick: () -> Unit) {
+internal fun ExerciseMissionOptionCard(option: ExerciseMissionOption, enabled: Boolean, onClick: () -> Unit) {
     val colors = LocalTmtnColors.current
     val isModel = isModelRecognitionExecType(option.exec_type)
     Column(
         modifier = Modifier.fillMaxWidth()
+            .testTag("extra-mission-${option.catalog_entry_id}")
+            .tmtnClickable(enabled = enabled, onClick = onClick)
             .background(colors.background, RoundedCornerShape(16.dp))
-            .border(if (isModel) 1.5.dp else 1.dp, if (isModel) androidx.compose.ui.graphics.Color(0xFFFF7A1A) else colors.outlineVariant, RoundedCornerShape(16.dp))
-            .clickable(enabled = enabled, onClick = onClick)
+            .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
-            "${option.title} · ${if (isModel) "움직임 인식" else "직접 확인"}",
-            style = TmtnType.label,
+            option.title,
+            style = TmtnType.missionName,
             color = if (enabled) colors.onSurface else colors.onSurfaceVariant,
         )
         Text(
             if (option.already_completed_today) "오늘 이미 완료했어요" else "${option.target_value}${option.unit} · ${option.material_name} 1개",
             style = TmtnType.caption, color = colors.onSurfaceVariant,
         )
+        Text(if (isModel) "움직임 인식" else "직접 확인", style = TmtnType.navigationLabel, color = colors.onSurfaceVariant)
     }
 }
 
@@ -137,11 +142,11 @@ fun ExerciseMissionDetailScreen(state: CardHomeState, scope: CoroutineScope) {
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "틈새 운동", onBack = { state.step.value = CardHomeStep.EXTRA_LIST })
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (isModel) ModelMissionBadge()
-            Text(option.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(option.title, style = TmtnType.sectionHeading, color = colors.onSurface)
             Text("오늘 남은 추가 보상 ${today?.remaining ?: 0} / ${today?.limit ?: 2}회", style = TmtnType.body, color = colors.onSurfaceVariant)
 
             Column(
@@ -266,11 +271,11 @@ fun ExerciseMissionRunningScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "틈새 운동", onBack = { state.step.value = CardHomeStep.EXTRA_DETAIL })
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (isModelRecognitionExecType(execType)) ModelMissionBadge()
-            Text(session.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(session.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             when {
                 execType == "CHECK" ->

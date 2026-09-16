@@ -105,38 +105,12 @@ private val DefaultTmtnColors = TmtnColors(
 
 val LocalTmtnColors = staticCompositionLocalOf { DefaultTmtnColors }
 
-// High contrast strengthens muted labels, boundaries and orange numeric text.
-// The standard palette keeps the Figma accent #FF7A1A.
-private val HighContrastTmtnColors = DefaultTmtnColors.copy(
-    onSurfaceVariant = ColorOnSurface,
-    outlineVariant = ColorOutline,
-    secondary = ColorOnSurface,
-)
-
 val LocalTmtnTextScale = staticCompositionLocalOf { 1f }
 
-/** 이름은 기존 MainActivity.kt가 참조하던 그대로 유지 (TMTNv1Theme).
- * HANDOFF.md 기준 다크모드 정의가 없어서 시스템 설정과 무관하게 항상 라이트로 고정.
- *
- * ⚠️ 2026-09-04 QA(P0-6) 반영: AccessibilitySettingsHolder를 구독해서 글자 크기·고대비를
- * 전역에 반영함(LocalTmtnTextScale/LocalTmtnColors). 설정이 바뀌면 이 값들을 구독하는
- * 모든 화면이 자동으로 다시 그려짐. */
+/** Figma light palette. Text uses Android sp scaling without an extra app multiplier. */
 @Composable
 fun TMTNv1Theme(content: @Composable () -> Unit) {
-    val seniorMode = AccessibilitySettingsHolder.seniorMode.value
-    val textScale = textScaleHintToFactor(AccessibilitySettingsHolder.textScaleHint.value)
-
-    CompositionLocalProvider(
-            LocalTmtnColors provides (if (seniorMode) HighContrastTmtnColors else DefaultTmtnColors),
-            LocalTmtnTextScale provides textScale,
-    ) {
-        val colors = LocalTmtnColors.current
-        MaterialTheme(colorScheme = TmtnLightColorScheme.copy(
-            onSurfaceVariant = colors.onSurfaceVariant,
-            outlineVariant = colors.outlineVariant,
-            secondary = colors.secondary,
-        ), typography = tmtnTypography()) {
-            content()
-        }
+    CompositionLocalProvider(LocalTmtnColors provides DefaultTmtnColors, LocalTmtnTextScale provides 1f) {
+        MaterialTheme(colorScheme = TmtnLightColorScheme, typography = tmtnTypography(), content = content)
     }
 }

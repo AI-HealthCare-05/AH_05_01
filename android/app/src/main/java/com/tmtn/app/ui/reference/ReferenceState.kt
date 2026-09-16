@@ -60,8 +60,6 @@ class ReferenceState {
         errorMessage.value = null
         runCatching {
             val response = ApiClient.tuntunScoreApi.getTuntunScorePeerV2()
-            // ⚠️ 2026-09-12 추가 - "틈튼지수 산출을 위한 분석" 동의를 껐으면 서버가 403을
-            // 주는데, 그걸 일반 "불러오지 못했어요" 에러로 뭉개면 사용자가 원인을 모름.
             if (response.code() == 403) {
                 failWithMessage("틈튼지수 분석에 동의하지 않아 이용할 수 없어요. 내 정보 > 동의 관리에서 켜주세요.")
             }

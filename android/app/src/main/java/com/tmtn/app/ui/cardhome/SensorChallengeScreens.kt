@@ -105,7 +105,7 @@ fun SensorIntroScreen(
             }, style = TmtnType.headline, color = colors.onSurface)
             Text("오늘의 카드 · ${card.title}", style = TmtnType.body, color = colors.onSurfaceVariant)
             Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(24.dp))
-                .border(1.5.dp, colors.secondary, RoundedCornerShape(24.dp)).padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                .border(1.dp, colors.outlineVariant, RoundedCornerShape(24.dp)).padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("틈튼 움직임 인식", style = TmtnType.label, color = colors.onSurface)
                 Text("준비됐나요?", style = TmtnType.body, color = colors.onSurfaceVariant)
                 Text(if (duration && card.unit == "분") formatMmSs(card.target_value * 60) else "${card.target_value} ${card.unit}", style = TmtnType.display, color = colors.onSurface)
@@ -257,7 +257,7 @@ fun SensorMeasuringScreen(
             modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             Row(
                 modifier = Modifier
@@ -280,7 +280,7 @@ fun SensorMeasuringScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(colors.surface, RoundedCornerShape(24.dp))
-                    .border(2.dp, colors.secondary, RoundedCornerShape(24.dp))
+                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(24.dp))
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -399,10 +399,10 @@ fun SensorPermissionFallbackScreen(state: CardHomeState, onOpenSettings: () -> U
         TmtnTopBar(title = "오늘의 행동", onBack = { state.step.value = CardHomeStep.REVEALED })
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             Row(
                 modifier = Modifier
@@ -466,7 +466,7 @@ fun SensorResultScreen(state: CardHomeState, scope: CoroutineScope) {
 
     val resultText = when (card.exec_type) {
         "SENSOR_WALKING_DURATION" -> "오늘 ${formatMmSs(walkingSeconds)} 움직였어요"
-        "SENSOR_RUNNING_DISTANCE" -> "오늘 %.2fkm 달렸어요".format(distanceM / 1000f)
+        "SENSOR_RUNNING_DISTANCE" -> "오늘 ${com.tmtn.app.ui.common.formatDistanceMeters(distanceM)} 달렸어요"
         "SENSOR_RUNNING_DURATION" -> "오늘 ${formatMmSs(runningSeconds)} 달렸어요"
         "SENSOR_FLOORS_CLIMBED" -> "오늘 ${floors}계단 올랐어요"
         else -> "오늘 ${steps}걸음 걸었어요"

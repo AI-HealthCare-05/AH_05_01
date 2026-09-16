@@ -37,8 +37,7 @@ fun TmtnMissionCard(card: CardRevealResponse, date: LocalDate, compact: Boolean 
     val rim = Color(0xFFAC8E61)
     val shape = RoundedCornerShape(24.dp)
     Column(Modifier.fillMaxWidth().background(cream, shape)
-        .border(if (card.exec_type.startsWith("SENSOR_")) 1.5.dp else 1.dp,
-            if (card.exec_type.startsWith("SENSOR_")) ColorSecondary else rim, shape)
+        .border(1.dp, rim, shape)
         .padding(9.dp).border(1.dp, rim.copy(alpha = .4f), RoundedCornerShape(17.dp)).padding(if (compact) 15.dp else 21.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(if (compact) 14.dp else 18.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -53,7 +52,7 @@ fun TmtnMissionCard(card: CardRevealResponse, date: LocalDate, compact: Boolean 
                 Modifier.size(if (compact) 52.dp else 72.dp))
         }
         Text(if (!compact && !card.fortune_text.isNullOrBlank()) card.fortune_text else card.title,
-            style = if (compact) TmtnType.title else TmtnType.headline, color = forest,
+            style = if (compact) TmtnType.title else TmtnType.cardMessage, color = forest,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().semantics { heading() })
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HorizontalDivider(Modifier.weight(1f), color = rim.copy(alpha = .45f))
@@ -83,12 +82,12 @@ internal fun HomeMissionCard(card: CardRevealResponse, completed: Boolean = fals
     val measured = card.exec_type.startsWith("SENSOR_")
     val shape = RoundedCornerShape(26.dp)
     Column(Modifier.fillMaxWidth().background(colors.surface, shape)
-        .then(if (measured) Modifier.border(1.5.dp, colors.secondary, shape) else Modifier).padding(16.dp),
+        .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (measured) Text("틈튼 움직임 인식", style = TmtnType.label, color = colors.onSurface,
             modifier = Modifier.background(colors.secondaryContainer, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 5.dp))
         Text(if (completed) "오늘의 카드 · 실천 완료" else "오늘의 틈 · ${card.domain ?: "작은 실천"}", style = TmtnType.label, color = colors.onSurface)
-        Text(card.title, style = TmtnType.headline, color = colors.onSurface, modifier = Modifier.semantics { heading() })
+        Text(card.title, style = TmtnType.title, color = colors.onSurface, modifier = Modifier.semantics { heading() })
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Image(painterResource(tmtnMaterialDrawable(card.five_element)), null, Modifier.size(48.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
