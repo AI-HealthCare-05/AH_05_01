@@ -86,10 +86,12 @@ class WeeklyEditorialService:
             detail = await self.record_service.get_day_detail(user, day.date)
             if detail.mission_title is None:
                 continue
-            claims.append(EditorialClaim(
-                id="claim.records.completed_card",
-                text=f"이번 주 {detail.mission_title} 카드가 기록에 남았어요.",
-            ))
+            claims.append(
+                EditorialClaim(
+                    id="claim.records.completed_card",
+                    text=f"이번 주 {detail.mission_title} 카드가 기록에 남았어요.",
+                )
+            )
             record_ids.append(str(day.date))
         return claims, record_ids
 
@@ -125,15 +127,19 @@ class WeeklyEditorialService:
         claims = []
         if habit.aerobic_moderate_minutes is not None or habit.aerobic_high_minutes is not None:
             aerobic_min = (habit.aerobic_moderate_minutes or 0) + 2 * (habit.aerobic_high_minutes or 0)
-            claims.append(EditorialClaim(
-                id="claim.lifestyle.aerobic_recorded",
-                text=f"이번 주 유산소 환산 시간은 {aerobic_min}분이에요.",
-            ))
+            claims.append(
+                EditorialClaim(
+                    id="claim.lifestyle.aerobic_recorded",
+                    text=f"이번 주 유산소 환산 시간은 {aerobic_min}분이에요.",
+                )
+            )
         if habit.strength_weekly_count is not None:
-            claims.append(EditorialClaim(
-                id="claim.lifestyle.strength_days_recorded",
-                text=f"근력 운동은 {habit.strength_weekly_count}일 기록됐어요.",
-            ))
+            claims.append(
+                EditorialClaim(
+                    id="claim.lifestyle.strength_days_recorded",
+                    text=f"근력 운동은 {habit.strength_weekly_count}일 기록됐어요.",
+                )
+            )
         return claims
 
     async def _waist_estimate_claim(self, user: User) -> EditorialClaim | None:

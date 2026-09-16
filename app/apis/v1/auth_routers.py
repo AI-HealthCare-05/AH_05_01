@@ -86,8 +86,7 @@ def _issue_login_response(http_request: Request, tokens: dict, content: dict | N
         # ⚠️ 2026-09-14 추가 - EC2 팀 내부 HTTP 테스트 배포(ENV=PROD, 도메인/SSL 아직 없음)를
         # 위해 COOKIE_ALLOW_INSECURE를 명시적으로 켰을 때만 PROD여도 secure 강제를 풀어줌.
         # 기본값(False)에서는 기존과 완전히 동일하게 동작 - 실제 운영 보호는 안 바뀜.
-        secure=http_request.url.scheme == "https"
-        or (config.ENV == Env.PROD and not config.COOKIE_ALLOW_INSECURE),
+        secure=http_request.url.scheme == "https" or (config.ENV == Env.PROD and not config.COOKIE_ALLOW_INSECURE),
         domain=_cookie_domain_for(http_request),
         # ⚠️ 2026-09-08 반영: 두 군데가 틀려 있었음.
         # 1) 리프레시 토큰 쿠키인데 access_token의 만료값을 넣고 있었음(수명이 서로 다름).

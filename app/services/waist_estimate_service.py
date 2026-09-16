@@ -67,7 +67,9 @@ class WaistEstimateService:
             # ⚠️ 신체정보나 운동습관 중 하나라도 아직 없으면 계산 자체가 불가능 - 이것도
             # "실패"가 아니라 "아직 입력이 덜 끝남"이므로 INPUT_MISSING으로 남김(0이나
             # 성공으로 위장하지 않음).
-            await self._save(user, snapshot_id, status="INPUT_MISSING", value=None, failure_reason_code="INPUT_INCOMPLETE")
+            await self._save(
+                user, snapshot_id, status="INPUT_MISSING", value=None, failure_reason_code="INPUT_INCOMPLETE"
+            )
             return
 
         input_values = health.input_values or {}
@@ -95,9 +97,11 @@ class WaistEstimateService:
             detail = response.json().get("detail", "OUT_OF_RANGE")
             reason = "PREGNANCY_UNSUPPORTED" if "PREGNANCY" in detail else "OUT_OF_RANGE"
             await self._save(
-                user, snapshot_id,
+                user,
+                snapshot_id,
                 status="OUT_OF_RANGE" if reason == "OUT_OF_RANGE" else "FAILED",
-                value=None, failure_reason_code=reason,
+                value=None,
+                failure_reason_code=reason,
             )
             return
         if response.status_code != 200:
@@ -105,7 +109,9 @@ class WaistEstimateService:
             return
 
         cm = response.json()["waistCmEstimate"]
-        await self._save(user, snapshot_id, status="COMPUTED", value=Decimal(str(round(cm, 1))), failure_reason_code=None)
+        await self._save(
+            user, snapshot_id, status="COMPUTED", value=Decimal(str(round(cm, 1))), failure_reason_code=None
+        )
 
     async def _save(self, user: User, snapshot_id, *, status: str, value, failure_reason_code):
         await self.prediction_repo.create(
