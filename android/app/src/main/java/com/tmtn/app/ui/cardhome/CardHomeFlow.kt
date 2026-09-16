@@ -77,12 +77,16 @@ private fun previousStepFor(step: CardHomeStep): CardHomeStep? = when (step) {
     CardHomeStep.SENSOR_PERMISSION_FALLBACK -> CardHomeStep.REVEALED
     CardHomeStep.SENSOR_RESULT -> null
 
-    // ⚠️ 2026-09-11 추가 - 틈새 운동. LIST는 완료 화면(COMPLETED)에서 왔으니 거기로,
-    // DETAIL은 목록으로. RUNNING/REWARD 중엔 뒤로가기로 조용히 세션이 사라지면 안 되므로
-    // 막음(측정 화면과 같은 원칙).
+    // ⚠️ 2026-09-11 추가, 2026-09-15 정정 - 틈새 운동. LIST는 완료 화면(COMPLETED)에서
+    // 왔으니 거기로, DETAIL은 목록으로. RUNNING은 애초에 "측정 화면과 같은 원칙"으로 막을
+    // 생각이었는데, 실제 오늘의 카드 측정 화면(SENSOR_MEASURING/CHALLENGE_TIMER_RUNNING)은
+    // 둘 다 뒤로가기가 열려 있어서 원칙이 안 맞았음(QA 지적) - 화면을 벗어나면
+    // DisposableEffect가 센서를 정지시키니(그만두기와 동일 효과) 열어도 안전함.
+    // REWARD(보상 화면)는 오늘의 카드의 완료 후 화면들(CHALLENGE_RETROSPECT/STAGE_UP)과
+    // 같은 성격이라 그대로 막아둠.
     CardHomeStep.EXTRA_LIST -> CardHomeStep.COMPLETED
     CardHomeStep.EXTRA_DETAIL -> CardHomeStep.EXTRA_LIST
-    CardHomeStep.EXTRA_RUNNING -> null
+    CardHomeStep.EXTRA_RUNNING -> CardHomeStep.EXTRA_DETAIL
     CardHomeStep.EXTRA_REWARD -> null
 }
 

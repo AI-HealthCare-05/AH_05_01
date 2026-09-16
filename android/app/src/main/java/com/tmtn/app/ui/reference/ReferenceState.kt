@@ -60,6 +60,9 @@ class ReferenceState {
         errorMessage.value = null
         runCatching {
             val response = ApiClient.tuntunScoreApi.getTuntunScorePeerV2()
+            if (response.code() == 403) {
+                failWithMessage("틈튼지수 분석에 동의하지 않아 이용할 수 없어요. 내 정보 > 동의 관리에서 켜주세요.")
+            }
             if (!response.isSuccessful) failWithMessage("틈튼지수를 불러오지 못했어요.")
             response.body()!!
         }.onSuccess { result ->

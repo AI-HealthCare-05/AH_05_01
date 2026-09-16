@@ -261,6 +261,12 @@ class MissionSensorService : Service() {
                 stepInPlaceManager.reset()
                 stepInPlaceManager.start()
                 SensorDataHolder.setStepInPlaceActive(true)
+                // ⚠️ 2026-09-15 버그 수정 - 이 액션(그리고 아래 틈새 운동 전용 액션들)이
+                // startUpdateLoop()를 한 번도 안 불러서, 화면이 구독하는 SensorDataHolder
+                // 값이 실시간으로 안 바뀌고 있었음(0.5초 폴링 루프 자체가 안 돎). 그동안
+                // 값이 갱신된 건 오직 일시정지(ACTION_STOP_ALL) 핸들러가 한 번 값을 찍어줄
+                // 때뿐이었음 - "일시정지를 눌러야만 조금 올라간다"는 QA 증상과 정확히 일치.
+                startUpdateLoop()
             }
             ACTION_STOP_STEP_IN_PLACE -> {
                 stepInPlaceManager.stop()
@@ -274,6 +280,7 @@ class MissionSensorService : Service() {
             ACTION_START_STAIRS -> {
                 stairClimbManager.reset()
                 stairClimbManager.start()
+                startUpdateLoop()
             }
             ACTION_STOP_STAIRS -> {
                 stairClimbManager.stop()
@@ -283,6 +290,7 @@ class MissionSensorService : Service() {
                 stairInPlaceManager.reset()
                 stairInPlaceManager.start()
                 SensorDataHolder.setStairInPlaceActive(true)
+                startUpdateLoop()
             }
             ACTION_STOP_STAIR_IN_PLACE -> {
                 stairInPlaceManager.stop()
@@ -293,11 +301,13 @@ class MissionSensorService : Service() {
                 runningManager.reset()
                 runningManager.start()
                 SensorDataHolder.setRunningActive(true)
+                startUpdateLoop()
             }
             ACTION_START_RUNNING_DURATION -> {
                 runningCadenceManager.reset()
                 runningCadenceManager.start()
                 SensorDataHolder.setRunningActive(true)
+                startUpdateLoop()
             }
             ACTION_STOP_RUNNING -> {
                 runningManager.stop()
@@ -309,6 +319,7 @@ class MissionSensorService : Service() {
                 walkingCadenceManager.reset()
                 walkingCadenceManager.start()
                 SensorDataHolder.setWalkingActive(true)
+                startUpdateLoop()
             }
             ACTION_STOP_WALKING -> {
                 walkingCadenceManager.stop()
