@@ -1,8 +1,8 @@
 # TMTN 공동 개발 환경·버전 기준
 
-기준일: 2026-08-21
+기준일: 2026-09-16
 
-상태: 팀 공통 기준선 v1
+상태: 통합 브랜치의 실제 잠금·빌드 설정 기준. 이번 동기화는 도구 버전을 변경하지 않습니다.
 
 이 문서는 “누구 컴퓨터에서는 되고 다른 사람 컴퓨터에서는 안 되는” 상황을 막기 위한 단일 버전 기준입니다. 팀원은 임의로 major/minor 버전을 올리지 않고, 버전 변경은 별도 PR에서 함께 검증합니다.
 
@@ -55,7 +55,7 @@ docker compose config --quiet
 
 ## Android 기준선
 
-Android 프로젝트를 만들 때 아래 값을 최초 기준으로 사용합니다. alpha·beta·RC 라이브러리는 ADR과 팀 승인 없이 사용하지 않습니다.
+현재 Android 앱의 빌드 설정은 다음과 같습니다. 초기 기획 버전과 실제 통합 소스의 값이 달라 빌드 파일에 맞춰 문서를 정정했습니다. alpha·beta·RC 라이브러리를 새로 도입하려면 별도 ADR과 팀 승인이 필요합니다.
 
 ### Android 도구chain
 
@@ -63,15 +63,15 @@ Android 프로젝트를 만들 때 아래 값을 최초 기준으로 사용합�
 |---|---:|---|
 | Android Studio | `Quail 2 | 2026.1.2` stable | AGP 9.1 지원 공식 stable IDE |
 | JDK | `17` | AGP 9.1의 기본·요구 JDK |
-| Android Gradle Plugin | `9.1.1` | stable, API 36 지원 |
-| Gradle Wrapper | `9.3.1` | AGP 9.1.1 기본 호환 버전 |
-| Kotlin | `2.4.10` | Kotlin 2.4 최신 bugfix stable |
-| SDK Build Tools | `36.0.0` | AGP·Android 16 기준 |
-| `compileSdk` | `36` | Android 16 API 사용 |
-| `targetSdk` | `36` | 2026-08-31 Google Play 신규 앱 기준 충족 |
-| `minSdk` | `28` | Health Connect 실제 사용 가능 최소 Android 9 |
+| Android Gradle Plugin | `8.7.3` | `libs.versions.toml` |
+| Gradle Wrapper | `9.5.0` | wrapper 설정, JDK 17에서 디버그 빌드 확인 |
+| Kotlin | `2.0.21` | Kotlin·Compose 플러그인 |
+| SDK Build Tools | AGP 기본 선택 | 별도 `buildToolsVersion` 지정 없음 |
+| `compileSdk` | `35` | 현재 앱 빌드 설정 |
+| `targetSdk` | `35` | 현재 앱 설정, 스토어 제출 적합성을 뜻하지 않음 |
+| `minSdk` | `29` | 현재 앱 최소 버전 |
 | Java/Kotlin bytecode target | `17` | JDK·AGP 기준 통일 |
-| Compose BOM | `2026.08.00` | Compose stable 라이브러리 묶음 |
+| Compose BOM | `2024.12.01` | 현재 버전 카탈로그 |
 
 ### Android 핵심 라이브러리 기준
 
