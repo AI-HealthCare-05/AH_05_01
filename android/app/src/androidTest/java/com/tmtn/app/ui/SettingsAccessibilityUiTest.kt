@@ -47,32 +47,17 @@ class SettingsAccessibilityUiTest {
         }
     }
 
-    @Test fun allTextSizeChoicesFitAndRemainSelectableAtLargeFont() {
-        var submitted: AccessibilityUpdateRequest? = null
-        val state = ProfileState { api { request -> submitted = request; setting.copy(preferred_text_scale_hint = request.preferred_text_scale_hint) } }.apply { accessibility.value = setting }
-        AccessibilitySettingsHolder.apply(false, false, "NORMAL")
-        compose.setContent { Stage(large = true) { AccessibilityScreen(state, rememberCoroutineScope(), {}) } }
-        val stage = compose.onNodeWithTag("settings-adaptive").fetchSemanticsNode().boundsInRoot
-        listOf("보통", "크게", "아주 크게").forEach { label ->
-            val node = compose.onNodeWithText(label)
-            node.assertIsDisplayed().assertHeightIsAtLeast(48.dp)
-            val bounds = node.fetchSemanticsNode().boundsInRoot
-            assertTrue("Clipped choice $label", bounds.left >= stage.left && bounds.right <= stage.right)
-        }
-        capture("accessibility-large")
-        compose.onNodeWithText("아주 크게").performClick()
-        compose.onNodeWithText("아주 크게").performScrollTo().assertIsSelected()
-        compose.runOnIdle { assertEquals("EXTRA_LARGE", submitted?.preferred_text_scale_hint); assertNull(submitted?.large_controls) }
+    @Test fun removedSettingsNeverAppearInProfile() {
+        compose.setContent { Stage { ProfileHomeScreen(ProfileState(), {}, {}) } }
+        compose.onNodeWithText("앱 정보").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("접근성").assertDoesNotExist()
+        compose.onNodeWithText("글자 크기").assertDoesNotExist()
     }
 
-    @Test fun switchLabelIsOneLabeledToggleAndSavesOnlyItsPreference() {
-        var calls = 0
-        var submitted: AccessibilityUpdateRequest? = null
-        val state = ProfileState { api { request -> calls++; submitted = request; setting.copy(large_controls = request.large_controls ?: false) } }.apply { accessibility.value = setting }
-        compose.setContent { Stage { AccessibilityScreen(state, rememberCoroutineScope(), {}) } }
-        compose.onNode(hasText("큰 버튼") and isToggleable()).performScrollTo().assertIsOff().performClick()
-        compose.onNode(hasText("큰 버튼") and isToggleable()).assertIsOn()
-        compose.runOnIdle { assertEquals(1, calls); assertEquals(true, submitted?.large_controls); assertNull(submitted?.reduced_motion); assertNull(submitted?.preferred_text_scale_hint) }
+    @Test fun retiredPreferencesCannotEnlargeTheTheme() {
+        AccessibilitySettingsHolder.apply(true, true, "EXTRA_LARGE")
+        compose.setContent { Stage { androidx.compose.material3.Text("${LocalTmtnTextScale.current}") } }
+        compose.onNodeWithText("1.0").assertIsDisplayed()
     }
 
     @Test fun soundPreviewsStackAtLargeFontAndKeepLargeTargets() {
@@ -81,7 +66,7 @@ class SettingsAccessibilityUiTest {
         compose.setContent { Stage(large = true) { SoundSettingsScreen({}) } }
         val positions = listOf("나무 톡", "종이 사각", "재료 획득").map { label ->
             val node = compose.onNodeWithText(label)
-            node.performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(60.dp)
+            node.performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
             node.fetchSemanticsNode().size.width
         }
         assertEquals(1, positions.distinct().size)

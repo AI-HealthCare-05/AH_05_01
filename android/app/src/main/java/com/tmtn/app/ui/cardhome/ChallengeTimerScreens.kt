@@ -86,7 +86,7 @@ fun CheckChallengeScreen(state: CardHomeState, scope: CoroutineScope) {
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             if (material != null) {
                 Row(
@@ -212,7 +212,7 @@ fun TimerStartScreen(state: CardHomeState, scope: CoroutineScope) {
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
             if (material != null) {
                 Text(
                     "${material.first} 1개 · ${material.second}",
@@ -333,7 +333,7 @@ fun TimerRunningScreen(state: CardHomeState, scope: CoroutineScope) {
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             Column(
                 modifier = Modifier
@@ -432,7 +432,7 @@ fun TimerPausedScreen(state: CardHomeState, scope: CoroutineScope) {
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(card.title, style = TmtnType.headline, color = colors.onSurface)
+            Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             Column(
                 modifier = Modifier
@@ -493,7 +493,7 @@ fun ChallengeProcessingScreen(state: CardHomeState) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text(card?.title ?: "", style = TmtnType.headline, color = colors.onSurface)
+        Text(card?.title ?: "", style = TmtnType.sectionHeading, color = colors.onSurface)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -524,7 +524,7 @@ private fun QuitDialog(state: CardHomeState, scope: CoroutineScope) {
 internal fun MissionExitDialog(state: CardHomeState, scope: CoroutineScope, checkOnly: Boolean) {
     val colors = LocalTmtnColors.current
     val busy = state.isLoading.value
-    val minTarget = if (com.tmtn.app.ui.theme.AccessibilitySettingsHolder.largeControlsEnabled.value) 60.dp else 48.dp
+    val minTarget = 48.dp
     val close: () -> Unit = {
         if (!state.isLoading.value) {
             state.showQuitDialog.value = false

@@ -52,7 +52,7 @@ fun SoundSettingsScreen(onBack: () -> Unit) {
 @Composable
 private fun SoundPreviewButton(label: String, sound: TmtnSound, modifier: Modifier) {
     val colors = LocalTmtnColors.current
-    val minimum = if (AccessibilitySettingsHolder.largeControlsEnabled.value) 60.dp else 48.dp
+    val minimum = 48.dp
     OutlinedButton(onClick = { TmtnAudio.play(sound) }, modifier = modifier.heightIn(min = minimum),
         shape = TmtnLayout.ControlShape, border = BorderStroke(1.dp, colors.outlineVariant),
         contentPadding = PaddingValues(8.dp)) {

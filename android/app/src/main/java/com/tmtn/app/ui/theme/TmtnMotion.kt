@@ -52,23 +52,23 @@ fun rememberTmtnReducedMotion(): Boolean {
         resolver.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer)
         onDispose { resolver.unregisterContentObserver(observer) }
     }
-    return systemReduced || AccessibilitySettingsHolder.reducedMotion.value || AccessibilitySettingsHolder.seniorMode.value
+    return systemReduced
 }
 
 /** Interruptible feedback; click handlers run immediately. */
 @Composable
-fun Modifier.tmtnPressFeedback(source: MutableInteractionSource, enabled: Boolean = true): Modifier {
+fun Modifier.tmtnPressFeedback(source: MutableInteractionSource, enabled: Boolean = true, pressedScale: Float = .985f): Modifier {
     val pressed by source.collectIsPressedAsState()
     val reduced = rememberTmtnReducedMotion()
     val keepStill = reduced || LocalInputModeManager.current.inputMode == InputMode.Keyboard
     val scale by animateFloatAsState(
-        targetValue = if (pressed && enabled && !keepStill) 0.97f else 1f,
+        targetValue = if (pressed && enabled && !keepStill) pressedScale else 1f,
         animationSpec = if (keepStill) snap() else if (pressed)
             tween(TmtnMotion.TouchDownMillis, easing = TmtnMotion.EaseOut)
         else spring(dampingRatio = 1f, stiffness = TmtnMotion.TouchStiffness),
         label = "button press",
     )
-    return graphicsLayer { scaleX = scale; scaleY = scale; alpha = if (pressed && enabled) .88f else 1f }
+    return graphicsLayer { scaleX = scale; scaleY = scale; alpha = if (pressed && enabled) .92f else 1f }
 }
 
 /** Keyboard / switch focus is separate from selected and pressed states. */
@@ -89,7 +89,8 @@ fun Modifier.tmtnFocusOutline(source: MutableInteractionSource, shape: Shape, en
 @Composable
 fun Modifier.tmtnClickable(enabled: Boolean = true, role: Role? = Role.Button, onClick: () -> Unit): Modifier {
     val interactions = remember { MutableInteractionSource() }
-    return tmtnPressFeedback(interactions, enabled).clickable(
-        interactionSource = interactions, indication = ripple(), enabled = enabled, role = role,
+    return tmtnPressFeedback(interactions, enabled)
+        .tmtnFocusOutline(interactions, TmtnLayout.ControlShape, enabled).clickable(
+        interactionSource = interactions, indication = null, enabled = enabled, role = role,
         onClick = { com.tmtn.app.audio.TmtnAudio.play(com.tmtn.app.audio.TmtnSound.Tap); onClick() })
 }

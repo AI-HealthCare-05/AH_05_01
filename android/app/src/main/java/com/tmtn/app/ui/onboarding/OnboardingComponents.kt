@@ -8,7 +8,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.semantics.Role
 import com.tmtn.app.ui.theme.tmtnPressFeedback
-import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -223,7 +222,7 @@ fun TmtnChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Mod
                 color = if (selected) colors.primary else colors.outlineVariant,
                 shape = RoundedCornerShape(999.dp),
             )
-            .heightIn(min = if (com.tmtn.app.ui.theme.AccessibilitySettingsHolder.largeControlsEnabled.value) TmtnLayout.LargeControlMin else TmtnLayout.TouchTarget)
+            .heightIn(min = TmtnLayout.TouchTarget)
             .selectable(selected = selected, enabled = enabled, interactionSource = interactions, indication = androidx.compose.material3.ripple(), role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
@@ -256,14 +255,14 @@ fun TmtnIntensityCard(
             .clip(shape)
             .background(if (selected) ColorSelectionSurface else colors.surface)
             .border(
-                width = 1.dp,
-                color = if (!outlined && !AccessibilitySettingsHolder.seniorMode.value) Color.Transparent
-                    else if (selected) colors.primary else colors.outlineVariant,
+                width = if (selected) 1.5.dp else 1.dp,
+                color = if (selected) colors.primary
+                    else if (!outlined) Color.Transparent else colors.outlineVariant,
                 shape = shape,
             )
-            .heightIn(min = if (detailed) 100.dp else if (AccessibilitySettingsHolder.largeControlsEnabled.value) TmtnLayout.LargeControlMin else TmtnLayout.ControlMin)
+            .heightIn(min = if (detailed) 100.dp else TmtnLayout.ControlMin)
             .selectable(selected = selected, interactionSource = interactions,
-                indication = androidx.compose.material3.ripple(), role = Role.RadioButton, onClick = onClick)
+                indication = null, role = Role.RadioButton, onClick = onClick)
             .padding(vertical = if (detailed) 14.dp else 12.dp, horizontal = 10.dp),
         contentAlignment = Alignment.Center,
     ) {

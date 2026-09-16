@@ -42,6 +42,11 @@ import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
 import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
+import com.tmtn.app.ui.theme.tmtnClickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.Icon
 
 private enum class DamScreen { HOME, ENCYCLOPEDIA, STAGE_GUIDE, MATERIAL_DETAIL, COLLECTION }
 
@@ -140,7 +145,7 @@ internal fun DamHomeScreen(
         Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 12.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("빈틈이 메워지는\n나의 댐.", style = TmtnType.headline, color = colors.onSurface)
+            Text("빈틈이 메워지는 나의 댐.", style = TmtnType.editorialHeadline, color = colors.onSurface)
             if (companion != null) {
                 val stage = companion.current_stage.coerceIn(0, 5)
                 Text("${stage}단계 · ${com.tmtn.app.ui.common.damRepairLabel(stage)}", style = TmtnType.body, color = colors.onSurface)
@@ -181,10 +186,15 @@ internal fun DamHomeScreen(
 @Composable
 private fun DamMenuRow(title: String, body: String, onClick: () -> Unit) {
     val colors = LocalTmtnColors.current
-    Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp))
-        .clickable(onClickLabel = title, onClick = onClick).padding(16.dp),
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(colors.surface)
+        .tmtnClickable(onClick = onClick).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) {
         Text(title, style = TmtnType.label, color = colors.onSurface)
+        }
+        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
+        }
         Text(body, style = TmtnType.body, color = colors.onSurfaceVariant)
     }
 }

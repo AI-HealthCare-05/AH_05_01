@@ -18,6 +18,7 @@ enum class TmtnActionStyle { Primary, Outlined, Tonal, Text }
 
 /** One state/interaction contract; callers own requests, validation and navigation. */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun TmtnActionButton(
     text: String,
     onClick: () -> Unit,
@@ -35,12 +36,13 @@ fun TmtnActionButton(
         else -> Color.Transparent
     }
     val foreground = if (style == TmtnActionStyle.Primary) Color.White else colors.onSurface
-    val minimum = if (AccessibilitySettingsHolder.largeControlsEnabled.value) TmtnLayout.LargeControlMin
-        else if (style == TmtnActionStyle.Text) TmtnLayout.TouchTarget else TmtnLayout.ControlMin
+    val minimum = if (style == TmtnActionStyle.Text) TmtnLayout.TouchTarget else TmtnLayout.ControlMin
+    // One feedback layer: the bounded control dims on touch-down, without a second expanding disc.
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
     Button(
         onClick = { com.tmtn.app.audio.TmtnAudio.play(com.tmtn.app.audio.TmtnSound.Tap); onClick() }, enabled = actionable, interactionSource = interactions,
         modifier = modifier.fillMaxWidth().heightIn(min = minimum)
-            .tmtnPressFeedback(interactions, actionable)
+            .tmtnPressFeedback(interactions, actionable, pressedScale = .98f)
             .tmtnFocusOutline(interactions, TmtnLayout.ControlShape, actionable)
             .semantics { if (loading) stateDescription = "처리 중" },
         shape = TmtnLayout.ControlShape,
@@ -67,5 +69,6 @@ fun TmtnActionButton(
             Spacer(Modifier.width(8.dp))
         }
         Text(text, style = TmtnType.actionLabel, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
+    }
     }
 }

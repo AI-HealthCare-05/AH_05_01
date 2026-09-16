@@ -53,8 +53,9 @@ fun ProfileHomeScreen(state: ProfileState, onNavigate: (ProfileScreenKey) -> Uni
                 val stage = state.companionStage.value
                 Text(if (count != null && stage != null) "모은 재료 ${count}개 · 댐 ${stage}단계" else "내 댐과 재료 보러 가기", style = TmtnType.body, color = colors.onSurface)
             }
+            ProfileSectionLabel("내 생활과 정보")
             ProfileListItem("기본 정보", "이름 · 별명 · 생년월") { onNavigate(ProfileScreenKey.BASIC) }
-            ProfileListItem("몸 정보", "키 · 몸무게 · 성별") { onNavigate(ProfileScreenKey.HEALTH) }
+            ProfileListItem("신체 정보", "키 · 몸무게 · 성별") { onNavigate(ProfileScreenKey.HEALTH) }
             val exercise = state.exerciseHabits.value
             ProfileListItem("운동 정보", exercise?.let { "근력 ${it.strength_weekly_count}${if (it.strength_weekly_count == 5) "일 이상" else "일"} · 중강도 ${it.aerobic_moderate_minutes}분" } ?: "평소 운동량과 강도") { onNavigate(ProfileScreenKey.EXERCISE) }
             ProfileListItem("생활시간 · 알림", "하루에 맞춘 실천 시간") { onNavigate(ProfileScreenKey.NOTIFICATION) }
@@ -64,7 +65,6 @@ fun ProfileHomeScreen(state: ProfileState, onNavigate: (ProfileScreenKey) -> Uni
             ProfileListItem("개인정보 · 내 데이터", null) { onNavigate(ProfileScreenKey.PRIVACY_DATA) }
             ProfileListItem("동의 관리", null) { onNavigate(ProfileScreenKey.CONSENT) }
             ProfileListItem("사운드", "효과음 · 홈 배경음") { onNavigate(ProfileScreenKey.SOUND) }
-            ProfileListItem("접근성", "글자 크기 · 동작 줄이기 · 고대비") { onNavigate(ProfileScreenKey.ACCESSIBILITY) }
             ProfileSectionLabel("틈튼과 함께")
             ProfileListItem("도움말 · 문의", "이용 중 궁금한 점") { onNavigate(ProfileScreenKey.HELP_DETAIL) }
             ProfileListItem("틈튼이 이야기 다시 보기", "틈을 메우고 싶은 비버") { onNavigate(ProfileScreenKey.STORY) }
@@ -87,11 +87,11 @@ internal fun ProfileListItem(title: String, sub: String?, onClick: (() -> Unit)?
     Column {
         Row(
             Modifier.fillMaxWidth().then(if (onClick != null) Modifier.tmtnClickable(role = Role.Button, onClick = onClick) else Modifier)
-                .heightIn(min = 60.dp).padding(vertical = 14.dp, horizontal = 4.dp),
+                .heightIn(min = 60.dp).padding(vertical = 16.dp, horizontal = if (onClick == null) 20.dp else 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = TmtnType.body, color = colors.onSurface)
+                Text(title, style = TmtnType.bodyLarge, color = colors.onSurface)
                 if (!sub.isNullOrBlank()) Text(sub, style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
             if (onClick != null) Text("›", style = TmtnType.title, color = colors.onSurfaceVariant)

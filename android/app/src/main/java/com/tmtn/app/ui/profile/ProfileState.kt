@@ -4,8 +4,6 @@ import com.tmtn.app.ui.common.failWithMessage
 import com.tmtn.app.ui.common.userMessageOr
 import androidx.compose.runtime.mutableStateOf
 import com.tmtn.app.network.ApiClient
-import com.tmtn.app.network.model.AccessibilityResponse
-import com.tmtn.app.network.model.AccessibilityUpdateRequest
 import com.tmtn.app.network.model.ConsentRequest
 import com.tmtn.app.network.model.ConsentResponse
 import com.tmtn.app.network.model.ExerciseHabitsRequest
@@ -17,7 +15,6 @@ import com.tmtn.app.network.model.NotificationSettingUpdateRequest
 import com.tmtn.app.network.model.UserInfoResponse
 import com.tmtn.app.network.model.UserUpdateRequest
 import com.tmtn.app.ui.onboarding.parseErrorMessage
-import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -26,7 +23,7 @@ enum class ProfileScreenKey {
     // ⚠️ 2026-09-08 QA 반영: WAKE_SLEEP 추가. "자고 일어나는 시각" 행이 MainActivity에서 빈
     // 람다({})로 연결돼 있어서 눌러도 아무 반응이 없었음(온보딩 A10 안에서만 동작하는 화면이라
     // 미연결로 남겨뒀던 자리). 내 정보 탭 안에 같은 기능의 화면을 만들어서 연결함.
-    HOME, NOTIFICATION, NOTIFICATION_TIME, WAKE_SLEEP, PERMISSIONS, ACCOUNT, HEALTH, EXERCISE, CONSENT, ACCESSIBILITY,
+    HOME, NOTIFICATION, NOTIFICATION_TIME, WAKE_SLEEP, PERMISSIONS, ACCOUNT, HEALTH, EXERCISE, CONSENT,
     EMAIL_CHANGE, PASSWORD_CHANGE, DELETE_REAUTH, DELETE_DONE,
     PRIVACY_DATA, EXPORT_DATA, APP_INFO, HELP_DETAIL, INQUIRY, SOUND, BASIC, STORY, TERMS,
 }
@@ -45,7 +42,6 @@ class ProfileState(private val profileApiProvider: () -> com.tmtn.app.network.Pr
     var healthInput = mutableStateOf<HealthInputResponse?>(null)
     var exerciseHabits = mutableStateOf<ExerciseHabitsResponse?>(null)
     var consents = mutableStateOf<List<ConsentResponse>>(emptyList())
-    var accessibility = mutableStateOf<AccessibilityResponse?>(null)
     var notificationSetting = mutableStateOf<NotificationSettingResponse?>(null)
 
     // F23: 어떤 알림 슬롯(0=아침준비/1=점심뒤/2=자기전)을 편집 중인지
@@ -74,13 +70,6 @@ class ProfileState(private val profileApiProvider: () -> com.tmtn.app.network.Pr
                 launch { read({ profileApiProvider().getLatestHealthInput() }, missingIsEmpty = true) { healthInput.value = it } }
                 launch { read({ profileApiProvider().getLatestExerciseHabits() }, missingIsEmpty = true) { exerciseHabits.value = it } }
                 launch { read({ profileApiProvider().listConsents() }) { consents.value = it.orEmpty() } }
-                launch { read({ profileApiProvider().getAccessibility() }) {
-                    accessibility.value = it
-                    it?.let { body ->
-                        AccessibilitySettingsHolder.apply(body.large_controls, body.senior_mode, body.preferred_text_scale_hint)
-                        AccessibilitySettingsHolder.reducedMotion.value = body.reduced_motion
-                    }
-                } }
                 launch { read({ profileApiProvider().getNotificationSettings() }) { notificationSetting.value = it } }
             }
             if (userInfo.value == null) loadFailed.value = true
@@ -137,9 +126,9 @@ class ProfileState(private val profileApiProvider: () -> com.tmtn.app.network.Pr
         }
     }
 
-    // F08: 몸 정보 저장
+    // F08: 신체 정보 저장
     suspend fun saveHealthInput(heightCm: Int, weightKg: Int) {
-        updatePreference("몸 정보를 저장하지 못했어요. 입력한 내용은 그대로예요.") {
+        updatePreference("신체 정보를 저장하지 못했어요. 입력한 내용은 그대로예요.") {
             val response = profileApiProvider().submitHealthInput(
                 HealthInputRequest(
                     measured_at = java.time.Instant.now().toString(),
@@ -148,7 +137,7 @@ class ProfileState(private val profileApiProvider: () -> com.tmtn.app.network.Pr
                 )
             )
             if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
-            healthInput.value = response.body() ?: failWithMessage("저장한 몸 정보를 확인하지 못했어요.")
+            healthInput.value = response.body() ?: failWithMessage("저장한 신체 정보를 확인하지 못했어요.")
             screen.value = ProfileScreenKey.HOME
         }
     }
@@ -194,21 +183,6 @@ class ProfileState(private val profileApiProvider: () -> com.tmtn.app.network.Pr
             if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             val updated = response.body() ?: failWithMessage("변경한 동의를 확인하지 못했어요.")
             consents.value = consents.value.filterNot { it.purpose == purpose } + updated
-        }
-    }
-
-    // F12: 접근성 저장 (부분 수정 - 보낸 필드만 반영)
-    suspend fun updateAccessibility(update: AccessibilityUpdateRequest) {
-        updatePreference("화면 설정을 저장하지 못했어요. 다시 시도해 주세요.") {
-            val response = profileApiProvider().updateAccessibility(update)
-            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
-            val body = response.body() ?: failWithMessage("저장한 설정을 확인하지 못했어요.")
-            accessibility.value = body
-            // ⚠️ 2026-09-04 QA(P0-6) 반영: 여기서 서버에 저장만 하고 끝나서, 설정 화면을
-            // 나가야만(또는 앱을 재시작해야만) 반영되는 것처럼 느껴졌음. 바로 전역 홀더에
-            // 반영해서 이 화면의 "미리보기"부터 다른 화면까지 즉시 바뀌게 함.
-            AccessibilitySettingsHolder.apply(body.large_controls, body.senior_mode, body.preferred_text_scale_hint)
-            AccessibilitySettingsHolder.reducedMotion.value = body.reduced_motion
         }
     }
 

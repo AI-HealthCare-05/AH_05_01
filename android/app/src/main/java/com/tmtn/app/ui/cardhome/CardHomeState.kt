@@ -63,6 +63,7 @@ enum class CardHomeStep {
  */
 class CardHomeState(
     private val serviceDateProvider: suspend () -> String = { currentServiceDateString() },
+    val waist: com.tmtn.app.ui.reference.WaistEstimateState = com.tmtn.app.ui.reference.WaistEstimateState(),
     private val missionApiProvider: () -> com.tmtn.app.network.CardHomeApi = { ApiClient.cardHomeApi },
 ) {
     var step = mutableStateOf(CardHomeStep.LOADING)
@@ -98,6 +99,8 @@ class CardHomeState(
     var awardedFiveElement = mutableStateOf<String?>(null)
 
     // 댐(재료) 요약 - B01/B01b 상단에 표시
+    val cardEntryRequested = mutableStateOf(false)
+
     var companionStage = mutableStateOf(0)
     var companionLoaded = mutableStateOf(false)
     var companionMaterialsNeeded = mutableStateOf<Int?>(null)
@@ -268,6 +271,31 @@ class CardHomeState(
         }
     }
 
+    /** A newspaper CTA resolves today's destination without starting or resuming any mission. */
+    suspend fun openCardFromJournal() {
+        if (isLoading.value) return
+        isLoading.value = true
+        errorMessage.value = null
+        step.value = CardHomeStep.LOADING
+        try {
+            val response = missionApiProvider().getTodayCards()
+            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+            val window = response.body() ?: failWithMessage("오늘의 카드를 확인하지 못했어요.")
+            applyHomeWindow(window)
+            val destination = journalCardDestination(window.is_rest_day || window.is_given_up, window.challenge_state, window.challenge_id)
+            if (destination == CardHomeStep.REVEALED) {
+                val cardResponse = missionApiProvider().revealChallenge(window.challenge_id!!)
+                if (!cardResponse.isSuccessful) failWithMessage(parseErrorMessage(cardResponse))
+                revealedCard.value = cardResponse.body() ?: failWithMessage("카드 내용을 확인하지 못했어요.")
+            }
+            step.value = destination
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            errorMessage.value = error.userMessageOr("오늘의 카드를 확인하지 못했어요. 다시 시도해 주세요.")
+            step.value = CardHomeStep.ERROR
+        } finally { isLoading.value = false }
+    }
+
     private fun applyHomeWindow(window: com.tmtn.app.network.model.CardWindowResponse) {
         if (setId.value != window.set_id) hasMemoToday.value = null
         setId.value = window.set_id
@@ -398,7 +426,7 @@ class CardHomeState(
         isLoading.value = true
         errorMessage.value = null
         runCatching {
-            val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
+            val response = missionApiProvider().revealChallenge(challengeId)
             if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             response.body()!!
         }.onSuccess { card ->
