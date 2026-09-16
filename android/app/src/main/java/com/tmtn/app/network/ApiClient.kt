@@ -85,6 +85,10 @@ object ApiClient {
     val profileApi: ProfileApi by lazy { retrofit.create(ProfileApi::class.java) }
     val tuntunScoreApi: TuntunScoreApi by lazy { retrofit.create(TuntunScoreApi::class.java) }
     val exerciseMissionApi: ExerciseMissionApi by lazy { retrofit.create(ExerciseMissionApi::class.java) }
+    // ⚠️ 2026-09-16 추가 - 초기 습관+실천+건강 종합(틈튼지수) API. 기존 tuntunScoreApi와
+    // 별개 - practice-score는 서버가 직접 조합하는 새 계산이고, tuntunScoreApi는 브릿지
+    // 원본 응답을 그대로 전달하는 기존 vNext.
+    val practiceScoreApi: PracticeScoreApi by lazy { retrofit.create(PracticeScoreApi::class.java) }
     val debugApi: DebugApi by lazy { retrofit.create(DebugApi::class.java) }
     /**
      * 실제 온보딩 화면(A03~A10)이 생겨서, 이제 이 함수는 "온보딩 건너뛰고 바로 기능 테스트"

@@ -82,7 +82,7 @@ internal fun WaistEstimateArticle(result: WaistEstimateUi, onRetry: () -> Unit =
                     DateTimeFormatter.ofPattern("yyyy.M.d 계산", Locale.KOREAN).withZone(ZoneId.systemDefault()).format(it)
                 } ?: "계산일 정보 없음", style = TmtnType.caption, color = colors.onSurfaceVariant)
                 Text("줄자로 잰 값과는 달라요", style = TmtnType.bodyLarge, color = colors.onSurface)
-                Text("입력한 정보로 모델이 추정한 둘레예요. 실제 측정값과 차이가 있을 수 있어요.",
+                Text("입력 정보로 계산한 추정값이며, 직접 측정한 값과 다를 수 있어요.",
                     style = TmtnType.body, color = colors.onSurfaceVariant)
             }
             WaistEstimateUi.Loading -> {

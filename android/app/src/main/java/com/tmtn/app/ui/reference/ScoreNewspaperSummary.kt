@@ -66,7 +66,18 @@ internal fun ScoreNewspaperSummary(state: ReferenceState, onOpenExerciseInfo: ()
         ScoreActionRow("운동 정보 업데이트", "유산소·근력운동", onOpenExerciseInfo)
         ScoreActionRow("입력 정보 확인", "신체 정보 · 운동 정보") { state.openInputs() }
         ScoreActionRow("이 지수에 대하여") { showMethod = true }
-        Text("비진단용 참고 정보", style = TmtnType.caption, color = colors.onSurfaceVariant)
+        // ⚠️ 2026-09-16 추가 - practice-score(초기 습관+실천+건강 종합) 최소 노출.
+        // composite_score가 있을 때만 보여주고, null이면(초기 습관 정책 미확정 등)
+        // 아무것도 안 보여줌 - 0이나 이전 값으로 대체하지 않음. 이 자리 배치는 최소
+        // 연결용 - 정식 화면 위치·디자인은 별도 확인 필요.
+        state.practiceScore.value?.composite_score?.let { compositeScore ->
+            Text("생활습관 실천을 반영한 참고점수: ${compositeScore}점",
+                style = TmtnType.caption, color = colors.onSurfaceVariant)
+        }
+        // ⚠️ 2026-09-16 문구 교체(강호님 "초기습관_산식과_모델표시_확정_v1" §4 기본 안내) -
+        // 예전 "비진단용 참고 정보"는 문서가 명시한 정확한 안내 문구가 아니었음.
+        Text("틈튼지수는 입력 정보와 생활습관 실천을 반영한 참고점수입니다. 건강 상태를 " +
+            "진단하거나 질환의 발생 가능성을 뜻하지 않습니다.", style = TmtnType.caption, color = colors.onSurfaceVariant)
     }
     if (showMethod) ScoreMethodDialog(score) { showMethod = false }
 }
