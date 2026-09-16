@@ -41,7 +41,7 @@
   },
   {
     "path": "android/app/src/main/res/drawable-nodpi/beaver_newspaper.png",
-    "sha256": "2094934958c3e0414a99d536013b2d93067d447ae5d1b26dbede5ae025479bd9"
+    "sha256": "89e7cc0a6b2246aa2b6c031d7f1185f99bfc404d3b3eadbbe1d89863c1ec598b"
   },
   {
     "path": "android/app/src/main/res/drawable-nodpi/beaver_wave.png",
@@ -53,7 +53,7 @@
   },
   {
     "path": "android/app/src/main/res/drawable-nodpi/journal_beaver_waist.png",
-    "sha256": "03590d7cc225afce6e66154d9b7c4b3f77540306748f712d9d10099e4adfdeef"
+    "sha256": "2436a820da395655bbea72328c1c7ea7d62d2d3988e7509bfc4cca98f32d711c"
   },
   {
     "path": "android/app/src/main/res/drawable-nodpi/journal_material_branch.png",
@@ -78,6 +78,14 @@
   {
     "path": "android/app/src/main/res/drawable-nodpi/journal_weekly_scene_v2.png",
     "sha256": "8165419035603d31477fe430c3f57e2722213b20905c882bfd5648298b28dc89"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/dam_water_repair_sheet.png",
+    "sha256": "a2c57f2024ed5e62fdcff7767a656bac77860c8cd76579f30b4f7b8e1190a318"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_material_guide_v1.png",
+    "sha256": "d330afc6c8c85a621b0f014fd1257d8dcc36f1b18b40f097fbdb919a54a0e563"
   },
   {
     "path": "android/app/src/main/res/font/pretendard_regular.otf",

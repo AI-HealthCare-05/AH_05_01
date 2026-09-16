@@ -44,6 +44,10 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import com.tmtn.app.ui.theme.tmtnClickable
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import com.tmtn.app.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Icon
@@ -150,6 +154,8 @@ internal fun DamHomeScreen(
                 val stage = companion.current_stage.coerceIn(0, 5)
                 Text("${stage}단계 · ${com.tmtn.app.ui.common.damRepairLabel(stage)}", style = TmtnType.body, color = colors.onSurface)
                 com.tmtn.app.ui.common.DamArtwork(stage)
+                Text(com.tmtn.app.ui.common.damWaterDescription(stage),
+                    style = TmtnType.body, color = colors.onSurfaceVariant)
                 Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("모은 재료 ${companion.total_materials}개", style = TmtnType.title, color = colors.onSurface)
@@ -201,7 +207,7 @@ private fun DamMenuRow(title: String, body: String, onClick: () -> Unit) {
 
 /** Figma G02 · 재료 도감 */
 @Composable
-private fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (String) -> Unit) {
+internal fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (String) -> Unit) {
     val colors = LocalTmtnColors.current
     val materials = listOf(
         "WOOD" to ("나뭇가지" to "움직임 · 유산소"),
@@ -217,7 +223,15 @@ private fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (Stri
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("행동의 종류에 따라 다른 재료가 쌓입니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Image(painterResource(R.drawable.beaver_material_guide_v1), null,
+                    Modifier.size(104.dp), contentScale = ContentScale.Fit)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("작은 실천이, 댐의 한 조각.", style = TmtnType.title, color = colors.onSurface)
+                    Text("행동의 종류에 따라 다른 재료가 쌓입니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
+                }
+            }
 
             Column(
                 modifier = Modifier
@@ -256,8 +270,11 @@ private fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (Stri
 
 /** Figma G03 · 댐 단계 안내 */
 @Composable
-private fun StageGuideScreen(companion: CompanionResponse?, onBack: () -> Unit) {
+internal fun StageGuideScreen(companion: CompanionResponse?, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
+    var previewStage by remember(companion?.current_stage) {
+        mutableStateOf((companion?.current_stage ?: 0).coerceIn(0, 5))
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "댐 복구 단계", onBack = onBack)
@@ -268,8 +285,24 @@ private fun StageGuideScreen(companion: CompanionResponse?, onBack: () -> Unit) 
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("남아 있는 댐을\n한 곳씩 이어가요.", style = TmtnType.headline, color = colors.onSurface)
-            com.tmtn.app.ui.common.DamArtwork(companion?.current_stage ?: 0)
+            Text("틈이 메워질수록,\n물길도 잦아들어요.", style = TmtnType.headline, color = colors.onSurface)
+            Text("단계별 모습을 살펴보세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                (0..5).forEach { number ->
+                    val selected = previewStage == number
+                    Text("${number}단계", style = TmtnType.label,
+                        color = if (selected) colors.background else colors.onSurface,
+                        modifier = Modifier.clip(RoundedCornerShape(50))
+                            .background(if (selected) colors.onSurface else colors.surface)
+                            .selectable(selected = selected, role = Role.RadioButton, onClick = { previewStage = number })
+                            .padding(horizontal = 16.dp, vertical = 14.dp))
+                }
+            }
+            com.tmtn.app.ui.common.DamArtwork(previewStage)
+            Text("${previewStage}단계 · ${com.tmtn.app.ui.common.damRepairLabel(previewStage)}",
+                style = TmtnType.title, color = colors.onSurface)
+            Text(com.tmtn.app.ui.common.damWaterDescription(previewStage), style = TmtnType.body, color = colors.onSurfaceVariant)
             companion?.stages?.forEach { stage ->
                 Column(
                     modifier = Modifier

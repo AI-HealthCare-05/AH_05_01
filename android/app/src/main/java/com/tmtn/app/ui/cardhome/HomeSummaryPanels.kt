@@ -46,7 +46,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 @Composable
 internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
-    val paper = Color(0xFFF5F2EE) // sampled from beaver_newspaper.png so the artwork sits flush
+    val paper = com.tmtn.app.ui.theme.ColorArtworkPaper
     val shape = RoundedCornerShape(20.dp)
     Column(Modifier.fillMaxWidth().clip(shape).background(paper)
         .border(TmtnLayout.Hairline, colors.outlineVariant, shape)

@@ -18,6 +18,8 @@ val ColorOnSurface = Color(0xFF2C2C2C)
 val ColorOnSurfaceVariant = Color(0xFF666A71)
 val ColorBackground = Color(0xFFFFFFFF)
 val ColorSurface = Color(0xFFF7F4EE)
+// 새 수채화 삽화의 종이 바탕. 캐릭터 주변에 별도 사각형이 생기지 않도록 맞춘다.
+val ColorArtworkPaper = Color(0xFFFCFCF8)
 val ColorOutline = Color(0xFF9C9E9F)
 val ColorOutlineVariant = Color(0xFFE5E0D6)
 

@@ -149,7 +149,7 @@ private fun FirstRepairScene(phase: FirstRepairPhase, completedStage: Int, reduc
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val sceneWidth = maxWidth
             // 비트맵과 이동 경로만 비례 축소하며 글자 영역에는 고정 높이를 주지 않는다.
-            val damHeight = sceneWidth * (190f / 350f)
+            val damHeight = sceneWidth / com.tmtn.app.ui.common.DamArtworkAspectRatio
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Crossfade(if (done) completedStage else 0,
                     animationSpec = tween(if (reducedMotion) TmtnMotion.SheetReducedMillis else TmtnMotion.EnterMillis), label = "첫 복구 결과") { stage ->

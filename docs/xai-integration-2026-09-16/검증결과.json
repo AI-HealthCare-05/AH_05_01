@@ -44,5 +44,30 @@
     "uv_limit": "installed 0.12.3; required 0.12.5; used existing Python environment",
     "mysql_full_suite_run": false,
     "production_deployed": false
+  },
+  "dam_art_validation": {
+    "date": "2026-09-16",
+    "device_tests": 14,
+    "failed": 0,
+    "suites": [
+      "DamWaterStoryUiTest",
+      "FirstRepairUiTest",
+      "FirstDamUiTest"
+    ],
+    "final_dam_fixture_rerun": {
+      "tests": 4,
+      "failed": 0
+    },
+    "narrow_width_dp": 320,
+    "font_scale": 1.8,
+    "browser_checks": [
+      "댐 0단계→단계 보기→5단계",
+      "키보드 Home으로 0단계 복귀",
+      "미리보기 후 실제 단계·재료 유지",
+      "재료 도감 그림과 5종 재료",
+      "360px 홈과 신문 그림"
+    ],
+    "new_or_updated_art_assets": 5,
+    "server_contract_changed": false
   }
 }

@@ -254,13 +254,13 @@
   {
     "path": "docs/xai-integration-2026-09-16/index.html",
     "before_sha256": null,
-    "after_sha256": "d545b8c601cfa3f7a03f116cac6d49d6704f627e6f75c58eb87ba4151306d1a6",
+    "after_sha256": "a5ab9e922ba1103f070f17d5743007ee6314cca55bb4d0ee3c601c3ca6b73101",
     "after_hash_source": "git_index_lf"
   },
   {
     "path": "docs/xai-integration-2026-09-16/원본에셋.json",
     "before_sha256": null,
-    "after_sha256": "42ac41a2252158802fea34f870826edfc26a3ad4d12018c6d5b30543cccafeca",
+    "after_sha256": "c44b35fcc65811e11d3cae5132ca1a8d5a4f60493fd648536bad47d734164a28",
     "after_hash_source": "git_index_lf"
   },
   {
@@ -278,13 +278,13 @@
   {
     "path": "docs/xai-integration-2026-09-16/검증결과.json",
     "before_sha256": null,
-    "after_sha256": "2b2e7b0f545a4503c010f3c11b51c2d0fe7b1d98337f2aa15b52c3f4a89c800f",
+    "after_sha256": "372ea84e1b8eba98b95dd00681726aa5c78754a292b0645ca1beae5604d5ffab",
     "after_hash_source": "git_index_lf"
   },
   {
     "path": "docs/xai-integration-2026-09-16/README.md",
     "before_sha256": null,
-    "after_sha256": "03f3c5c9a5fd564fa04bbb35c94b7192edb47528d824c493980a339b8b6be929",
+    "after_sha256": "d28c493d20a303225b3e00e0906ca9ce81b9e5281f2ced0510a3597784147fc4",
     "after_hash_source": "git_index_lf"
   }
 ]
