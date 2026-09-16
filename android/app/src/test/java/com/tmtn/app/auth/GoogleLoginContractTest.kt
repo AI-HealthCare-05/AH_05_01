@@ -13,6 +13,30 @@ import org.junit.Test
 import retrofit2.Response
 
 class GoogleLoginContractTest {
+    @Test fun confirmedSignupSendsSelectedVersionedConsentsWithTheAccountRequest() = runBlocking {
+        val requests = mutableListOf<GoogleLoginRequest>()
+        val state = OnboardingState { api { request ->
+            requests += request
+            if (!request.signup_confirmed) conflict("SIGNUP_REQUIRED")
+            else Response.error(503, """{"detail":"test stops before account creation"}""".toResponseBody())
+        } }
+        state.exchangeGoogleToken("test-id-token", false) { fail("Signup must wait for consent") }
+        state.submitConsents()
+        assertEquals(1, requests.size)
+        state.agreeTermsOfService.value = true
+        state.agreePrivacyPolicy.value = true
+        state.agreeAgeOver14.value = true
+        state.agreeHealthDataUsage.value = true
+        state.agreeHealthDataAnalysis.value = true
+        state.submitConsents()
+        val request = requests.last()
+        assertTrue(request.signup_confirmed)
+        assertEquals(setOf("TERMS_OF_SERVICE", "PRIVACY_POLICY", "AGE_OVER_14", "HEALTH_DATA_USAGE", "HEALTH_REFERENCE_ANALYSIS"),
+            request.consents.map { it.purpose }.toSet())
+        assertTrue(request.consents.all { it.document_version == "v1" })
+        assertFalse(state.accountCreated)
+    }
+
     private fun conflict(code: String) = Response.error<SocialLoginResponse>(409,
         """{"code":"$code","email":"member@example.test"}""".toResponseBody())
 

@@ -224,13 +224,30 @@ class ProfileState(private val profileApiProvider: () -> com.tmtn.app.network.Pr
     }
 
     var passwordChangeDone = mutableStateOf(false)
-    suspend fun changePassword(currentPassword: String, newPassword: String) {
+    val googleReauthInProgress = mutableStateOf(false)
+    suspend fun reauthenticateWithGoogle(context: android.content.Context, action: suspend (String) -> Unit) {
+        if (isLoading.value || googleReauthInProgress.value) return
+        googleReauthInProgress.value = true
+        errorMessage.value = null
+        try {
+            when (val result = com.tmtn.app.auth.GoogleSignInHelper.requestIdToken(context)) {
+                is com.tmtn.app.auth.GoogleSignInHelper.Result.Success -> action(result.idToken)
+                is com.tmtn.app.auth.GoogleSignInHelper.Result.Failure -> errorMessage.value = result.message
+                com.tmtn.app.auth.GoogleSignInHelper.Result.NoGoogleAccount ->
+                    errorMessage.value = "가입한 Google 계정을 기기에 추가해 주세요."
+                com.tmtn.app.auth.GoogleSignInHelper.Result.Cancelled -> Unit
+            }
+        } finally { googleReauthInProgress.value = false }
+    }
+
+    suspend fun changePassword(currentPassword: String?, newPassword: String, googleIdToken: String? = null) {
         updatePreference("비밀번호를 바꾸지 못했어요.") {
             passwordChangeDone.value = false
             val response = profileApiProvider().changePassword(
-                com.tmtn.app.network.model.PasswordChangeRequest(currentPassword, newPassword))
+                com.tmtn.app.network.model.PasswordChangeRequest(currentPassword, newPassword, googleIdToken))
             if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             passwordChangeDone.value = true
+            userInfo.value = userInfo.value?.copy(requires_google_reauth = false)
             screen.value = ProfileScreenKey.ACCOUNT
         }
     }
@@ -258,9 +275,9 @@ class ProfileState(private val profileApiProvider: () -> com.tmtn.app.network.Pr
         }
     }
 
-    suspend fun deleteAccount(password: String) {
+    suspend fun deleteAccount(password: String?, googleIdToken: String? = null) {
         updatePreference("계정을 삭제하지 못했어요.") {
-            val response = profileApiProvider().deleteAccount(com.tmtn.app.network.model.AccountDeleteRequest(password))
+            val response = profileApiProvider().deleteAccount(com.tmtn.app.network.model.AccountDeleteRequest(password, googleIdToken))
             if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             ApiClient.clearSession()
             screen.value = ProfileScreenKey.DELETE_DONE

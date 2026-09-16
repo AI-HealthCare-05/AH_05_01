@@ -64,6 +64,7 @@ enum class CardHomeStep {
 class CardHomeState(
     private val serviceDateProvider: suspend () -> String = { currentServiceDateString() },
     val waist: com.tmtn.app.ui.reference.WaistEstimateState = com.tmtn.app.ui.reference.WaistEstimateState(),
+    private val peerScoreEnabled: Boolean = com.tmtn.app.BuildConfig.PEER_SCORE_ENABLED,
     private val missionApiProvider: () -> com.tmtn.app.network.CardHomeApi = { ApiClient.cardHomeApi },
 ) {
     var step = mutableStateOf(CardHomeStep.LOADING)
@@ -545,6 +546,11 @@ class CardHomeState(
 
     suspend fun loadTuntunIndexSummary() {
         tuntunIndexLoadFailed.value = false
+        if (!peerScoreEnabled) {
+            tuntunIndexPresentationValue.value = null
+            tuntunIndexValue.value = null
+            return
+        }
         val body = runCatching {
             val response = ApiClient.tuntunScoreApi.getTuntunScorePeerV2()
             if (response.isSuccessful) response.body() else null

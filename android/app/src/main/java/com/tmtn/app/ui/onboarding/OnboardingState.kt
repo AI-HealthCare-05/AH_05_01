@@ -228,8 +228,11 @@ class OnboardingState(private val authApiProvider: () -> com.tmtn.app.network.Au
         }
     }
 
-    private suspend fun createAccountWithGoogle(idToken: String) {
-        val response = authApiProvider().googleLogin(GoogleLoginRequest(idToken, signup_confirmed = true))
+    private suspend fun createAccountWithGoogle(idToken: String, purposes: List<String>) {
+        val response = authApiProvider().googleLogin(GoogleLoginRequest(
+            idToken, signup_confirmed = true,
+            consents = purposes.map { ConsentRequest(it, "v1") },
+        ))
         if (response.code() == 401) {
             googleReauthRequired.value = true
             failWithMessage("Google 인증이 만료됐어요. 계정을 다시 선택해 주세요.")
@@ -328,7 +331,7 @@ class OnboardingState(private val authApiProvider: () -> com.tmtn.app.network.Au
                         createAccount = {
                             if (isGoogleSignup) {
                                 createAccountWithGoogle(pendingGoogleToken.value
-                                    ?: failWithMessage("Google 계정을 다시 선택해 주세요."))
+                                    ?: failWithMessage("Google 계정을 다시 선택해 주세요."), purposes)
                             } else {
                             val response = ApiClient.onboardingApi.confirmEmailVerification(
                                 EmailVerificationConfirmRequest(email.value, verificationCode, password.value)

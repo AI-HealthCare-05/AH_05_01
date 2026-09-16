@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from app.core import config
 from app.models.prediction import ApprovedModelVersion, PredictionResult
 
 
@@ -34,16 +37,30 @@ class PredictionRepository:
                 latest[row.submodel_type] = row
         return latest
 
+    async def ensure_initial_approval(
+        self,
+        submodel_type: str,
+        model_version: str,
+        approved_by_user_id: str,
+    ) -> ApprovedModelVersion:
+        """최초 승인만 생성하고 관리자가 비활성화한 기존 상태는 보존한다."""
+        instance, _ = await self._approval_model.get_or_create(
+            submodel_type=submodel_type,
+            model_version=model_version,
+            defaults={
+                "is_active": True,
+                "approved_at": datetime.now(config.TIMEZONE),
+                "approved_by_user_id": str(approved_by_user_id),
+            },
+        )
+        return instance
+
     async def upsert_approval(
         self, submodel_type: str, model_version: str, is_active: bool, approved_by_user_id
     ) -> ApprovedModelVersion:
         # ⚠️ 2026-09-08 반영: 여기도 datetime.now(UTC)를 쓰고 있었음 - DB에는 "UTC 숫자"가
         # 들어가고 조회 시 Asia/Seoul 라벨이 붙어 9시간 어긋나게 읽힘. 프로젝트 전체를
         # config.TIMEZONE 하나로 통일함(원인은 email_verification.request_code() 주석 참고).
-        from datetime import datetime
-
-        from app.core import config
-
         instance, _ = await self._approval_model.get_or_create(submodel_type=submodel_type, model_version=model_version)
         instance.is_active = is_active
         instance.approved_at = datetime.now(config.TIMEZONE) if is_active else instance.approved_at

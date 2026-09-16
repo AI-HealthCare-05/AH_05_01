@@ -164,7 +164,7 @@ def is_google_login_enabled() -> bool:
     return bool(config.GOOGLE_CLIENT_ID)
 
 
-def verify_google_id_token(raw_token: str) -> GoogleIdentity:
+def verify_google_id_token(raw_token: str, *, max_age_seconds: int | None = None) -> GoogleIdentity:
     """구글 ID 토큰을 검증하고 신원을 돌려줌. 실패하면 401을 던짐.
 
     ⚠️ 이 함수는 동기(blocking)입니다. 공개키 캐시가 비어 있을 때 네트워크를 타므로,
@@ -243,6 +243,14 @@ def verify_google_id_token(raw_token: str) -> GoogleIdentity:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="이메일 인증이 완료되지 않은 구글 계정입니다.",
         )
+
+    if max_age_seconds is not None:
+        issued_at = payload.get("iat")
+        if (
+            not isinstance(issued_at, (int, float))
+            or not -_CLOCK_SKEW_SECONDS <= time.time() - issued_at <= max_age_seconds
+        ):
+            raise HTTPException(status_code=401, detail="Google 계정을 다시 선택해 본인 확인해 주세요.")
 
     return GoogleIdentity(
         subject=str(subject),

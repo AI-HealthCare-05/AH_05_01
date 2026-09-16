@@ -46,7 +46,8 @@ data class UserInfoResponse(
     val is_pregnant: Boolean?,
     val created_at: String,
     // ⚠️ 2026-09-07 추가: 걷기/조깅 케이던스 임계값(신장 구간표) 계산용.
-    val height_cm: Float? = null
+    val height_cm: Float? = null,
+    val requires_google_reauth: Boolean = false,
 )
 
 // ===== A07: 키/몸무게 (health-input, 유연한 key-value 구조) =====

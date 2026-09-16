@@ -3,12 +3,14 @@ from pydantic import EmailStr
 from starlette import status
 from starlette.concurrency import run_in_threadpool
 from tortoise.exceptions import IntegrityError
+from tortoise.transactions import in_transaction
 
 from app.core.jwt.tokens import AccessToken, RefreshToken
 from app.core.logger import default_logger
 from app.core.oauth.google import GoogleIdentity, verify_google_id_token
 from app.core.utils.security import hash_password, verify_password
-from app.dtos.auth import LoginRequest
+from app.dtos.auth import GoogleSignupConsent, LoginRequest
+from app.models.accounts import ConsentPurpose, UserConsent
 from app.models.users import User
 from app.repositories.user_repository import UserRepository
 from app.services.email_verification import EmailVerificationService
@@ -125,7 +127,11 @@ class AuthService:
     # ===== 2026-09-09 추가: 구글 계정 연동 로그인 =====
 
     async def login_with_google(
-        self, raw_id_token: str, link_confirmed: bool = False, signup_confirmed: bool = False
+        self,
+        raw_id_token: str,
+        link_confirmed: bool = False,
+        signup_confirmed: bool = False,
+        consents: list[GoogleSignupConsent] | None = None,
     ) -> tuple[User, bool]:
         """구글 ID 토큰으로 로그인/가입. (user, is_new_user)를 돌려줌.
 
@@ -178,12 +184,28 @@ class AuthService:
             # 받은 뒤 signup_confirmed=True로 다시 부를 때까지 아무것도 저장하지 않습니다.
             raise GoogleSignupRequiredError(identity.email)
 
+        accepted = {consent.purpose: consent for consent in consents or []}
+        required = {
+            ConsentPurpose.TERMS_OF_SERVICE,
+            ConsentPurpose.PRIVACY_POLICY,
+            ConsentPurpose.AGE_OVER_14,
+            ConsentPurpose.HEALTH_DATA_USAGE,
+        }
+        if not required.issubset(accepted):
+            raise HTTPException(status_code=422, detail="필수 약관과 문서 버전을 확인해 주세요.")
         try:
-            created = await self.user_repo.create_user_from_google(
-                email=identity.email,
-                google_sub=identity.subject,
-                name=identity.name,
-            )
+            async with in_transaction():
+                created = await self.user_repo.create_user_from_google(
+                    email=identity.email,
+                    google_sub=identity.subject,
+                    name=identity.name,
+                )
+                for consent in accepted.values():
+                    await UserConsent.create(
+                        user_id=created.id,
+                        purpose=consent.purpose,
+                        document_version=consent.document_version,
+                    )
         except IntegrityError:
             # 같은 구글 계정으로 거의 동시에 두 번 요청이 들어온 경우(더블탭 등).
             # google_sub UNIQUE 덕분에 뒤 요청만 실패하므로, 먼저 만들어진 계정을 다시

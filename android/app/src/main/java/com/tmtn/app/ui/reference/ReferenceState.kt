@@ -23,7 +23,7 @@ enum class ReferenceStep {
 
 /** E그룹 전체 상태. CardHomeState/RecordState와 같은 패턴 — 백스택은 E04가
  * E01(요약)·E03(반영 항목) 양쪽에서 들어올 수 있어서 맵 대신 실제 스택으로 관리함. */
-class ReferenceState {
+class ReferenceState(private val peerScoreEnabled: Boolean = com.tmtn.app.BuildConfig.PEER_SCORE_ENABLED) {
     val journal = com.tmtn.app.ui.journal.JournalState()
     val waist = WaistEstimateState()
     internal val editorial = ScoreEditorialState()
@@ -56,6 +56,12 @@ class ReferenceState {
     // 산출 가능 여부를 판정했는데, 새 계약엔 그 개념이 없음(availableComponentCount로만 판정).
     suspend fun loadScore() {
         if (isLoading.value) return
+        if (!peerScoreEnabled) {
+            score.value = null
+            errorMessage.value = null
+            replaceRoot(ReferenceStep.SUMMARY)
+            return
+        }
         isLoading.value = true
         errorMessage.value = null
         runCatching {

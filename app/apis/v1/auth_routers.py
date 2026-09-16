@@ -184,6 +184,7 @@ async def google_login(
             request.id_token,
             link_confirmed=request.link_confirmed,
             signup_confirmed=request.signup_confirmed,
+            consents=request.consents,
         )
     except GoogleLinkRequiredError as exc:
         return Response(

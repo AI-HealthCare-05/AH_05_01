@@ -56,8 +56,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "PEER_SCORE_ENABLED", "true")
+        }
         release {
             isMinifyEnabled = false
+            // 모델과 브릿지 배포 승인 후에만 명시적으로 활성화한다.
+            buildConfigField("boolean", "PEER_SCORE_ENABLED",
+                (providers.gradleProperty("TMTN_PEER_SCORE_APPROVED").orNull == "true").toString())
         }
     }
     compileOptions {

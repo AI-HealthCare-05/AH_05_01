@@ -50,5 +50,9 @@ class User(models.Model):
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
+    @property
+    def requires_google_reauth(self) -> bool:
+        return bool(self.google_sub and not self.hashed_password)
+
     class Meta:
         table = "users"

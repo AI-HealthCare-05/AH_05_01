@@ -33,7 +33,8 @@ data class GoogleLoginRequest(
      * 구글만 예외로 두면 "약관 동의 전에 만들어진 계정"이 생기는데, 건강정보 이용 동의는
      * 민감정보라 그 순서가 뒤집히면 안 됨.
      */
-    val signup_confirmed: Boolean = false
+    val signup_confirmed: Boolean = false,
+    val consents: List<ConsentRequest> = emptyList(),
 )
 
 /**
