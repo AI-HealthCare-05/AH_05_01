@@ -43,6 +43,7 @@ class ChallengeRepository:
             selection=selection,
             exec_type=template.exec_type,
             mission_snapshot={
+                "domain": template.domain,
                 "title": template.title,
                 "guide_text": template.guide_text,
                 "five_element": template.five_element,

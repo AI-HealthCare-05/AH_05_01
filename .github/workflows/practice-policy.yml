@@ -1,0 +1,30 @@
+name: Practice score policy
+
+on:
+  pull_request:
+    paths:
+      - 'app/services/practice*'
+      - 'app/services/composition_formula.py'
+      - 'app/dtos/practice_score.py'
+      - 'app/repositories/challenge_repository.py'
+      - 'tests_model_review/**'
+      - '.github/workflows/practice-policy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  policy-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.12.5'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.15'
+      - run: uv sync --locked --group app --group dev
+      - run: uv run --no-sync python -B -m pytest -q tests_model_review/test_practice_score_policy.py
+      - run: uv run --no-sync ruff check app/services/practice_score_service.py app/dtos/practice_score.py app/repositories/challenge_repository.py tests_model_review/test_practice_score_policy.py
+      - run: uv run --no-sync ruff format --check app/services/practice_score_service.py app/dtos/practice_score.py tests_model_review/test_practice_score_policy.py
