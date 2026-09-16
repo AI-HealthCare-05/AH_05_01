@@ -30,6 +30,10 @@ app = [
     "asyncmy>=0.2.11",
     "bcrypt<=4.0.1",
     "fastapi[standard]>=0.128.0",
+    # ⚠️ 2026-09-10 추가: 구글 ID 토큰 검증(POST /auth/google). 구글 공개키를 받아와서
+    # 서명·aud·exp를 확인해 줌 - 직접 구현하면 검증을 빠뜨리기 쉬운 부분이라 공식
+    # 라이브러리를 씀(app/core/oauth/google.py).
+    "google-auth>=2.38.0",
     "httpx>=0.28.1",
     "orjson>=3.11.5",
     "passlib[bcrypt]>=1.7.4",
@@ -73,6 +77,10 @@ asyncio_default_fixture_loop_scope = "session"
 # 기본 라인 길이 설정
 line-length = 120
 target-version = "py312"
+# ⚠️ 2026-09-09 추가: tuntun_peer_bridge/는 외부에서 받은 검토용 모델 패키지 원본임 -
+# manifest SHA-256으로 무결성이 고정돼 있어서 스타일 수정조차 절대 하면 안 됨(고치면
+# 해시가 깨져서 신뢰 검증이 실패함). 린트 대상에서 완전히 제외.
+extend-exclude = ["tuntun_peer_bridge"]
 
 [tool.ruff.lint]
 # 사용할 린트 규칙들 선택

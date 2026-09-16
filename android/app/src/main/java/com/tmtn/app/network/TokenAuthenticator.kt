@@ -20,6 +20,12 @@ import org.json.JSONObject
  * 최종적으로 갱신에 실패하면(refresh_token도 만료 등) null을 돌려주고, 원래의 401 응답이
  * 그대로 SessionInterceptor까지 올라가서 기존 로직(세션 만료 화면 표시)이 그대로 처리함 -
  * 여기서 TokenHolder.clear()/SessionManager를 직접 건드리지 않음(책임 중복 방지).
+ *
+ * ⚠️ 2026-09-08 추가: 동시에 여러 요청이 401을 맞았을 때 각자 refresh를 한 번씩 더 쏘던 문제.
+ * 리프레시 토큰 rotation을 켠 뒤로는 refresh 한 번마다 새 리프레시 토큰 쿠키가 내려오므로,
+ * 동시에 5개가 refresh를 부르면 쿠키가 5번 덮어써지면서 경합이 생김. 이제 락 안에서
+ * "내가 실패할 때 쓰던 토큰"과 "지금 TokenHolder에 있는 토큰"을 비교해서, 다른 스레드가
+ * 이미 갱신해 놨으면 refresh를 생략하고 그 토큰으로 바로 재시도한다.
  */
 class TokenAuthenticator(private val baseUrl: String, private val refreshClient: OkHttpClient) : Authenticator {
 
@@ -28,20 +34,33 @@ class TokenAuthenticator(private val baseUrl: String, private val refreshClient:
         // 무한 재시도 방지.
         if (responseCount(response) >= 2) return null
         // 애초에 인증 헤더가 없던 요청(로그인 등)이면 우리가 손댈 대상이 아님.
-        if (response.request.header("Authorization") == null) return null
+        val staleHeader = response.request.header("Authorization") ?: return null
+        val staleToken = staleHeader.removePrefix("Bearer ").trim()
 
-        val newToken = requestNewAccessToken() ?: return null
-        TokenHolder.accessToken = newToken
+        val newToken = obtainFreshToken(staleToken) ?: return null
         return response.request.newBuilder()
             .header("Authorization", "Bearer $newToken")
             .build()
     }
 
+    /**
+     * 401을 맞은 요청이 들고 있던 토큰(staleToken)을 기준으로 "지금 써야 할 토큰"을 돌려준다.
+     * 다른 스레드가 이미 갱신해 뒀으면 그 토큰을 그대로 쓰고, 아니면 직접 refresh를 부른다.
+     */
     @Synchronized
+    private fun obtainFreshToken(staleToken: String): String? {
+        val current = TokenHolder.accessToken
+        if (!current.isNullOrBlank() && current != staleToken) {
+            // 내가 락을 기다리는 동안 다른 요청이 이미 갱신을 끝냈음 - refresh를 또 부르지 않음.
+            return current
+        }
+
+        val refreshed = requestNewAccessToken() ?: return null
+        TokenHolder.accessToken = refreshed
+        return refreshed
+    }
+
     private fun requestNewAccessToken(): String? {
-        // 여러 요청이 동시에 401을 맞아도 이 함수 자체가 synchronized라 refresh 호출은
-        // 한 번만 나감(나머지는 기다렸다가 그 결과를 그대로 씀 - 정확히는 각자 다시 호출하지만
-        // 서버가 refresh_token 재사용을 허용하는 한 문제 없음).
         return try {
             val request = Request.Builder().url("${baseUrl}auth/token/refresh").get().build()
             refreshClient.newCall(request).execute().use { resp ->

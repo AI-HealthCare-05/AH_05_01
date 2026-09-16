@@ -1,10 +1,18 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException
+from starlette.concurrency import run_in_threadpool
 from tortoise.transactions import in_transaction
 
+from app.core.oauth.google import verify_google_id_token
 from app.core.utils.common import normalize_phone_number
 from app.core.utils.security import hash_password, verify_password
 from app.core.validators.user_validators import validate_password
-from app.dtos.users import AccountDeleteRequest, EmailChangeRequest, PasswordChangeRequest, UserUpdateRequest
+from app.dtos.users import (
+    AccountDeleteRequest,
+    EmailChangeRequest,
+    PasswordChangeRequest,
+    UserInfoResponse,
+    UserUpdateRequest,
+)
 from app.models.assessments import AssessmentJob, TmtnIndexResult
 from app.models.cards import DailyCardSet
 from app.models.challenges import PointLedger
@@ -26,6 +34,18 @@ class UserManageService:
         self.auth_service = AuthService()
         self.email_verification_service = EmailVerificationService()
 
+    async def get_user_info(self, user: User) -> UserInfoResponse:
+        """⚠️ 2026-09-07 추가: /users/me. height_cm은 User 모델에 없고
+        health_input_snapshots(온보딩 입력, append-only)에서 최신값을 따로 조회해서 채움 -
+        안드로이드가 걷기/조깅 케이던스 임계값을 신장 구간표로 계산할 때 씀."""
+
+        info = UserInfoResponse.model_validate(user)
+        latest_health = await HealthInputSnapshot.filter(user_id=user.id).order_by("-measured_at").first()
+        if latest_health is not None:
+            height = (latest_health.input_values or {}).get("height_cm")
+            info.height_cm = float(height) if height is not None else None
+        return info
+
     async def update_user(self, user: User, data: UserUpdateRequest) -> User:
         if data.email:
             await self.auth_service.check_email_exists(data.email)
@@ -44,8 +64,7 @@ class UserManageService:
         실질적으로 안 쓰이고 있어서(JWT만으로 인증) 이번엔 별도 구현 안 함 — 필요하면
         sessions 테이블을 실제로 검증하는 걸로 나중에 확장할 것."""
 
-        if not verify_password(data.current_password, user.hashed_password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="지금 비밀번호가 올바르지 않습니다.")
+        await self._reauthenticate(user, data.current_password, data.google_id_token)
         validate_password(data.new_password)  # 규칙 안 맞으면 ValueError -> 422로 자동 변환됨
         user.hashed_password = hash_password(data.new_password)
         await user.save(update_fields=["hashed_password"])
@@ -65,9 +84,18 @@ class UserManageService:
         걸려 있어서(2026-08-31 확인), user.delete() 한 번으로 기록·재료·댐·동의 등
         관련 데이터가 DB 레벨에서 자동으로 함께 지워짐."""
 
-        if not verify_password(data.password, user.hashed_password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="비밀번호가 올바르지 않습니다.")
+        await self._reauthenticate(user, data.password, data.google_id_token)
         await user.delete()
+
+    @staticmethod
+    async def _reauthenticate(user: User, password: str | None, google_id_token: str | None) -> None:
+        if google_id_token:
+            identity = await run_in_threadpool(verify_google_id_token, google_id_token, max_age_seconds=300)
+            if not user.google_sub or identity.subject != user.google_sub:
+                raise HTTPException(status_code=403, detail="가입한 Google 계정을 선택해 주세요.")
+            return
+        if not password or not user.hashed_password or not verify_password(password, user.hashed_password):
+            raise HTTPException(status_code=400, detail="비밀번호 또는 Google 계정으로 본인 확인해 주세요.")
 
     async def delete_records_only(self, user: User) -> None:
         """F13: 계정(이메일·비밀번호)은 그대로 두고, 기록·입력값·재료·댐만 지움.

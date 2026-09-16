@@ -40,6 +40,7 @@ def _user(*, complete=True, older=False):
         birth_year=1950 if older else (1990 if complete else None),
         birth_month=1 if complete else None,
         gender="FEMALE" if complete else None,
+        is_pregnant=False if complete else None,
     )
 
 

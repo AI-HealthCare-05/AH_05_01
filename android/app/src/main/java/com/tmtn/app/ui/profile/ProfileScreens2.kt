@@ -5,6 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,7 +33,7 @@ import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** Figma F08 · 몸 정보 수정 */
+/** Figma F08 · 신체 정보 수정 */
 @Composable
 fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
@@ -42,18 +45,41 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
     var weightText by remember(health) {
         mutableStateOf((health?.input_values?.get("weight_kg") as? Number)?.toInt()?.toString() ?: "")
     }
+    // Registered gender is read-only; pregnancy remains editable independently.
+    val gender = user?.gender
+    var isPregnant by remember(user) { mutableStateOf(user?.is_pregnant) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "몸 정보", onBack = onBack)
+        TmtnTopBar(title = "신체 정보", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
-            ) {
-                ProfileListItem("생년월일", if (user?.birth_year != null) "${user.birth_year}년 ${user.birth_month}월" else "-") { }
-                ProfileListItem("성별", genderLabel(user?.gender)) { }
+            Text("기본 정보", style = TmtnType.title, color = colors.onSurface)
+            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("생년월", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text(if (user?.birth_year != null && user.birth_month != null) "${user.birth_year}년 ${user.birth_month}월" else "등록된 정보가 없어요",
+                    style = TmtnType.bodyLarge, color = colors.onSurface)
+            }
+            androidx.compose.material3.HorizontalDivider(color = colors.outlineVariant)
+            Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(14.dp)).padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("성별", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text(when (gender) { "MALE" -> "남성"; "FEMALE" -> "여성"; else -> "등록된 정보가 없어요" },
+                    style = TmtnType.bodyLarge, color = colors.onSurface)
+                Text("가입할 때 등록한 정보예요. 변경할 수 없어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            }
+
+            if (gender == "FEMALE") {
+                Text("임신 여부 (필수)", style = TmtnType.label, color = colors.onSurface)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TmtnChip(text = "아니요", selected = isPregnant == false, onClick = { isPregnant = false })
+                    TmtnChip(text = "예", selected = isPregnant == true, onClick = { isPregnant = true })
+                }
+                Text(
+                    "임신 중에는 참고 점수를 정확히 계산하기 어려워 일부 항목을 표시하지 않을 수 있어요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
             }
 
             TmtnTextField(
@@ -67,30 +93,33 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
                 label = "몸무게 (kg)", keyboardType = KeyboardType.Number,
             )
 
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(20.dp),
-            ) {
-                Text("값을 고치면 틈튼지수를 다시 계산합니다. 지난 기록은 그대로 남습니다.", style = TmtnType.body, color = colors.onSurface)
-            }
-            Text("생년월일은 연·월까지만 받습니다.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            Text("다음 틈튼지수 계산에 사용해요. 지난 기록은 그대로 남아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
+            val saveBlockedReason = when {
+                (heightText.toIntOrNull() ?: 0) <= 0 -> "키를 입력해 주세요."
+                (weightText.toIntOrNull() ?: 0) <= 0 -> "몸무게를 입력해 주세요."
+                gender == null -> "등록된 성별을 확인하지 못했어요. 이전 화면에서 다시 불러와 주세요."
+                gender == "FEMALE" && isPregnant == null -> "임신 여부를 선택해 주세요."
+                else -> null
+            }
             TmtnPrimaryButton(
-                text = "저장하고 다시 계산",
+                text = if (state.isLoading.value) "저장 중…" else "신체 정보 저장",
                 onClick = {
                     val h = heightText.toIntOrNull()
                     val w = weightText.toIntOrNull()
-                    if (h != null && w != null) scope.launch { state.saveHealthInput(h, w) }
+                    scope.launch {
+                        if (gender == "FEMALE" && isPregnant != user?.is_pregnant) {
+                            state.saveGenderAndPregnancy(gender, isPregnant)
+                            if (state.errorMessage.value != null) return@launch
+                        }
+                        if (h != null && w != null) state.saveHealthInput(h, w)
+                    }
                 },
-                enabled = heightText.toIntOrNull() != null && weightText.toIntOrNull() != null,
+                enabled = saveBlockedReason == null && !state.isLoading.value,
+                disabledReason = saveBlockedReason,
             )
         }
     }
-}
-
-private fun genderLabel(gender: String?): String = when (gender) {
-    "MALE" -> "남성"
-    "FEMALE" -> "여성"
-    else -> "-"
 }
 
 /** Figma F09 · 운동 정보 수정 */
@@ -100,7 +129,7 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
     val existing = state.exerciseHabits.value
 
     var strengthCount by remember(existing) { mutableStateOf(existing?.strength_weekly_count ?: 0) }
-    var strengthIntensity by remember(existing) { mutableStateOf(existing?.strength_intensity ?: "MODERATE") }
+    var strengthIntensity by remember(existing) { mutableStateOf(existing?.strength_intensity) }
     var aerobicLow by remember(existing) { mutableStateOf(existing?.aerobic_low_minutes ?: 0) }
     var aerobicModerate by remember(existing) { mutableStateOf(existing?.aerobic_moderate_minutes ?: 0) }
     var aerobicHigh by remember(existing) { mutableStateOf(existing?.aerobic_high_minutes ?: 0) }
@@ -108,69 +137,27 @@ fun ExerciseEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () ->
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "운동 정보", onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("근력운동", style = TmtnType.label, color = colors.onSurface)
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text("주 횟수", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(0, 1, 2, 3, 4, 5).forEach { n ->
-                        TmtnChip(
-                            text = if (n == 0) "안 함" else "주 ${n}회", selected = strengthCount == n,
-                            onClick = { strengthCount = n },
-                        )
-                    }
-                }
-                if (strengthCount > 0) {
-                    Text("강도", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("LIGHT" to "가볍게", "MODERATE" to "적당히", "HARD" to "힘들게").forEach { (value, label) ->
-                            TmtnChip(text = label, selected = strengthIntensity == value, onClick = { strengthIntensity = value })
-                        }
-                    }
-                }
-            }
-
-            Text("유산소 · 주당 시간", style = TmtnType.label, color = colors.onSurface)
-            AerobicStepperRow("저강도", aerobicLow) { aerobicLow = it }
-            AerobicStepperRow("중강도", aerobicModerate) { aerobicModerate = it }
-            AerobicStepperRow("고강도", aerobicHigh) { aerobicHigh = it }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(20.dp),
-            ) {
-                Text("0분도 정상입니다. 값을 비워 두는 것과는 다르게 셉니다.", style = TmtnType.body, color = colors.onSurface)
-            }
-            Text("값을 고치면 틈튼지수를 다시 계산합니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            com.tmtn.app.ui.common.TmtnExerciseFields(
+                strengthCount, { strengthCount = it }, strengthIntensity, { strengthIntensity = it },
+                aerobicLow, { aerobicLow = it.coerceAtMost(1000) },
+                aerobicModerate, { aerobicModerate = it.coerceAtMost(1000) },
+                aerobicHigh, { aerobicHigh = it.coerceAtMost(1000) },
+            )
+            Text("저장하면 틈튼지수에 반영돼요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             TmtnPrimaryButton(
-                text = "저장하고 다시 계산",
+                text = if (state.isLoading.value) "저장 중…" else "운동 정보 저장",
                 onClick = {
                     scope.launch {
                         state.saveExerciseHabits(strengthCount, strengthIntensity, aerobicLow, aerobicModerate, aerobicHigh)
                     }
                 },
+                enabled = !state.isLoading.value && (strengthCount == 0 || strengthIntensity != null),
+                disabledReason = if (strengthCount > 0 && strengthIntensity == null) "근력운동의 강도를 골라 주세요." else null,
             )
         }
-    }
-}
-
-@Composable
-private fun AerobicStepperRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
-    val colors = LocalTmtnColors.current
-    Column(
-        modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(label, style = TmtnType.label, color = colors.onSurface)
-        TmtnStepper(
-            value = minutes, unit = "분",
-            onDecrement = { onChange((minutes - 10).coerceAtLeast(0)) },
-            onIncrement = { onChange((minutes + 10).coerceAtMost(1000)) },
-        )
     }
 }

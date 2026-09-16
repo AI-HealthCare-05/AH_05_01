@@ -1,11 +1,21 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.tmtn.app.ui.cardhome
 
 import com.tmtn.app.ui.common.toKoreanDateLabel
 import java.time.LocalDate
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -48,32 +59,33 @@ fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
     var dragOffsetPx by remember { mutableFloatStateOf(0f) }
     val dismissThresholdPx = with(LocalDensity.current) { 96.dp.toPx() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // 지금 보고 있던 화면 위에 얹히는 오버레이라는 걸 보여주는 반투명 스크림.
-        // D그룹 DayDetailSheet와 같은 처리.
-        Box(modifier = Modifier.fillMaxSize().background(colors.onSurface.copy(alpha = 0.32f)))
-
+    com.tmtn.app.ui.common.TmtnSheetDialog(onDismiss = state::closeRestDaySheet) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
+                .heightIn(max = (LocalConfiguration.current.screenHeightDp * .9f).dp)
                 .offset { IntOffset(0, dragOffsetPx.roundToInt()) }
                 .background(colors.surface, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .pointerInput(Unit) { detectTapGestures { } }
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 32.dp)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
+                            onDragCancel = { dragOffsetPx = 0f },
                             onDragEnd = {
                                 if (dragOffsetPx > dismissThresholdPx) state.closeRestDaySheet()
                                 dragOffsetPx = 0f
                             },
                             onVerticalDrag = { change, dragAmount ->
                                 change.consume()
-                                dragOffsetPx = (dragOffsetPx + dragAmount).coerceAtLeast(0f)
+                                if (!state.isLoading.value) dragOffsetPx = (dragOffsetPx + dragAmount).coerceAtLeast(0f)
                             },
                         )
                     },
@@ -87,16 +99,19 @@ fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
                 )
             }
             Text("오늘은 쉬어갈까요?", style = TmtnType.title, color = colors.onSurface)
-            Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.bodyLarge, color = colors.onSurface)
+            Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.bodyLarge, color = colors.onSurface)
 
-            Row(
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text("이번 주 남은 쉼", style = TmtnType.body, color = colors.onSurface)
+                // ⚠️ 2026-09-07 반영: 상태전이 문서 G5 - 라벨은 "남은 쉼"인데 값은 쓴
+                // 횟수(usedThisWeek)를 보여줘서 서로 모순됐음(QA N6). "이번 주 쉬어가기
+                // N회 중 M회 남음" 형식으로 통일 - 이 값이 실제로 남은 횟수(remaining)임.
+                Text("이번 주 쉬어가기", style = TmtnType.body, color = colors.onSurface)
                 Text(
-                    "${state.restDaysUsedThisWeek.value}회 / 2회",
+                    "2회 중 ${state.restDaysRemainingThisWeek.value}회 남음",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
             }
@@ -111,13 +126,14 @@ fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
                 Text("쉼으로 표시해도 연속 기록은 그대로 이어져요.", style = TmtnType.body, color = colors.onSurface)
             }
             Text("한 주에 두 번까지 쉴 수 있어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            com.tmtn.app.ui.onboarding.OnboardingErrorMessage(state.errorMessage.value)
 
             TmtnPrimaryButton(
-                text = "오늘 쉬어가기",
+                text = if (state.isLoading.value) "쉼으로 저장 중…" else "오늘 쉬어가기",
                 onClick = { scope.launch { state.confirmRestDay() } },
-                enabled = state.restDaysRemainingThisWeek.value > 0,
+                enabled = state.restDaysRemainingThisWeek.value > 0 && !state.isLoading.value,
             )
-            TmtnTextButton(text = "닫기", onClick = { state.closeRestDaySheet() })
+            TmtnTextButton(text = "닫기", onClick = { state.closeRestDaySheet() }, enabled = !state.isLoading.value)
         }
     }
 }
@@ -132,7 +148,7 @@ fun RestDayDoneScreen(state: CardHomeState, scope: kotlinx.coroutines.CoroutineS
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("틈튼", style = TmtnType.title, color = colors.onSurface)
-        Text(LocalDate.now().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
+        Text(state.displayDateLabel().toKoreanDateLabel(), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
         Column(
             modifier = Modifier
@@ -142,10 +158,12 @@ fun RestDayDoneScreen(state: CardHomeState, scope: kotlinx.coroutines.CoroutineS
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Box(modifier = Modifier.fillMaxWidth().height(88.dp)) {
-                Text(
-                    "일러스트 자리 · 쉬는 비버", style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.Center),
+            Box(modifier = Modifier.fillMaxWidth().height(88.dp), contentAlignment = Alignment.Center) {
+                // ⚠️ 2026-09-06 반영: B16(홈 · 쉬어가기 확인) 배치표 그대로 - beaver_cheer.
+                Image(
+                    painter = painterResource(com.tmtn.app.R.drawable.beaver_cheer),
+                    contentDescription = "쉬어가기를 응원하는 비버",
+                    modifier = Modifier.height(88.dp),
                 )
             }
             Box(

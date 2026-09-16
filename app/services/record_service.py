@@ -3,6 +3,7 @@ from collections import Counter
 from datetime import date, timedelta
 
 from fastapi import HTTPException, status
+from tortoise.transactions import in_transaction
 
 from app.core.time_utils import service_today
 from app.dtos.companion import MATERIAL_INFO
@@ -16,9 +17,10 @@ from app.dtos.records import (
     WeeklyMaterialItem,
     WeeklyReportResponse,
 )
-from app.models.challenges import ChallengeEvent
+from app.models.challenges import ChallengeEvent, ChallengeState
 from app.models.users import User
 from app.repositories.record_repository import RecordRepository
+from app.services.challenge_service import ChallengeService
 
 MAX_REST_DAYS_PER_WEEK = 2
 
@@ -44,6 +46,10 @@ def _time_slot_from_hour(hour: int) -> str:
 class RecordService:
     def __init__(self):
         self.repo = RecordRepository()
+        # ⚠️ 2026-09-07 반영: REST<->GIVE_UP 전환(switch_to_give_up)에서 챌린지를 SKIPPED로
+        # 넘기는 로직을 challenge_service.skip()과 별도로 다시 구현하면 idempotency_key
+        # 생성 규칙 등이 어긋날 위험이 있어서, 기존 서비스를 그대로 재사용함.
+        self.challenge_service = ChallengeService()
 
     async def _build_status_map(
         self, user_id, start: date, end: date, signup_date: date | None = None
@@ -86,7 +92,7 @@ class RecordService:
         _, last_day = monthrange(year, month)
         start = date(year, month, 1)
         end = date(year, month, last_day)
-        today = service_today()
+        today = service_today(user.id)  # ⚠️ 2026-09-08: 계정별 오프셋 적용
         if end > today:
             end = today  # 미래 날짜는 아예 표시 안 함 (완료 여부를 알 수 없으니까)
 
@@ -109,7 +115,7 @@ class RecordService:
         )
 
     async def get_weekly_report(self, user: User) -> WeeklyReportResponse:
-        today = service_today()
+        today = service_today(user.id)  # ⚠️ 2026-09-08: 계정별 오프셋 적용
         start = today - timedelta(days=6)
         signup_date = user.created_at.date()
 
@@ -194,7 +200,7 @@ class RecordService:
 
     async def mark_rest_day(self, user: User, request: RestDayRequest) -> StreakResponse:
         target_date = request.service_date
-        today = service_today()
+        today = service_today(user.id)  # ⚠️ 2026-09-08: 계정별 오프셋 적용
         if target_date > today:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="미래 날짜는 쉼으로 표시할 수 없습니다."
@@ -230,12 +236,80 @@ class RecordService:
                 )
 
         existing_note.is_rest_day = True
-        await existing_note.save(update_fields=["is_rest_day", "updated_at"])
+        # ⚠️ 2026-09-07 반영: 상태전이 정책(GIVE_UP -> REST, 전이 T-포기취소) - "포기"
+        # 표시와 "쉼" 표시는 daily_record_notes에서 서로 배타적이어야 함(달력·홈에서
+        # 동시에 두 상태가 보이면 안 됨). is_given_up이 켜져 있던 날에 쉼을 선택하면
+        # 여기서 같이 꺼줌 - 별도 "포기 취소" 호출 없이 이 API 하나로 전환이 끝남
+        # (실제로 challenge.state==SKIPPED이면 challenge 쪽은 그대로 두는데, 이미
+        # start()가 SKIPPED에서도 재시작을 허용하므로(G2) 문제 없음).
+        existing_note.is_given_up = False
+        await existing_note.save(update_fields=["is_rest_day", "is_given_up", "updated_at"])
+
+        return await self.get_streak(user)
+
+    async def switch_to_give_up(self, user: User, target_date: date) -> StreakResponse:
+        """⚠️ 2026-09-07 반영: 백엔드전달_상태전이 문서의 REST -> GIVE_UP 전환(T13 계열).
+        "쉬어가기 취소"와 "포기 기록"을 하나의 트랜잭션으로 묶음 - 두 API를 순서대로 따로
+        부르게 하면, 두 번째 호출이 실패했을 때 "쉼 티켓은 이미 환불됐는데 상태는 여전히
+        쉼으로 보이는" 불일치가 생길 수 있음.
+
+        카드를 뽑고 챌린지가 있는 날은 challenge_service.skip()으로 챌린지 자체를
+        SKIPPED로 넘기고(그게 곧 "포기" 표시), 카드를 아직 안 뽑은 날(B18 등)은 애초에
+        challenge가 없으므로 G3에서 추가한 note.is_given_up 플래그로 대신 기록함.
+        """
+
+        today = service_today(user.id)  # ⚠️ 2026-09-08: 계정별 오프셋 적용
+        if target_date > today:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="미래 날짜는 포기로 표시할 수 없습니다."
+            )
+
+        card_set = await self.repo.get_card_set_by_date(user.id, target_date)
+        challenge = card_set.selection.challenge if (card_set and card_set.selection) else None
+
+        if challenge is not None and challenge.state == ChallengeState.COMPLETED:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="이미 완료한 날은 포기로 표시할 수 없습니다."
+            )
+
+        async with in_transaction():
+            note = await self.repo.get_or_create_note(user.id, target_date)
+            note.is_rest_day = False
+
+            if challenge is not None:
+                # 이미 SKIPPED면(중복 호출 등) challenge_service.skip()이 409를 던지므로,
+                # 여기서 미리 걸러서 조용히 통과시킴 - 사용자 입장에선 결과가 같아야 함.
+                if challenge.state != ChallengeState.SKIPPED:
+                    await self.challenge_service.skip(user, challenge.id, reason="REST_TO_GIVE_UP")
+                note.is_given_up = False  # challenge.state==SKIPPED 쪽이 곧 "포기" 표시라 중복 표시 안 함
+            else:
+                note.is_given_up = True
+
+            await note.save(update_fields=["is_rest_day", "is_given_up", "updated_at"])
+
+        return await self.get_streak(user)
+
+    async def cancel_rest_day(self, user: User, target_date: date) -> StreakResponse:
+        """⚠️ 2026-09-07 반영: 백엔드전달_상태전이 문서 G1(P0) - "쉬어가기 취소" API가
+        없어서 T08/T09/T10/T13(번복) 전이가 전부 막혀 있었음. mark_rest_day와 같은 날짜
+        검증 규칙(미래 날짜 거부)을 그대로 적용. 이미 REST가 아니면(is_rest_day=False)
+        조용히 그대로 반환 - 중복 취소를 에러로 취급할 이유가 없음."""
+
+        today = service_today(user.id)  # ⚠️ 2026-09-08: 계정별 오프셋 적용
+        if target_date > today:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="미래 날짜는 쉼을 취소할 수 없습니다."
+            )
+
+        note = await self.repo.get_or_create_note(user.id, target_date)
+        if note.is_rest_day:
+            note.is_rest_day = False
+            await note.save(update_fields=["is_rest_day", "updated_at"])
 
         return await self.get_streak(user)
 
     async def get_streak(self, user: User) -> StreakResponse:
-        today = service_today()
+        today = service_today(user.id)  # ⚠️ 2026-09-08: 계정별 오프셋 적용
         earliest = await self.repo.get_earliest_card_set_date(user.id)
 
         if earliest is None:

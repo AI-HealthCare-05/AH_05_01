@@ -1,5 +1,8 @@
 package com.tmtn.app.ui.dam
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.tmtn.app.ui.common.TmtnMascot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,50 +32,49 @@ import com.tmtn.app.ui.theme.TmtnType
  * 이 화면을 먼저 보여주고 POST /companion/stage-up-seen으로 봤다고 표시한 뒤 홈으로.
  */
 @Composable
-fun StageUpCelebrationScreen(pending: StageUpPendingResponse, onGoToDam: () -> Unit, onClose: () -> Unit) {
+fun StageUpCelebrationScreen(pending: StageUpPendingResponse, onGoToDam: () -> Unit, onClose: () -> Unit, busy: Boolean = false) {
     val colors = LocalTmtnColors.current
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "건너뛰기", onBack = onClose)
+        TmtnTopBar(title = "댐 복구 소식", onBack = if (busy) null else onClose)
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .background(colors.secondary, RoundedCornerShape(999.dp))
+                    .background(colors.primary, RoundedCornerShape(999.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp),
             ) {
-                Text("${pending.new_stage}단계 달성", style = TmtnType.label, color = colors.onSurface)
+                Text("${pending.new_stage}단계 달성", style = TmtnType.label, color = androidx.compose.ui.graphics.Color.White)
             }
 
-            Text("댐 몸통이\n이어졌어요", style = TmtnType.display, color = colors.onSurface)
+            Text("한 단계\n단단해졌어요.", style = TmtnType.display, color = colors.onSurface)
 
-            Box(
-                modifier = Modifier.fillMaxWidth().height(132.dp).background(colors.surface, RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "이미지 미확정 · 댐 ${pending.new_stage}단계",
-                    style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
-                )
-            }
+            com.tmtn.app.ui.common.DamArtwork(pending.new_stage,
+                description = "${pending.new_stage}단계로 단단해진 댐")
 
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(colors.surface, RoundedCornerShape(16.dp))
                     .padding(horizontal = 20.dp, vertical = 18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+              val expandedText = androidx.compose.ui.platform.LocalDensity.current.fontScale *
+                  com.tmtn.app.ui.theme.LocalTmtnTextScale.current > 1.25f
+              Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("${pending.previous_stage}단계", style = TmtnType.bodyLarge, color = colors.onSurfaceVariant)
-                Text("→", style = TmtnType.title, color = colors.secondary)
+                Text("→", style = TmtnType.title, color = colors.primary)
                 Text(
-                    "${pending.new_stage}단계 · ${pending.new_stage_label}",
+                    if (expandedText) "${pending.new_stage}단계" else
+                        "${pending.new_stage}단계 · ${com.tmtn.app.ui.common.damRepairLabel(pending.new_stage)}",
                     style = TmtnType.bodyLarge, color = colors.onSurface,
                 )
+              }
+              if (expandedText) Text(com.tmtn.app.ui.common.damRepairLabel(pending.new_stage),
+                  style = TmtnType.bodyLarge, color = colors.onSurface)
             }
 
             Column(
@@ -96,8 +98,8 @@ fun StageUpCelebrationScreen(pending: StageUpPendingResponse, onGoToDam: () -> U
                 }
             }
 
-            TmtnPrimaryButton(text = "자란 댐 보러 가기", onClick = onGoToDam)
-            TmtnTextButton(text = "닫기", onClick = onClose)
+            TmtnPrimaryButton(text = "내 댐 보러 가기", onClick = onGoToDam, enabled = !busy, loading = busy)
+            if (!busy) TmtnTextButton(text = "닫기", onClick = onClose)
         }
     }
 }

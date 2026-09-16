@@ -18,6 +18,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,39 +41,58 @@ import kotlinx.coroutines.launch
  * 설정돼 있어서(AndroidManifest.xml), Compose 쪽에 imePadding() + 스크롤만 추가하면 됨.
  */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun RetrospectScreen(state: CardHomeState, scope: CoroutineScope) {
     val colors = LocalTmtnColors.current
-    var memo by remember { mutableStateOf("") }
-    var mood by remember { mutableStateOf<String?>(null) }
+    var memo by rememberSaveable { mutableStateOf("") }
+    var mood by rememberSaveable { mutableStateOf<String?>(null) }
+    val memoLimit = 100 - (mood?.let { it.length + 3 } ?: 0)
     val moods = listOf("좋았어", "그저 그랬어", "힘들었어")
 
     Column(modifier = Modifier.fillMaxSize().imePadding()) {
         TmtnTopBar(title = "오늘 완료", onBack = { scope.launch { state.submitRetrospect(null) } })
 
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            // ⚠️ 2026-09-08 QA(N10) 반영: "완료하기 → 확인 → 회고 → 홈" 어디에도 보상이
+            // 안 보이고 홈에 가서야 재료가 늘어난 걸 볼 수 있었음 - 여기서 바로 보여줌.
+            val awardedElement = state.awardedFiveElement.value
+            val material = MATERIAL_NAMES[awardedElement]
+            if (material != null) {
+                Row(
+                    modifier = Modifier
+                        .background(colors.woodContainer, RoundedCornerShape(999.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    MaterialIcon(element = awardedElement!!, size = 20.dp)
+                    Text("${material.first} 1개를 얻었어요", style = TmtnType.label, color = colors.onSurface)
+                }
+            }
+
             Text("오늘 어땠어?", style = TmtnType.headline, color = colors.onSurface)
             Text(
-                "한 줄만 남겨도 좋아요. 나중에 기록에서 다시 볼 수 있습니다.",
+                "짧게 남겨도 좋아요. 오늘의 기록에 함께 담아 둘게요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
 
             TmtnTextField(
-                value = memo, onValueChange = { if (it.length <= 100) memo = it },
+                value = memo, onValueChange = { memo = it.take(memoLimit) },
                 label = "한 줄 회고",
+                singleLine = false,
             )
             Text(
-                "${memo.length} / 100", style = TmtnType.caption, color = colors.onSurfaceVariant,
+                "${memo.length} / $memoLimit", style = TmtnType.caption, color = colors.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End,
             )
 
             Text("오늘 기분", style = TmtnType.label, color = colors.onSurface)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 moods.forEach { m ->
-                    TmtnChip(text = m, selected = mood == m, onClick = { mood = m })
+                    TmtnChip(text = m, selected = mood == m, onClick = { mood = if (mood == m) null else m })
                 }
             }
 
@@ -82,13 +104,14 @@ fun RetrospectScreen(state: CardHomeState, scope: CoroutineScope) {
                     .padding(16.dp),
             ) {
                 Text(
-                    "건너뛰어도 완료 기록은 그대로 저장됩니다.",
+                    "메모를 건너뛰어도 오늘 얻은 재료와 완료 기록은 남아요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
             }
 
             TmtnPrimaryButton(
-                text = "저장하기",
+                text = if (state.isLoading.value) "메모 저장 중…" else "오늘의 기록에 남기기",
+                enabled = !state.isLoading.value && (memo.isNotBlank() || mood != null) && memo.length <= memoLimit,
                 onClick = {
                     scope.launch {
                         val fullMemo = if (mood != null) "[$mood] $memo" else memo

@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from app.dtos.health import HealthInputCreateRequest, HealthInputResponse
 from app.models.users import User
 from app.repositories.health_repository import HealthInputRepository
+from app.services.waist_estimate_service import WaistEstimateService
 
 
 class HealthInputService:
@@ -17,6 +18,13 @@ class HealthInputService:
             source=request.source,
             measured_at=request.measured_at,
         )
+        # ⚠️ 2026-09-10 추가 - WAIST_DIAGNOSIS_2026-09-10.md가 지적했던 "입력 저장 →
+        # 모델 실행"의 빈 연결고리. 실패해도 신체정보 저장 자체(위 create)는 이미
+        # 끝났으니 그대로 성공 응답함 - 허리둘레 계산 실패가 신체정보 저장을 막으면 안 됨.
+        try:
+            await WaistEstimateService().recompute_and_save(user, snapshot.id)
+        except Exception:  # noqa: BLE001 - 신체정보 저장 자체엔 영향 주지 않음
+            pass
         return HealthInputResponse.model_validate(snapshot)
 
     async def get_latest(self, user: User) -> HealthInputResponse:
