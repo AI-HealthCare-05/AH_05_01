@@ -33,7 +33,7 @@ class WaistEstimateUiTest {
         val result = mutableStateOf<WaistEstimateUi>(WaistEstimateUi.Failed)
         compose.setContent { TMTNv1Theme { ReferenceWaistScreen(ReferenceState(), result.value) { retries++; result.value = estimate } } }
         compose.onNodeWithText("추정값을 불러오지 못했어요").assertIsDisplayed()
-        compose.onNodeWithText("다시 시도").performClick()
+        compose.onNodeWithText("다시 불러오기").performClick()
         compose.onNodeWithContentDescription("모델이 추정한 허리둘레 약 82.4 센티미터").assertIsDisplayed()
         compose.runOnIdle { assertEquals(1, retries) }
     }

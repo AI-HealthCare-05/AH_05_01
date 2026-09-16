@@ -118,11 +118,11 @@ fun RevealScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // ⚠️ "오늘 카드 다시 보기"로 완료/중단된 미션을 다시 열었을 때도 이 화면 자체는
-            // 그대로 재사용됨. isFinished를 써서 "이 행동 시작하기"는 완전히 숨김("어차피
+            // 그대로 재사용됨. isFinished를 써서 "이 카드 실천하기"는 완전히 숨김("어차피
             // onStartAction이 다시 완료 화면으로 돌려보내니 눌러봤자 의미 없음).
             //
             // ⚠️ 2026-09-04 반영: 진행 중(ACTIVE/PAUSED)인 미션 화면에서 뒤로가기로 여기
-            // 돌아왔을 때 "이 행동 시작하기"가 그대로 보여서 마치 새로 시작하는 것처럼
+            // 돌아왔을 때 "이 카드 실천하기"가 그대로 보여서 마치 새로 시작하는 것처럼
             // 헷갈렸음. 이제 진행 중이면 "진행 중인 미션 확인"으로 문구만 바꿔서 보여줌 -
             // onStartAction은 이미 stepForRevealedCard()로 진행 상태에 맞는 화면(타이머
             // 진행/일시정지 등)으로 정확히 보내주므로 그대로 재사용.
@@ -131,7 +131,7 @@ fun RevealScreen(
             // 전부에서 없애기로 방향이 정해짐 - 이 화면(카드/B06)의 버튼도 제거.
             val isInProgress = card.state == "ACTIVE" || card.state == "PAUSED"
             // ⚠️ 2026-09-07 반영: 쉬어가기(REST) 중에 "오늘 카드 다시 보기"로 들어와서
-            // 여기서 곧장 "이 행동 시작하기"를 누르면, 서버에 쉬어가기 취소 절차
+            // 여기서 곧장 "이 카드 실천하기"를 누르면, 서버에 쉬어가기 취소 절차
             // (cancel_rest_day, C25) 없이 그냥 시작돼버려서 완료해도 쓴 쉬어가기 1회가
             // 안 돌아오는 문제가 있었음. READY 상태(아직 시작 전)에서만 숨기고, 이미
             // 시작된 미션(ACTIVE/PAUSED)은 계속 확인할 수 있어야 하니 그대로 둠 - "새로
@@ -140,7 +140,7 @@ fun RevealScreen(
             val isRestingBeforeStart = state.isTodayRestDay.value && !isInProgress && !isFinished
             if (!isFinished && !isRestingBeforeStart) {
                 TmtnPrimaryButton(
-                    text = if (isInProgress) "진행 중인 미션 확인" else "이 행동 시작하기",
+                    text = if (isInProgress) "진행 중인 미션 확인" else "이 카드 실천하기",
                     onClick = onStartAction,
                 )
             } else if (isRestingBeforeStart) {
@@ -162,14 +162,7 @@ fun RevealScreen(
             // ⚠️ 2026-09-06 반영: 완료/쉬어감 정보를 이 화면 하단에 보여주던 블록을
             // 다시 없앰 - "카드만 보이면 된다"는 방향으로 정리됨. 별도 축하 화면
             // (CompletedScreen)으로도 안 돌아가고, 그냥 이 카드 화면 자체만 보여줌.
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                TextButton(onClick = { state.step.value = CardHomeStep.REASON_DETAIL }) {
-                    Text("추천 이유 보기", style = TmtnType.label, color = colors.onSurfaceVariant)
-                }
-            }
+
         }
     }
 }
@@ -259,7 +252,7 @@ fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
                     // ⚠️ 2026-09-12 반영: V19 C08(완료 카드) - 완료 상태면 "실천하면"이
                     // 아니라 "실천 완료 · 받았어요"로 바뀜. NoteCard를 완료 화면에서도
                     // 재사용하기 위해 카드 자체 상태(card.state)로 분기.
-                    if (card.state == "COMPLETED") "✓ 실천 완료 · ${material.first} 1개 받았어요"
+                    if (card.state == "COMPLETED") "실천 완료, ${material.first} 1개를 받았어요"
                     else "실천하면 ${material.first} 1개",
                     style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary,
                 )

@@ -44,6 +44,7 @@ import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.Lock
@@ -103,25 +104,33 @@ internal fun ExtraExerciseHomeEntry(state: CardHomeState) {
     androidx.compose.runtime.LaunchedEffect(completed) {
         if (completed) state.loadExerciseMissionsToday()
     }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-        .background(colors.surface).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("틈새 운동", style = TmtnType.label, color = colors.onSurface)
-        if (!completed) Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp), tint = colors.onSurfaceVariant)
-        }
-        if (completed) {
-            val today = state.exerciseMissionsToday.value
-            Text(if (today != null) "오늘 ${today.used} / ${today.limit}회 · 추가로 받은 재료" else "조금 더 움직이고 싶은 날, 재료를 하나 더.",
-                style = TmtnType.body, color = colors.onSurfaceVariant)
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                .tmtnClickable { state.openExerciseMissionList() }.heightIn(min = 48.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("틈새 운동 둘러보기", style = TmtnType.actionLabel, color = colors.onSurface, modifier = Modifier.weight(1f))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(20.dp), tint = colors.onSurface)
+    val today = state.exerciseMissionsToday.value
+    val shape = RoundedCornerShape(20.dp)
+    // Locked: a plain hairline row so the home is not a stack of beige boxes.
+    // Unlocked: a tinted, tappable strip with the current watercolor mascot as the invitation.
+    if (!completed) androidx.compose.material3.HorizontalDivider(color = colors.outlineVariant)
+    Row(Modifier.fillMaxWidth()
+        .then(if (completed) Modifier.clip(shape).background(colors.secondaryContainer).tmtnClickable { state.openExerciseMissionList() } else Modifier)
+        .padding(start = if (completed) 18.dp else 0.dp, top = if (completed) 14.dp else 4.dp, bottom = if (completed) 14.dp else 4.dp, end = if (completed) 10.dp else 0.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("틈새 운동", style = TmtnType.label, color = colors.onSurface)
+                if (!completed) Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp), tint = colors.onSurfaceVariant)
             }
-        } else {
-            Text("오늘의 카드를 마치면 열려요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            Text(
+                if (completed) (if (today != null) "오늘 추가 재료 ${today.used} / ${today.limit}회" else "조금 더 움직이고 싶은 날, 재료를 하나 더.")
+                else "오늘의 카드를 마치면 열려요.",
+                style = TmtnType.body, color = if (completed) colors.onSurface else colors.onSurfaceVariant,
+            )
+            if (completed) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("틈새 운동 둘러보기", style = TmtnType.label, color = colors.onSurface, modifier = Modifier.weight(1f, fill = false))
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp), tint = colors.onSurface)
+            }
         }
+        Image(painterResource(com.tmtn.app.R.drawable.beaver_wave), null,
+            Modifier.size(if (completed) 84.dp else 72.dp))
     }
 }
 
@@ -137,11 +146,19 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
         val selectedCard = state.revealedCard.value.takeIf { isSelected && it?.challenge_id == state.todayChallengeId.value }
         if (selectedCard != null) {
             HomeMissionCard(selectedCard, completed = isCompleted) {
-                TmtnPrimaryButton(if (isCompleted || isGivenUp) "오늘 카드 다시 보기" else if (isPaused) "이어서 실천하기" else "이 카드 실천하기",
-                    onClick = { scope.launch { state.continueTodayMission() } })
+                // Both of today's choices live inside the card: the mission first, resting as the quiet alternative.
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TmtnPrimaryButton(if (isCompleted || isGivenUp) "오늘 카드 다시 보기" else if (isPaused) "이어서 실천하기" else "이 카드 실천하기",
+                        onClick = { scope.launch { state.continueTodayMission() } })
+                    if (!isCompleted && !isGivenUp) com.tmtn.app.ui.onboarding.TmtnTextButton("오늘은 쉬어가기",
+                        onClick = { scope.launch { state.openRestDaySheet() } })
+                }
             }
-            Spacer(Modifier.height(4.dp))
-        } else {
+            if (isCompleted) Text("연속 기록 ${state.currentStreak.value}일째", style = TmtnType.caption,
+                color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp))
+            return@Column
+        }
         TmtnHomeHero(
             image = when {
                 isCompleted -> com.tmtn.app.R.drawable.beaver_cheer
@@ -178,8 +195,7 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
                 else -> ""
             },
         )
-        }
-        if (selectedCard == null) TmtnPrimaryButton(
+        TmtnPrimaryButton(
             text = when {
                 isCompleted || isGivenUp || isSelected -> "오늘 카드 다시 보기"
                 isRestDay -> "오늘 미션 해보기"

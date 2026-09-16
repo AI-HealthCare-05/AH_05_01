@@ -35,6 +35,6 @@ internal fun computeSensorDisplay(
             val value = (if (execType == "SENSOR_STEPS") steps else stepsInPlace).coerceAtLeast(0)
             SensorDisplay("$value 걸음", "목표 ${target}보", progress(value.toFloat(), target.toFloat()), isStepDetectedNow)
         }
-        else -> SensorDisplay("—", "측정 방법 확인 중", 0f, false)
+        else -> SensorDisplay("-", "측정 방법 확인 중", 0f, false)
     }
 }

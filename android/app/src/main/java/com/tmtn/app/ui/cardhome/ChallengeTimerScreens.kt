@@ -474,7 +474,7 @@ fun TimerPausedScreen(state: CardHomeState, scope: CoroutineScope) {
 
             Spacer(modifier = Modifier.height(8.dp))
             TmtnPrimaryButton(text = "이어서 하기", onClick = { scope.launch { state.resumeTimer() } }, enabled = !state.isLoading.value)
-            TmtnOutlinedButton(text = "오늘은 여기까지 할래", onClick = { state.showQuitDialog.value = true })
+            TmtnOutlinedButton(text = "오늘은 여기까지 할래요", onClick = { state.showQuitDialog.value = true })
         }
     }
 

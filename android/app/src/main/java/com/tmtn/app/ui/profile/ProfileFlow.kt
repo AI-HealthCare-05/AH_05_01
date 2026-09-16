@@ -155,7 +155,7 @@ fun ProfileFlow(
             ProfileScreenKey.PRIVACY_DATA -> PrivacyDataScreen(
                 state, scope,
                 onBack = { state.screen.value = ProfileScreenKey.HOME },
-                onOpenTerms = { state.termsOrigin = ProfileScreenKey.PRIVACY_DATA; state.screen.value = ProfileScreenKey.TERMS },
+                onOpenTerms = state::openLegal,
             )
             ProfileScreenKey.EXPORT_DATA -> ExportDataScreen(
                 state, scope,
@@ -164,14 +164,14 @@ fun ProfileFlow(
             )
             ProfileScreenKey.APP_INFO -> AppInfoScreen(
                 onBack = { state.screen.value = ProfileScreenKey.HOME },
-                onOpenTerms = { state.termsOrigin = ProfileScreenKey.APP_INFO; state.screen.value = ProfileScreenKey.TERMS },
+                onOpenTerms = state::openLegal,
             )
             ProfileScreenKey.HELP_DETAIL -> HelpDetailScreen(
                 onBack = { state.screen.value = ProfileScreenKey.HOME },
                 onInquiry = { state.inquirySubmitted.value = false; state.screen.value = ProfileScreenKey.INQUIRY },
             )
             ProfileScreenKey.INQUIRY -> InquiryScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.HELP_DETAIL })
-            ProfileScreenKey.TERMS -> com.tmtn.app.ui.onboarding.TermsDetailScreen { state.screen.value = state.termsOrigin }
+            ProfileScreenKey.TERMS -> com.tmtn.app.ui.onboarding.TermsDetailScreen(state.legalDocument.value) { state.screen.value = state.termsOrigin }
         }
       }
         if (state.screen.value != ProfileScreenKey.BASIC && !state.confirmationOwnsFeedback) {

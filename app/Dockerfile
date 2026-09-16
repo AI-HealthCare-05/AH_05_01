@@ -19,6 +19,9 @@ RUN uv sync --group app --no-dev --frozen
 
 # 4. 로컬 소스 코드를 컨테이너 내부로 복사합니다.
 COPY ./app ./app
+# 개인 설명 서비스가 읽는 집단 통계·설명 모듈도 API 이미지에 포함합니다.
+# SHAP와 학습 모델은 별도 모델 실행 환경에서 로드합니다.
+COPY ./model_service ./model_service
 
 # 5. 해당 이미지를 활용하여 도커컨테이너 실행시 실행되는 명령어입니다.
 # FastAPI를 uvicorn을 활용하여 비동기 환경으로 서버를 실행합니다.

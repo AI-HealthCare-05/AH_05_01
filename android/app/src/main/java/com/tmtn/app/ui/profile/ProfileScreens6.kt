@@ -29,12 +29,13 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import com.tmtn.app.ui.legal.LegalDocument
 
 /** Figma F05 · 개인정보 · 내 데이터 (+ F13 기록만삭제 확인 다이얼로그 통합) */
 @Composable
 fun PrivacyDataScreen(
     state: ProfileState, scope: CoroutineScope, onBack: () -> Unit,
-    onOpenTerms: () -> Unit,
+    onOpenTerms: (LegalDocument) -> Unit,
 ) {
     val colors = LocalTmtnColors.current
     var showDeleteRecordsDialog by state.confirmRecordDeletion
@@ -65,20 +66,20 @@ fun PrivacyDataScreen(
                     .background(colors.surface, RoundedCornerShape(16.dp))
                     .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             ) {
-                ProfileListItem("내 데이터 내보내기", "CSV 파일로 받습니다") { state.screen.value = ProfileScreenKey.EXPORT_DATA }
-                ProfileListItem("기록만 삭제", "계정은 그대로 두고 기록을 지웁니다") {
+                ProfileListItem("내 데이터 내보내기", "CSV 파일로 받습니다", horizontalInset = 20.dp) { state.screen.value = ProfileScreenKey.EXPORT_DATA }
+                ProfileListItem("기록만 삭제", "계정은 그대로 두고 기록을 지웁니다", horizontalInset = 20.dp) {
                     state.errorMessage.value = null
                     state.recordsDeletedDone.value = false
                     showDeleteRecordsDialog = true
                 }
-                ProfileListItem("개인정보 처리방침", null) { onOpenTerms() }
-                ProfileListItem("이용약관", null) { onOpenTerms() }
+                ProfileListItem("개인정보 처리방침", null, horizontalInset = 20.dp) { onOpenTerms(LegalDocument.PRIVACY_NOTICE) }
+                ProfileListItem("이용약관", null, horizontalInset = 20.dp) { onOpenTerms(LegalDocument.TERMS) }
             }
 
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(16.dp),
             ) {
-                Text("건강과 관련된 입력값은 광고나 외부 제공에 쓰이지 않습니다.", style = TmtnType.label, color = colors.onSurfaceVariant)
+                Text("정보의 이용 목적은 항목별 동의 안내와 개인정보 처리방침에서 확인할 수 있어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
             }
             if (state.recordsDeletedDone.value) {
                 Text("기록을 지웠어요. 계정은 그대로 이용할 수 있어요.", style = TmtnType.body, color = colors.onSurface,

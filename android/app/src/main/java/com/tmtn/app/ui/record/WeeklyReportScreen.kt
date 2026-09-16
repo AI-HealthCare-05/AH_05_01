@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.record
 
+import com.tmtn.app.ui.common.tmtnMaterialName
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -37,7 +39,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                 }
                 report == null -> Text("실천한 날들을 모으고 있어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
                 else -> {
-                    Text("${shortRecordDate(report.start_date)} – ${shortRecordDate(report.end_date)}", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                    Text("${shortRecordDate(report.start_date)} ~ ${shortRecordDate(report.end_date)}", style = TmtnType.caption, color = colors.onSurfaceVariant)
                     Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(20.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         val dateScale = androidx.compose.ui.platform.LocalDensity.current.fontScale * LocalTmtnTextScale.current
                         BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -72,11 +74,15 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                                 difference == 0 -> "이번에도 ${report.completed_count}일, 나의 속도로."
                                 else -> "이번에 남긴 ${report.completed_count}일도 소중해요."
                             }, style = TmtnType.title, color = colors.onSurface)
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                                ComparisonBar("이전 7일", before, false, Modifier.weight(1f))
-                                ComparisonBar("최근 7일", report.completed_count, true, Modifier.weight(1f))
+                            Column(Modifier.fillMaxWidth()) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                                    ComparisonBar("이전 7일", before, false, Modifier.weight(1f))
+                                    ComparisonBar("최근 7일", report.completed_count, true, Modifier.weight(1f))
+                                }
+                                // A shared baseline so the two bars read as one chart instead of two floating blocks.
+                                Box(Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
                             }
-                            Text("각 기간 7일 기준 · ${shortRecordDate(previous.first().date)}부터 / ${shortRecordDate(report.start_date)}부터", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                            Text("이전 7일은 ${shortRecordDate(previous.first().date)}부터, 최근 7일은 ${shortRecordDate(report.start_date)}부터 세었어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
                         }
                     }
                     if (report.materials_this_week.isNotEmpty()) Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(20.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -84,7 +90,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                         report.materials_this_week.forEach { material ->
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 MaterialIcon(material.element, 44.dp)
-                                Text(material.material_name, style = TmtnType.body, color = colors.onSurface, modifier = Modifier.weight(1f))
+                                Text(tmtnMaterialName(material.element, material.material_name), style = TmtnType.body, color = colors.onSurface, modifier = Modifier.weight(1f))
                                 Text("${material.count}개", style = TmtnType.label, color = colors.onSurface)
                             }
                         }

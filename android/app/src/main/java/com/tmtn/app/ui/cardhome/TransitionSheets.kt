@@ -8,35 +8,24 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
@@ -44,7 +33,6 @@ import com.tmtn.app.ui.onboarding.TmtnTextButton
 import com.tmtn.app.ui.onboarding.TmtnTonalButton
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
-import kotlin.math.roundToInt
 
 /**
  * 상태전이 정책 신규 바텀시트 6종(C22~C27) — 2026-09-07 홍주님 전달
@@ -74,6 +62,8 @@ private data class SheetButton(
     val label: String,
     val onClick: () -> Unit,
     val enabled: Boolean = true,
+    /** A plain close: the sheet animates out first, then [onClick] runs. Navigation buttons stay immediate. */
+    val closesSheet: Boolean = false,
 )
 
 @Composable
@@ -102,7 +92,7 @@ private fun RestTicketRow(valueText: String) {
 
 /**
  * 6개 시트 공통 뼈대 — 손잡이 · 제목 · 부제 · 잔여횟수 행 · 안내 카드 · (선택)캡션 · 버튼들.
- * 드래그해서 닫는 동작은 RestDaySheetScreen과 동일(손잡이 영역만 드래그 감지).
+ * 진입·드래그·퇴장 모션은 TmtnSheetDialog가 소유함(손잡이 영역만 드래그 감지).
  */
 @Composable
 private fun TransitionBottomSheetShell(
@@ -117,16 +107,15 @@ private fun TransitionBottomSheetShell(
     busy: Boolean = false,
 ) {
     val colors = LocalTmtnColors.current
-    var dragOffsetPx by remember { mutableFloatStateOf(0f) }
-    val dismissThresholdPx = with(LocalDensity.current) { 96.dp.toPx() }
 
-    com.tmtn.app.ui.common.TmtnSheetDialog(onDismiss = { if (!busy) onDismiss() }) {
+    com.tmtn.app.ui.common.TmtnSheetDialog(onDismiss = onDismiss, canDismiss = !busy) {
+        val sheet = this
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .heightIn(max = (LocalConfiguration.current.screenHeightDp * .9f).dp)
-                .offset { IntOffset(0, dragOffsetPx.roundToInt()) }
+                .tmtnSheetMotion()
                 .background(colors.surface, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .pointerInput(Unit) { detectTapGestures { } }
                 .verticalScroll(rememberScrollState())
@@ -134,22 +123,12 @@ private fun TransitionBottomSheetShell(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 32.dp)
-                    .pointerInput(busy) {
-                        detectVerticalDragGestures(
-                            onDragCancel = { dragOffsetPx = 0f },
-                            onDragEnd = {
-                                if (!busy && dragOffsetPx > dismissThresholdPx) onDismiss()
-                                dragOffsetPx = 0f
-                            },
-                            onVerticalDrag = { change, dragAmount ->
-                                change.consume()
-                                if (!busy) dragOffsetPx = (dragOffsetPx + dragAmount).coerceAtLeast(0f)
-                            },
-                        )
-                    },
+                modifier = with(sheet) {
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 32.dp)
+                        .tmtnSheetDragHandle(enabled = !busy)
+                },
                 contentAlignment = Alignment.Center,
             ) {
                 Box(modifier = Modifier.width(36.dp).height(4.dp).background(colors.outline, RoundedCornerShape(2.dp)))
@@ -177,7 +156,15 @@ private fun TransitionBottomSheetShell(
             com.tmtn.app.ui.onboarding.OnboardingErrorMessage(errorMessage)
             if (busy) Text("변경 내용을 저장하고 있어요.", style = TmtnType.caption, color = colors.onSurface,
                 modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
-            buttons.forEach { SheetButtonRow(it.copy(enabled = it.enabled && !busy)) }
+            // Stacked actions keep the app-wide 8dp button gap, not the sheet's 14dp text rhythm.
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                buttons.forEach { button ->
+                    SheetButtonRow(button.copy(
+                        enabled = button.enabled && !busy,
+                        onClick = if (button.closesSheet) ({ sheet.dismiss(button.onClick) }) else button.onClick,
+                    ))
+                }
+            }
         }
     }
 }
@@ -203,7 +190,7 @@ fun MeasuringExitSheet(
         buttons = listOf(
             SheetButton(SheetButtonStyle.FILLED, "계속하기", onContinue),
             SheetButton(SheetButtonStyle.TONAL, "나중에 이어서 하기", onPauseForLater),
-            SheetButton(SheetButtonStyle.OUTLINED, "오늘은 쉬어가기 · 1회 사용", onRestInstead),
+            SheetButton(SheetButtonStyle.OUTLINED, "오늘은 쉬어가기 (1회 사용)", onRestInstead),
             SheetButton(SheetButtonStyle.TEXT, "오늘 미션 포기", onGiveUp),
         ),
         onDismiss = onDismiss,
@@ -229,7 +216,7 @@ fun RestConfirmSheet(
         captionText = "자정 전에 미션에 도전하면 쓴 1회는 그대로 돌아옵니다.",
         buttons = listOf(
             SheetButton(SheetButtonStyle.FILLED, "오늘은 쉬어가기", onConfirmRest),
-            SheetButton(SheetButtonStyle.TEXT, "닫기", onDismiss),
+            SheetButton(SheetButtonStyle.TEXT, "닫기", onDismiss, closesSheet = true),
         ),
         onDismiss = onDismiss,
     )
@@ -250,7 +237,7 @@ fun RestExhaustedSheet(
         captionText = "오늘은 미션에 도전하거나 '오늘 포기'를 고를 수 있어요.",
         buttons = listOf(
             SheetButton(SheetButtonStyle.FILLED, "미션 도전하기", onChallengeInstead),
-            SheetButton(SheetButtonStyle.TEXT, "닫기", onDismiss),
+            SheetButton(SheetButtonStyle.TEXT, "닫기", onDismiss, closesSheet = true),
         ),
         onDismiss = onDismiss,
     )
@@ -275,7 +262,7 @@ fun RestCancelSheet(
         infoText = "오늘 쓴 쉬어가기 1회가 그대로 돌아와요. 뽑아둔 카드로 이어서 진행합니다.",
         buttons = listOf(
             SheetButton(SheetButtonStyle.FILLED, "쉬어가기 취소하고 도전하기", onCancelRestAndChallenge),
-            SheetButton(SheetButtonStyle.TEXT, "그대로 쉬기", onKeepResting),
+            SheetButton(SheetButtonStyle.TEXT, "그대로 쉬기", onKeepResting, closesSheet = true),
         ),
         onDismiss = onDismiss,
     )
@@ -300,7 +287,7 @@ fun GiveUpConfirmSheet(
         title = "오늘 미션을 포기할까요?",
         errorMessage = errorMessage, busy = busy,
         subtitle = dateLabel,
-        restTicketValue = "${restDaysRemaining}회 그대로 · 차감 없음",
+        restTicketValue = "${restDaysRemaining}회 그대로, 차감 없음",
         // ⚠️ 2026-09-08 반영: 포기하면 서버가 진행값을 0으로 지움(challenge_service.skip).
         // "다시 도전할 수 있다"만 적어두면 이어서 하는 것처럼 읽혀서, 지금까지 한 게
         // 사라진다는 걸 같이 알림.
@@ -337,7 +324,7 @@ fun RestToGiveUpSheet(
             "지금까지 한 진행도 사라집니다.",
         captionText = "자정 전이면 처음부터 다시 도전할 수 있어요.",
         buttons = listOf(
-            SheetButton(SheetButtonStyle.FILLED, "쉬어가기 그대로 두기", onKeepResting),
+            SheetButton(SheetButtonStyle.FILLED, "쉬어가기 그대로 두기", onKeepResting, closesSheet = true),
             SheetButton(SheetButtonStyle.TEXT, "포기로 바꾸기", onSwitchToGiveUp),
         ),
         onDismiss = onDismiss,

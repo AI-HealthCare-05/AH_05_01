@@ -1,5 +1,8 @@
-from app.dtos.companion import STAGE_DEFINITIONS
-from app.models.companion import CompanionStageLog, CompanionState
+from tortoise import timezone
+from tortoise.transactions import in_transaction
+
+from app.dtos.companion import stage_definitions
+from app.models.companion import CompanionFirstRepair, CompanionStageLog, CompanionState
 
 
 class CompanionRepository:
@@ -10,9 +13,52 @@ class CompanionRepository:
         state, _ = await self._model.get_or_create(user_id=user_id, defaults={"five_element_completion_counts": {}})
         return state
 
-    def _calculate_stage(self, total_materials: int) -> int:
+    async def get_first_repair(self, user_id) -> CompanionFirstRepair | None:
+        return await CompanionFirstRepair.get_or_none(user_id=user_id)
+
+    async def welcome_gift_count(self, user_id, *, for_update: bool = False) -> int:
+        # 운동 완료 트랜잭션에서는 MySQL 스냅샷 대신 잠금 읽기로 최신 복구 상태를 읽는다.
+        repair = (
+            await CompanionFirstRepair.select_for_update().get_or_none(user_id=user_id)
+            if for_update
+            else await self.get_first_repair(user_id)
+        )
+        return int(repair is not None and repair.completed_at is not None)
+
+    async def advance_first_repair(self, user_id, *, complete: bool) -> str | None:
+        """사용자별 행 잠금과 단일 행으로 재시도·동시 요청의 중복 지급을 막는다."""
+        async with in_transaction():
+            # 운동 완료와 같은 순서로 잠근다. 역순 잠금으로 인한 교착을 피한다.
+            await self.get_or_create(user_id)
+            state = await self._model.select_for_update().get(user_id=user_id)
+            repair = await CompanionFirstRepair.select_for_update().get_or_none(user_id=user_id)
+            if repair is None:
+                return "UNAVAILABLE"
+            if complete and repair.gift_received_at is None:
+                return "GIFT_REQUIRED"
+            if repair.gift_received_at is None:
+                repair.gift_received_at = timezone.now()
+                await repair.save(update_fields=["gift_received_at"])
+            if complete and repair.completed_at is None:
+                repair.completed_at = timezone.now()
+                await repair.save(update_fields=["completed_at"])
+                total = sum((state.five_element_completion_counts or {}).values()) + 1
+                await CompanionStageLog.get_or_create(
+                    user_id=user_id, stage_number=1, defaults={"total_materials_at_stage": total}
+                )
+                current_stage = self._calculate_stage(total, True)
+                if current_stage > 1:
+                    await CompanionStageLog.get_or_create(
+                        user_id=user_id, stage_number=current_stage, defaults={"total_materials_at_stage": total}
+                    )
+                # 온보딩에서 이미 축하하므로 댐 탭의 축하를 중복 재생하지 않는다.
+                state.last_seen_stage_number = max(state.last_seen_stage_number, 1)
+                await state.save(update_fields=["last_seen_stage_number"])
+            return None
+
+    def _calculate_stage(self, total_materials: int, first_repair_completed: bool = False) -> int:
         current_stage = 0
-        for stage in STAGE_DEFINITIONS:
+        for stage in stage_definitions(first_repair_completed):
             if total_materials >= stage["threshold"]:
                 current_stage = stage["stage_number"]
             else:
@@ -39,8 +85,9 @@ class CompanionRepository:
         state.five_element_completion_counts = counts
         await state.save(update_fields=["five_element_completion_counts", "updated_at"])
 
-        total_materials = sum(counts.values())
-        new_stage = self._calculate_stage(total_materials)
+        gift_count = await self.welcome_gift_count(user_id, for_update=True)
+        total_materials = sum(counts.values()) + gift_count
+        new_stage = self._calculate_stage(total_materials, bool(gift_count))
         if new_stage > 0:
             await CompanionStageLog.get_or_create(
                 user_id=user_id,

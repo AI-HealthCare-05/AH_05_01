@@ -98,7 +98,7 @@ internal fun WaistEstimateArticle(result: WaistEstimateUi, onRetry: () -> Unit =
             WaistEstimateUi.Failed -> {
                 Text("추정값을 불러오지 못했어요", style = TmtnType.bodyLarge, color = colors.onSurface)
                 Text("연결을 확인하고 다시 시도해 주세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
-                TmtnOutlinedButton("다시 시도", onRetry)
+                TmtnOutlinedButton("다시 불러오기", onRetry)
             }
         }
     }

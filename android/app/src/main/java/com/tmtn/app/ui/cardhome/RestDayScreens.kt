@@ -10,35 +10,23 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.onboarding.TmtnOutlinedButton
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
@@ -47,25 +35,22 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 /** Figma B16 · 홈 · 쉬어가기 확인 (바텀시트 - 화면 전체로 단순화해서 구현) */
 @Composable
 fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
     val colors = LocalTmtnColors.current
-    // ⚠️ 손잡이 막대만 있고 실제 드래그 동작이 없어서 "눌러도 안 움직인다"는 피드백을 받음.
-    // 손잡이 영역에서 아래로 끌면 시트가 같이 내려가고, 일정 거리 넘으면 닫히게 함.
-    // 드래그 감지 영역을 손잡이 쪽으로만 한정해서, 아래 버튼들 클릭에는 영향 없게 함.
-    var dragOffsetPx by remember { mutableFloatStateOf(0f) }
-    val dismissThresholdPx = with(LocalDensity.current) { 96.dp.toPx() }
-
-    com.tmtn.app.ui.common.TmtnSheetDialog(onDismiss = state::closeRestDaySheet) {
+    // 손잡이 영역에서 아래로 끌면 시트가 같이 내려가고, 거리 또는 속도가 충분하면 닫힘.
+    // 진입·복귀·퇴장 모션은 TmtnSheetDialog가 소유함. 드래그 감지는 손잡이 쪽으로만 한정해서
+    // 아래 버튼들 클릭에는 영향 없게 함.
+    com.tmtn.app.ui.common.TmtnSheetDialog(onDismiss = state::closeRestDaySheet, canDismiss = !state.isLoading.value) {
+        val sheet = this
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .heightIn(max = (LocalConfiguration.current.screenHeightDp * .9f).dp)
-                .offset { IntOffset(0, dragOffsetPx.roundToInt()) }
+                .tmtnSheetMotion()
                 .background(colors.surface, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .pointerInput(Unit) { detectTapGestures { } }
                 .verticalScroll(rememberScrollState())
@@ -73,22 +58,12 @@ fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 32.dp)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onDragCancel = { dragOffsetPx = 0f },
-                            onDragEnd = {
-                                if (dragOffsetPx > dismissThresholdPx) state.closeRestDaySheet()
-                                dragOffsetPx = 0f
-                            },
-                            onVerticalDrag = { change, dragAmount ->
-                                change.consume()
-                                if (!state.isLoading.value) dragOffsetPx = (dragOffsetPx + dragAmount).coerceAtLeast(0f)
-                            },
-                        )
-                    },
+                modifier = with(sheet) {
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 32.dp)
+                        .tmtnSheetDragHandle(enabled = !state.isLoading.value)
+                },
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
@@ -128,12 +103,14 @@ fun RestDaySheetScreen(state: CardHomeState, scope: CoroutineScope) {
             Text("한 주에 두 번까지 쉴 수 있어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
             com.tmtn.app.ui.onboarding.OnboardingErrorMessage(state.errorMessage.value)
 
-            TmtnPrimaryButton(
-                text = if (state.isLoading.value) "쉼으로 저장 중…" else "오늘 쉬어가기",
-                onClick = { scope.launch { state.confirmRestDay() } },
-                enabled = state.restDaysRemainingThisWeek.value > 0 && !state.isLoading.value,
-            )
-            TmtnTextButton(text = "닫기", onClick = { state.closeRestDaySheet() }, enabled = !state.isLoading.value)
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TmtnPrimaryButton(
+                    text = if (state.isLoading.value) "쉼으로 저장 중…" else "오늘 쉬어가기",
+                    onClick = { scope.launch { state.confirmRestDay() } },
+                    enabled = state.restDaysRemainingThisWeek.value > 0 && !state.isLoading.value,
+                )
+                TmtnTextButton(text = "닫기", onClick = { sheet.dismiss(state::closeRestDaySheet) }, enabled = !state.isLoading.value)
+            }
         }
     }
 }

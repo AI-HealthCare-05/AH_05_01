@@ -1,0 +1,106 @@
+[
+  {
+    "path": "android/app/src/main/res/drawable/figma_nav_home.xml",
+    "sha256": "7e30f4e7d5a8ae48e7f6d971a8a124795b9960f35427e5752d26fcf7777ef550"
+  },
+  {
+    "path": "android/app/src/main/res/drawable/figma_nav_record.xml",
+    "sha256": "b9be6a81ed168d50136bc9a149b47d658de330407d9719138a574993978b8eac"
+  },
+  {
+    "path": "android/app/src/main/res/drawable/figma_nav_journal.xml",
+    "sha256": "c0370ece0e5b37472dbd8649e1d2d4c2e0c4a2cccb6064abe291aac03a9504bf"
+  },
+  {
+    "path": "android/app/src/main/res/drawable/figma_nav_dam.xml",
+    "sha256": "b1d5320168a8aa9cc2f1570abe02dbdff3e02fddaede4081578d5e3f3f8a9768"
+  },
+  {
+    "path": "android/app/src/main/res/drawable/figma_nav_profile.xml",
+    "sha256": "72184017acb184bb9b4d79186e10180f739da71dd69c9f9b539e348fd53ab781"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_card.png",
+    "sha256": "4691aedc3b2ceff720c54eabcbe46aa86dc29073bcb9d5298b63e6cb0e198d1f"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_empty.png",
+    "sha256": "880ce9807c6e6b6bbfc3f6cacd0428057cd55484e5aa2d8539d0bbda291aacb9"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_fixing.png",
+    "sha256": "cff95714e728246557e8852576a11ca9ec3c6ccfc1a706b7066f33b23654a872"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_rest.png",
+    "sha256": "7199bb3922bb85d146d96537fd5b49648413d0bf270f3381a8a64586594ad26f"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_cheer.png",
+    "sha256": "e880c1243fdc2ab3955c17401d4e100964be73287eea92efc25de265c8da299c"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_newspaper.png",
+    "sha256": "89e7cc0a6b2246aa2b6c031d7f1185f99bfc404d3b3eadbbe1d89863c1ec598b"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_wave.png",
+    "sha256": "be41880d842a2232d4f36f2fb720a911d8fc5f5bced6ca972e34fdde1dfa1edd"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_waiting.png",
+    "sha256": "d928f67d1aa5266b4f726224b1cb14ef747a73d847e05c5eacd265f8cb7f076a"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/journal_beaver_waist.png",
+    "sha256": "2436a820da395655bbea72328c1c7ea7d62d2d3988e7509bfc4cca98f32d711c"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/journal_material_branch.png",
+    "sha256": "62daa3f072ca52f6575efc0a072df2adce4b59ec968a8f958ad7e403be7a3a3f"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/journal_material_stone.png",
+    "sha256": "b00d4fd7b2d204cb055b5b7522a17ed78c0378cc40417e6618f1023d7245f92a"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/journal_material_earth.png",
+    "sha256": "ed51a29f158a5f560004ba2c1b0448a14e190950a3a46ce104cbf483820284ca"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/journal_material_leaf.png",
+    "sha256": "d9f7edb800c648a58ae2be2ea9f35b42ef871071411db795be81966cf23d490c"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/journal_material_water.png",
+    "sha256": "413fa3423c654218ddd7700f42c8a9bdda5be6275e883adbd9deab2c9cd5d6c7"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/journal_weekly_scene_v2.png",
+    "sha256": "8165419035603d31477fe430c3f57e2722213b20905c882bfd5648298b28dc89"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/dam_water_repair_sheet.png",
+    "sha256": "a2c57f2024ed5e62fdcff7767a656bac77860c8cd76579f30b4f7b8e1190a318"
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_material_guide_v1.png",
+    "sha256": "d330afc6c8c85a621b0f014fd1257d8dcc36f1b18b40f097fbdb919a54a0e563"
+  },
+  {
+    "path": "android/app/src/main/res/font/pretendard_regular.otf",
+    "sha256": "3ffbacde6ab8411f1d2db54bb9b1f0b3ee2a738932033722cf0388c06aed1c93"
+  },
+  {
+    "path": "android/app/src/main/res/font/pretendard_medium.otf",
+    "sha256": "d39e50e4bb52b4993b6a4eeb821a171254745bd824446af01e1f616b89fface0"
+  },
+  {
+    "path": "android/app/src/main/res/font/pretendard_semibold.otf",
+    "sha256": "c89bc43027dc7cde5726e96223376f8eec09302b2fc1f8147fd5b57cfc376118"
+  },
+  {
+    "path": "android/app/src/main/res/font/pretendard_bold.otf",
+    "sha256": "2e91915fab54df71cc9598ebf608b2bdb54c6fe3c066ac61dff0bc44fca71cc7"
+  }
+]

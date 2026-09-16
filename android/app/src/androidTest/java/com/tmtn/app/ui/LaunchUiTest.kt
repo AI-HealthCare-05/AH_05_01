@@ -34,14 +34,15 @@ class LaunchUiTest {
             onExitStarted = { exits++; assertEquals(0, completions) }) } }
         compose.mainClock.advanceTimeBy(3000)
         compose.runOnIdle { assertEquals(0, completions); ready = true }
-        compose.mainClock.advanceTimeBy(1500)
+        // Frames 43..126 at 60fps: the nod and smile run for about 1.4s before the exit starts.
+        compose.mainClock.advanceTimeBy(1000)
         compose.runOnIdle {
             assertEquals("Must not cut the nod/smile short", 0, completions)
             assertEquals("Destination stays hidden during the character animation", 0, exits)
         }
-        compose.mainClock.advanceTimeBy(750)
-        compose.runOnIdle { assertEquals("Finish only after the forest exit fades", 0, completions) }
-        compose.mainClock.advanceTimeBy(500)
+        compose.mainClock.advanceTimeBy(450)
+        compose.runOnIdle { assertEquals("Finish only after the forest exit fades", 0, completions); assertEquals(1, exits) }
+        compose.mainClock.advanceTimeBy(300)
         compose.runOnIdle { assertEquals(1, completions); assertEquals(1, exits) }
         compose.mainClock.advanceTimeBy(3000)
         compose.runOnIdle { assertEquals("No looping", 1, completions) }

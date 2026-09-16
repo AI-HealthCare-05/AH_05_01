@@ -23,6 +23,8 @@ data class TuntunScorePeerV2Response(
     val notice: String,
     val modelVersion: String,
     val formulaVersion: String,
+    val explanationInputRevision: String? = null,
+    val explanationReferenceDate: String? = null,
 )
 
 data class PeerCompositeDisplay(

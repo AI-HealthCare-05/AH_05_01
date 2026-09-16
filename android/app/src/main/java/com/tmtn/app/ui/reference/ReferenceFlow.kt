@@ -42,6 +42,10 @@ fun ReferenceFlow(
     val waist = state.waist
     LaunchedEffect(Unit) { waist.load() }
     LaunchedEffect(Unit) { state.journal.refresh() }
+    DisposableEffect(state) { onDispose { state.journal.invalidatePersonal() } }
+    LaunchedEffect(state.step.value) {
+        if (state.step.value == ReferenceStep.SUMMARY) state.journal.refreshPersonal()
+    }
     LaunchedEffect(Unit) {
         // Returning from an editor keeps the reading stack; the inputs page reloads its own values.
         if (state.step.value in setOf(ReferenceStep.LOADING, ReferenceStep.SUMMARY, ReferenceStep.INELIGIBLE)) state.loadScore()
@@ -71,13 +75,16 @@ fun ReferenceFlow(
                 onRefresh = {
                     scope.launch { state.journal.refresh() }
                     scope.launch { state.loadScore() }
+                    scope.launch { state.journal.refreshPersonal() }
                     scope.launch { waist.load() }
                 },
-                onGoPickCard = onGoPickCard, onEditInformation = { state.openInputs() },
+                onGoPickCard = onGoPickCard, onEditInformation = { state.journal.invalidatePersonal(); state.openInputs() },
                 onRetryWaist = { scope.launch { waist.load() } },
                 requestedEdition = state.journal.requestedEdition,
                 onEditionOpened = { state.journal.requestedEdition = null },
                 exercises = state.journal.exercises,
+                editorial = state.journal.editorial, personal = state.journal.personal,
+                onRetryPersonal = { scope.launch { state.journal.refreshPersonal() } },
             )
             ReferenceStep.INELIGIBLE -> ReferenceIneligibleScreen(state, onOpenMyInfo, waist.ui.value)
             ReferenceStep.DETAIL -> ReferenceDetailScreen(state, waist = waist.ui.value,
@@ -130,7 +137,6 @@ fun ReferenceIneligibleScreen(state: ReferenceState, onOpenMyInfo: () -> Unit, w
         Text("정보가 없는 영역은 비교에서 제외해요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
         TmtnPrimaryButton("정보 입력하기", onOpenMyInfo)
         ScoreRule()
-        WaistEstimateSummary(waist, onOpen = { state.openWaist() })
         Text("비진단용 참고 정보", style = TmtnType.caption, color = colors.onSurfaceVariant)
     }
 }
@@ -150,7 +156,7 @@ fun ReferenceLoadingScreen(error: String?, onRetry: () -> Unit) {
             TmtnMascot(R.drawable.beaver_waiting, null, Modifier.size(152.dp), greet = false)
             Text("지수를 불러오지 못했어요", style = TmtnType.title, color = colors.onSurface)
             Text("연결 상태를 확인하고 다시 시도해 주세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
-            TmtnPrimaryButton("다시 시도", onRetry)
+            TmtnPrimaryButton("다시 불러오기", onRetry)
         }
     }
 }

@@ -1,3 +1,5 @@
+from typing import Literal, TypedDict
+
 from pydantic import BaseModel
 
 # CSV 오행-영역 매핑과 정확히 일치 (지난번 CSV 분석에서 확인된 매핑)
@@ -10,14 +12,31 @@ MATERIAL_INFO = {
     "WATER": {"material_name": "물길", "domain_label": "수분"},
 }
 
+
+class StageDefinition(TypedDict):
+    stage_number: int
+    label: str
+    threshold: int
+
+
 # G03 화면 그대로. 임계값은 "총 재료 개수"의 누적 기준값.
-STAGE_DEFINITIONS = [
+STAGE_DEFINITIONS: list[StageDefinition] = [
     {"stage_number": 1, "label": "물 터 잡기", "threshold": 5},
     {"stage_number": 2, "label": "기둥 세우기", "threshold": 15},
     {"stage_number": 3, "label": "몸통 연결하기", "threshold": 35},
     {"stage_number": 4, "label": "물길 안정화", "threshold": 70},
     {"stage_number": 5, "label": "튼튼한 댐 완성", "threshold": 120},
 ]
+
+
+def stage_definitions(first_repair_completed: bool = False) -> list[StageDefinition]:
+    """첫 복구를 마친 계정만 1개로 1단계. 기존 계정과 2~5단계 기준은 유지한다."""
+    return [
+        {**stage, "threshold": 1, "label": "첫 빈틈 받치기"}
+        if first_repair_completed and stage["stage_number"] == 1
+        else stage
+        for stage in STAGE_DEFINITIONS
+    ]
 
 
 class MaterialItem(BaseModel):
@@ -45,6 +64,16 @@ class CompanionResponse(BaseModel):
     stages: list[StageItem]
 
 
+FirstRepairStatus = Literal["ELIGIBLE", "GIFT_RECEIVED", "COMPLETED", "UNAVAILABLE"]
+
+
+class FirstRepairResponse(BaseModel):
+    status: FirstRepairStatus
+    gift_element: str = "WOOD"
+    gift_count: int
+    companion: CompanionResponse
+
+
 class CardHistoryItem(BaseModel):
     """G05(재료별 상세)와 G06(카드첩)이 공유하는 항목 하나 - 완료한 챌린지 1건."""
 
@@ -63,6 +92,7 @@ class MaterialHistoryResponse(BaseModel):
     domain_label: str
     count: int
     recent_history: list[CardHistoryItem]  # 최근 5개만
+    welcome_gift_count: int = 0
 
 
 class CardCollectionResponse(BaseModel):

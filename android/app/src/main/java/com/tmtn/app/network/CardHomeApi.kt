@@ -34,6 +34,15 @@ interface CardHomeApi {
     @GET("companion")
     suspend fun getCompanionStatus(): Response<CompanionResponse>
 
+    @GET("companion/first-repair")
+    suspend fun getFirstRepair(): Response<com.tmtn.app.network.model.FirstRepairResponse>
+
+    @POST("companion/first-repair/gift")
+    suspend fun receiveFirstGift(): Response<com.tmtn.app.network.model.FirstRepairResponse>
+
+    @POST("companion/first-repair/complete")
+    suspend fun completeFirstRepair(): Response<com.tmtn.app.network.model.FirstRepairResponse>
+
     @GET("companion/materials/{element}/history")
     suspend fun getMaterialHistory(
         @Path("element") element: String,

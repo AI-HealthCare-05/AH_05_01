@@ -36,6 +36,8 @@ repos:
       - id: detect-private-key          # keystore·개인키 커밋 차단
       - id: check-added-large-files     # 데이터·APK·모델 파일 차단
         args: [--maxkb=1024]
+        # 화면 검토용 내장 에셋 HTML과 새 삽화만 예외. 데이터·모델 제한은 유지합니다.
+        exclude: '^(docs/xai-integration-2026-09-16/index\.html|android/app/src/main/res/drawable-nodpi/(journal_weekly_scene_v2|dam_water_repair_sheet|beaver_material_guide_v1|beaver_newspaper|journal_beaver_waist|score_news_evening)\.png)$'
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: mixed-line-ending           # CRLF/LF 섞임 방지

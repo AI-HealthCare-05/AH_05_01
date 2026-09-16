@@ -63,7 +63,7 @@ fun NotificationSettingScreen(state: ProfileState, scope: CoroutineScope, onBack
     Column(Modifier.fillMaxSize()) {
         TmtnTopBar("생활시간 · 알림", onBack)
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Text("네 하루에 맞춰\n소식을 전할게.", style = TmtnType.headline, color = colors.onSurface)
+            Text("하루 리듬에 맞춰\n소식을 전해요.", style = TmtnType.headline, color = colors.onSurface)
             Text("바쁜 시간은 피하고, 실천하기 편할 때 만나요.", style = TmtnType.body, color = colors.onSurfaceVariant)
             NotificationPanel {
                 Text("오늘의 카드 알림", style = TmtnType.label, color = colors.onSurface)
@@ -196,8 +196,8 @@ private fun AccessibleTimeInput(value: String, onChange: (String) -> Unit) {
     var minute by remember { mutableStateOf(value.substringAfter(":")) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TmtnTextField(hour, { hour = it.filter(Char::isDigit).take(2); onChange("${hour.padStart(2, '0')}:${minute.padStart(2, '0')}") },
-            "시 · 0–23", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+            "시 · 0~23", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
         TmtnTextField(minute, { minute = it.filter(Char::isDigit).take(2); onChange("${hour.padStart(2, '0')}:${minute.padStart(2, '0')}") },
-            "분 · 0–59", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+            "분 · 0~59", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
     }
 }

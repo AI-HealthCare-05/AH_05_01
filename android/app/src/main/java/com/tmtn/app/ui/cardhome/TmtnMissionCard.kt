@@ -80,7 +80,7 @@ fun TmtnMissionCard(card: CardRevealResponse, date: LocalDate, compact: Boolean 
 internal fun HomeMissionCard(card: CardRevealResponse, completed: Boolean = false, action: (@Composable () -> Unit)? = null) {
     val colors = LocalTmtnColors.current
     val measured = card.exec_type.startsWith("SENSOR_")
-    val shape = RoundedCornerShape(26.dp)
+    val shape = RoundedCornerShape(24.dp)
     Column(Modifier.fillMaxWidth().background(colors.surface, shape)
         .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {

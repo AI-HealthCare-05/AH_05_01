@@ -31,6 +31,17 @@ class CompanionState(models.Model):
         table = "companion_states"
 
 
+class CompanionFirstRepair(models.Model):
+    """새 가입자에게만 발급하는 첫 복구 권리. 운동 완료 횟수와 별도로 보관한다."""
+
+    user = fields.OneToOneField("models.User", related_name="first_repair", pk=True)
+    gift_received_at = fields.DatetimeField(null=True)
+    completed_at = fields.DatetimeField(null=True)
+
+    class Meta:
+        table = "companion_first_repairs"
+
+
 class CompanionStageLog(models.Model):
     """G07(단계 상승 축하) 화면의 "3단계에서 쌓은 것" 요약을 만들려면 "언제 그 단계에
     도달했는지" 기준점이 있어야 해서 새로 추가한 테이블. 단계에 새로 도달할 때마다
