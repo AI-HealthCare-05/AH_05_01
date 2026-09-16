@@ -258,7 +258,17 @@ class MissionSensorService : Service() {
             }
 
             ACTION_START_STEP_IN_PLACE -> {
-                stepInPlaceManager.reset()
+                // ⚠️ 2026-09-16 버그 수정(QA) - 예전엔 무조건 reset()해서, 화면을 나갔다
+                // 돌아오면(홈 버튼 등) 서버 세션은 이어지는데 로컬 카운터만 0부터 다시
+                // 셌음("걸음수 리셋됨" 버그의 실제 원인). 서버가 준 누적값이 있으면
+                // resumeFrom()으로 이어서 셈 - 오늘의 카드 타이머가 서버 경과시간으로
+                // 재동기화하는 것과 같은 원칙.
+                val resumeCount = intent.getIntExtra(EXTRA_RESUME_STEP_COUNT, 0)
+                if (resumeCount > 0) {
+                    stepInPlaceManager.resumeFrom(resumeCount)
+                } else {
+                    stepInPlaceManager.reset()
+                }
                 stepInPlaceManager.start()
                 SensorDataHolder.setStepInPlaceActive(true)
                 // ⚠️ 2026-09-15 버그 수정 - 이 액션(그리고 아래 틈새 운동 전용 액션들)이
@@ -278,7 +288,9 @@ class MissionSensorService : Service() {
             // 똑같은 패턴으로 재사용 - 오늘의 카드 챌린지(ACTION_START_TRACKING_CHALLENGE)와
             // 완전히 분리된 별도 액션.
             ACTION_START_STAIRS -> {
-                stairClimbManager.reset()
+                // ⚠️ 2026-09-16 이어하기 추가(QA F01) - 제자리걷기/천천히걷기와 같은 이유.
+                val resumeCount = intent.getIntExtra(EXTRA_RESUME_STAIR_COUNT, 0)
+                if (resumeCount > 0) stairClimbManager.resumeFrom(resumeCount) else stairClimbManager.reset()
                 stairClimbManager.start()
                 startUpdateLoop()
             }
@@ -298,13 +310,24 @@ class MissionSensorService : Service() {
             }
 
             ACTION_START_RUNNING_DISTANCE -> {
-                runningManager.reset()
+                // ⚠️ 2026-09-16 이어하기 추가(QA F01) - 같은 이유.
+                val resumeMeters = intent.getIntExtra(EXTRA_RESUME_RUNNING_METERS, 0)
+                if (resumeMeters > 0) runningManager.resumeFrom(resumeMeters) else runningManager.reset()
                 runningManager.start()
                 SensorDataHolder.setRunningActive(true)
                 startUpdateLoop()
             }
             ACTION_START_RUNNING_DURATION -> {
-                runningCadenceManager.reset()
+                // ⚠️ 2026-09-16 버그 수정(QA F11①) - 걷기와 같은 이유·같은 수정.
+                val heightCm = if (intent.hasExtra(EXTRA_HEIGHT_CM)) intent.getFloatExtra(EXTRA_HEIGHT_CM, 0f) else null
+                val ageYears = if (intent.hasExtra(EXTRA_AGE_YEARS)) intent.getIntExtra(EXTRA_AGE_YEARS, 0) else null
+                if (heightCm != null || ageYears != null) {
+                    runningCadenceManager.stop()
+                    runningCadenceManager = RunningCadenceManager(this, heightCm ?: 176f, ageYears ?: 0)
+                }
+                // ⚠️ 2026-09-16 이어하기 추가(QA F01) - 같은 이유.
+                val resumeSeconds = intent.getIntExtra(EXTRA_RESUME_RUNNING_SECONDS, 0)
+                if (resumeSeconds > 0) runningCadenceManager.resumeFrom(resumeSeconds) else runningCadenceManager.reset()
                 runningCadenceManager.start()
                 SensorDataHolder.setRunningActive(true)
                 startUpdateLoop()
@@ -316,7 +339,27 @@ class MissionSensorService : Service() {
             }
 
             ACTION_START_WALKING -> {
-                walkingCadenceManager.reset()
+                // ⚠️ 2026-09-16 버그 수정(QA F11①) - 예전엔 틈새 운동의 걷기 매니저가
+                // onCreate() 때 만들어진 기본값(키170cm·보정없음)을 계속 썼음. 오늘의
+                // 카드(ACTION_START_TRACKING_CHALLENGE)만 프로필을 읽어서 보정값을
+                // 넘겨주고 있었는데, 틈새 운동엔 그 경로가 없었음 - 같은 방식으로
+                // 보정값이 왔으면 매니저를 다시 만듦(resumeFrom/reset보다 먼저 해야
+                // 새 인스턴스에 적용됨).
+                val heightCm = if (intent.hasExtra(EXTRA_HEIGHT_CM)) intent.getFloatExtra(EXTRA_HEIGHT_CM, 0f) else null
+                val ageYears = if (intent.hasExtra(EXTRA_AGE_YEARS)) intent.getIntExtra(EXTRA_AGE_YEARS, 0) else null
+                if (heightCm != null || ageYears != null) {
+                    walkingCadenceManager.stop()
+                    walkingCadenceManager = WalkingCadenceManager(this, heightCm ?: 170f, ageYears ?: 0)
+                }
+                // ⚠️ 2026-09-16 버그 수정(QA) - 화면을 나갔다 돌아오면("이어하기") 서버
+                // 세션은 이어지는데 로컬 시간만 0부터 다시 셌음(제자리 걷기와 같은 원인).
+                // 서버가 준 누적 초가 있으면 resumeFrom()으로 이어서 잼.
+                val resumeSeconds = intent.getIntExtra(EXTRA_RESUME_WALK_SECONDS, 0)
+                if (resumeSeconds > 0) {
+                    walkingCadenceManager.resumeFrom(resumeSeconds)
+                } else {
+                    walkingCadenceManager.reset()
+                }
                 walkingCadenceManager.start()
                 SensorDataHolder.setWalkingActive(true)
                 startUpdateLoop()
@@ -650,6 +693,19 @@ class MissionSensorService : Service() {
         const val EXTRA_HEIGHT_CM = "EXTRA_HEIGHT_CM"
         // ⚠️ 2026-09-07 추가(신장×연령 이중 보정): 없으면 보정 없음(×1.0).
         const val EXTRA_AGE_YEARS = "EXTRA_AGE_YEARS"
+        // ⚠️ 2026-09-16 추가(QA) - 틈새 운동 "이어하기"용. 서버의 세션이 이미 갖고 있던
+        // 마지막 누적 걸음수(accumulated_count)를 실어 보내면, 0부터 다시 세지 않고
+        // 그 값부터 이어서 셈(StepCounterManager.resumeFrom()과 동일 원리).
+        const val EXTRA_RESUME_STEP_COUNT = "EXTRA_RESUME_STEP_COUNT"
+        // ⚠️ 2026-09-16 추가(QA) - "천천히 걷기"(SENSOR_WALKING_DURATION) 이어하기용.
+        // 서버가 준 마지막 경과 초(accumulated_duration_seconds)를 실어 보내면
+        // WalkingCadenceManager.resumeFrom()으로 이어서 잼.
+        const val EXTRA_RESUME_WALK_SECONDS = "EXTRA_RESUME_WALK_SECONDS"
+        // ⚠️ 2026-09-16 추가(QA F01/F02 순서 진행) - 계단·달리기 이어하기용. 각각
+        // StairClimbManager/RunningManager/RunningCadenceManager의 resumeFrom()과 짝.
+        const val EXTRA_RESUME_STAIR_COUNT = "EXTRA_RESUME_STAIR_COUNT"
+        const val EXTRA_RESUME_RUNNING_METERS = "EXTRA_RESUME_RUNNING_METERS"
+        const val EXTRA_RESUME_RUNNING_SECONDS = "EXTRA_RESUME_RUNNING_SECONDS"
 
         const val ACTION_START_STEP_IN_PLACE = "com.tmtn.app.ACTION_START_STEP_IN_PLACE"
         const val ACTION_STOP_STEP_IN_PLACE = "com.tmtn.app.ACTION_STOP_STEP_IN_PLACE"

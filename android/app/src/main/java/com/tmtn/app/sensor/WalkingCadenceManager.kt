@@ -90,10 +90,14 @@ class WalkingCadenceManager(
     // walkingStartedAt은 그대로 남아있어서, "일시정지" 직후 화면이 checkTimeout()의
     // 뒤늦은 판정(최대 walkingTimeoutMs)까지 기다렸다가 갑자기 값이 확 뛰는 것처럼
     // 보였음. 일시정지 시점에 즉시 정산해서 그 "점프"를 없앰.
+    // ⚠️ 2026-09-16 버그 수정(QA F11④) - System.currentTimeMillis()(벽시계, 사용자가
+    // 시간을 바꾸거나 시계 보정이 일어나면 왜곡될 수 있음) 대신 SystemClock.
+    // elapsedRealtime()(기기 부팅 이후 단조 증가하는 시계)로 통일. onSensorChanged()의
+    // event.timestamp(센서 발생 시각, 같은 시계열)와 이제 정확히 비교 가능해짐.
     fun settleOngoing() {
         if (!isCurrentlyWalking) return
         walkingStartedAt?.let { started ->
-            accumulatedWalkingSeconds += ((System.currentTimeMillis() - started) / 1000).toInt()
+            accumulatedWalkingSeconds += ((android.os.SystemClock.elapsedRealtime() - started) / 1000).toInt()
         }
         isCurrentlyWalking = false
         walkingStartedAt = null
@@ -119,10 +123,15 @@ class WalkingCadenceManager(
         lastStepDetectedAt = 0L
     }
 
+    // ⚠️ 2026-09-16 버그 수정(QA F11④ - 원인분석 문서: "지연·배치 수신 시 원래
+    // 떨어져 있던 걸음이 가까운 시각에 발생한 것처럼 계산될 수 있다") - 콜백이 실제로
+    // 우리 코드에 도달한 시각(System.currentTimeMillis())이 아니라, 센서가 그 걸음을
+    // 실제로 감지한 시각(event.timestamp, 부팅 이후 나노초 단조 시계)을 씀. OS가 배치로
+    // 이벤트를 몰아서 전달해도(드문 경우) 실제 걸음 간격이 정확히 반영됨.
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type != Sensor.TYPE_STEP_DETECTOR) return
 
-        val now = System.currentTimeMillis()
+        val now = event.timestamp / 1_000_000L  // ns -> ms, SystemClock.elapsedRealtime()과 같은 시계열
         lastStepDetectedAt = now
         recentStepTimestamps.addLast(now)
 
@@ -136,7 +145,9 @@ class WalkingCadenceManager(
     fun checkTimeout() {
         if (!isCurrentlyWalking) return
 
-        val now = System.currentTimeMillis()
+        // ⚠️ 2026-09-16 - lastStepDetectedAt이 이제 elapsedRealtime 시계열이므로 "지금"도
+        // 같은 시계열(SystemClock.elapsedRealtime())로 구해야 정확히 비교됨.
+        val now = android.os.SystemClock.elapsedRealtime()
         if (now - lastStepDetectedAt > walkingTimeoutMs) {
             walkingStartedAt?.let { started ->
                 accumulatedWalkingSeconds += ((lastStepDetectedAt - started) / 1000).toInt()
@@ -172,9 +183,17 @@ class WalkingCadenceManager(
         }
     }
 
+    // ⚠️ 2026-09-16 버그 수정(QA F03) - 예전엔 진행 중 구간을 System.currentTimeMillis()
+    // 까지 낙관적으로 세고 있었는데, checkTimeout()은 lastStepDetectedAt까지만 확정
+    // 커밋해서, 걸음이 뜸해지다 timeout이 발동하는 순간 화면에 이미 보여준 시간이
+    // 뒤로 줄어드는("되감김") 문제가 있었음 - 격리 실행에서 "63초 → 60초"로 재현됨
+    // (원인분석 문서 F03). max(이전표시, 새값)로 덮는 미봉책 대신,애초에 표시와 확정이
+    // 같은 기준시각(lastStepDetectedAt)을 쓰게 고쳐서 되감김 자체가 안 생기게 함 -
+    // 걸음이 뜸해지면 화면이 잠깐 멈춘 것처럼 보이지만(사실 그러하니 정직함), 줄어들진
+    // 않음. 다음 걸음이 오면 다시 올라가고, timeout이 오면 이미 보여준 값 그대로 확정됨.
     fun getCurrentTotalSeconds(): Int {
         val ongoing = if (isCurrentlyWalking && walkingStartedAt != null) {
-            ((System.currentTimeMillis() - walkingStartedAt!!) / 1000).toInt()
+            ((lastStepDetectedAt - walkingStartedAt!!) / 1000).toInt()
         } else 0
         return accumulatedWalkingSeconds + ongoing
     }

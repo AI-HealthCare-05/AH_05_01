@@ -960,7 +960,18 @@ class CardHomeState(
         runCatching {
             val response = ApiClient.exerciseMissionApi.getToday()
             if (response.isSuccessful) response.body() else null
-        }.onSuccess { exerciseMissionsToday.value = it }
+        }.onSuccess { body ->
+            exerciseMissionsToday.value = body
+            // ⚠️ 2026-09-16 추가(QA) - 진행 중(ACTIVE/PAUSED)인 세션이 있으면 목록 대신
+            // 바로 진행 화면으로 이어줌. 오늘의 카드 Challenge의 "미션 이어하기"와 같은
+            // 원칙 - 뒤로가기·홈 버튼으로 화면을 나가도 세션을 취소하지 않으니(더 이상
+            // 자동 취소 안 함), 다음에 들어올 때 여기서 이어서 하게 해줘야 함.
+            val active = body?.active_session
+            if (active != null) {
+                activeExerciseSession.value = active
+                step.value = CardHomeStep.EXTRA_RUNNING
+            }
+        }
     }
 
     fun openExerciseMissionList() {
@@ -991,10 +1002,18 @@ class CardHomeState(
         } ?: false
     }
 
-    suspend fun pauseExerciseMission() {
+    // ⚠️ 2026-09-16 - accumulatedDurationSeconds 파라미터 추가(QA F05, 같은 이유).
+    // ⚠️ 원인분석 문서 F02 - 이 함수(그리고 resumeExerciseMission)는 정의는 있지만
+    // 실제 화면에서 호출하는 곳이 아직 없음(별도 확인 필요 - 이번엔 시그니처만 준비).
+    suspend fun pauseExerciseMission(accumulatedDurationSeconds: Int? = null) {
         val session = activeExerciseSession.value ?: return
         runCatching {
-            ApiClient.exerciseMissionApi.patchSession(session.id, ExerciseMissionActionRequest(action = "pause"))
+            ApiClient.exerciseMissionApi.patchSession(
+                session.id,
+                ExerciseMissionActionRequest(
+                    action = "pause", accumulated_duration_seconds = accumulatedDurationSeconds,
+                ),
+            )
         }.onSuccess { response -> if (response.isSuccessful) activeExerciseSession.value = response.body() }
     }
 
@@ -1005,14 +1024,27 @@ class CardHomeState(
         }.onSuccess { response -> if (response.isSuccessful) activeExerciseSession.value = response.body() }
     }
 
-    suspend fun completeExerciseMission(manualCheck: Boolean = false, accumulatedCount: Int? = null) {
+    // ⚠️ 2026-09-16 추가(QA F05) - accumulatedDurationSeconds 파라미터 신규. 시간형
+    // (걷기/달리기) 완료 시 화면이 실제로 표시 중이던 확정 시간(liveWalkingSeconds 등)을
+    // 실어 보내야, 서버가 더 이상 "경과 시각"으로 대신 계산 안 하고 이 값을 그대로 씀.
+    suspend fun completeExerciseMission(
+        manualCheck: Boolean = false, accumulatedCount: Int? = null, accumulatedDurationSeconds: Int? = null,
+    ) {
         val session = activeExerciseSession.value ?: return
-        val idempotencyKey = UUID.randomUUID().toString()
+        // ⚠️ 2026-09-16 버그 수정(QA F09) - 예전엔 매번 새 UUID.randomUUID()를 써서,
+        // 완료가 서버에서는 성공했는데 응답만 못 받고 실패로 보여서 사용자가 다시
+        // 누르면, 서버 입장에선 "새 요청"이라 이미 COMPLETED인 세션을 다시 트랜지션
+        // 못 해서 거절함(멱등키를 쓴 의미가 없었음) - 세션 ID 기반 결정론적 키로
+        // 바꿔서, 같은 세션에 대한 재시도는 항상 같은 키가 나오게 함(서버가 그 키로
+        // 기존 결과를 그대로 복구해서 돌려줌).
+        val idempotencyKey = UUID.nameUUIDFromBytes("exercise-complete:${session.id}".toByteArray()).toString()
         runCatching {
             ApiClient.exerciseMissionApi.completeSession(
                 session.id,
                 CompleteExerciseMissionSessionRequest(
-                    idempotency_key = idempotencyKey, manual_check = manualCheck, accumulated_count = accumulatedCount,
+                    idempotency_key = idempotencyKey, manual_check = manualCheck,
+                    accumulated_count = accumulatedCount,
+                    accumulated_duration_seconds = accumulatedDurationSeconds,
                 ),
             )
         }.onSuccess { response ->
@@ -1022,13 +1054,35 @@ class CardHomeState(
             } else {
                 errorMessage.value = "아직 목표에 도달하지 못했어요."
             }
+        }.onFailure { e ->
+            // ⚠️ 2026-09-16 추가(QA F09) - 예전엔 네트워크 예외(타임아웃 등) 시 아무
+            // 처리가 없어서 "완료 버튼을 눌러도 반응 없음"처럼 보였음. 취소된 코루틴은
+            // 그대로 전파해야 함(정상적인 화면 이탈 취소).
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            errorMessage.value = "연결이 원활하지 않아요. 다시 시도해 주세요. (재시도해도 중복 지급되지 않아요)"
         }
     }
 
+    // ⚠️ 2026-09-16 버그 수정(QA F09) - 예전엔 API 성공/실패와 무관하게 무조건 로컬
+    // 세션을 null로 지우고 COMPLETED로 넘어갔음 - 취소가 실제로 실패하면 서버엔 그
+    // 세션이 여전히 ACTIVE로 남아있는데, 앱에서는 사라져서 다음에 같은 운동을 다시
+    // 시작하려 하면 "이미 진행 중"으로 막히는 고립 상태가 됨(F02와 같은 근본 원인).
+    // 이제 성공했을 때만 로컬 상태를 정리하고, 실패하면 에러를 보여주고 세션을 그대로
+    // 유지함 - 다음 홈 진입 때(F06 수정) 서버 상태로 다시 맞춰지거나, 사용자가 다시
+    // 시도할 수 있음.
     suspend fun cancelExerciseMission() {
         val session = activeExerciseSession.value ?: return
         runCatching { ApiClient.exerciseMissionApi.cancelSession(session.id) }
-        activeExerciseSession.value = null
-        step.value = CardHomeStep.COMPLETED
+            .onSuccess { response ->
+                if (response.isSuccessful) {
+                    activeExerciseSession.value = null
+                    step.value = CardHomeStep.COMPLETED
+                } else {
+                    errorMessage.value = "그만두기를 처리하지 못했어요. 다시 시도해 주세요."
+                }
+            }.onFailure { e ->
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                errorMessage.value = "연결이 원활하지 않아요. 다시 시도해 주세요."
+            }
     }
 }

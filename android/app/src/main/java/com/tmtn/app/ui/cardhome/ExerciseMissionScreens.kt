@@ -160,6 +160,14 @@ fun ExerciseMissionDetailScreen(state: CardHomeState, scope: CoroutineScope) {
                     "정확한 측정을 위해 제자리에서 걸어 주세요. 이동하며 걸으면 걸음이 더 세어질 수 있어요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
+                // ⚠️ 2026-09-16 추가(QA) - TYPE_STEP_COUNTER 센서는 팔 흔들림 패턴으로
+                // 걸음을 인식해서, 손에 들고 있으면 잘 인식이 안 되고 주머니에 넣으면
+                // 더 잘 인식되는 경우가 실기기에서 확인됨(기기/센서 알고리즘 특성이라
+                // 앱 코드로 직접 고칠 수 없음) - 미리 안내해서 헷갈리지 않게 함.
+                Text(
+                    "폰을 손에 들고 있으면 걸음이 잘 안 세어질 수 있어요. 주머니에 넣거나 허리에 차면 더 정확해요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant,
+                )
             }
             // ⚠️ 이 기기에 필요한 센서가 없는 경우 - 완전히 막지 않고 "직접 확인" 방식으로
             // 안내함(지현님 팀 점검 결과: "센서 미지원 기기의 대체 안내 필요").
@@ -174,9 +182,25 @@ fun ExerciseMissionDetailScreen(state: CardHomeState, scope: CoroutineScope) {
             }
             Text(option.guide_text, style = TmtnType.body, color = colors.onSurfaceVariant)
 
+            // ⚠️ 2026-09-16 버그 수정(QA 영상) - startExerciseMission() 실패(서버 409 등)를
+            // 그냥 무시하고 있어서, 사용자 눈엔 버튼을 눌러도 "다음 화면으로 안 넘어가는"
+            // 것처럼 보였음(에러 메시지가 전혀 없었음). 이제 실패하면 이유를 보여줌.
+            state.errorMessage.value?.let { message ->
+                Text(message, style = TmtnType.caption, color = colors.error)
+            }
+
             TmtnPrimaryButton(
                 text = if (isModel && sensorAvailable) "이 운동 시작하기" else "이 운동 실천하기",
-                onClick = { scope.launch { state.startExerciseMission() } },
+                onClick = {
+                    scope.launch {
+                        state.errorMessage.value = null
+                        val started = state.startExerciseMission()
+                        if (!started) {
+                            state.errorMessage.value =
+                                "지금은 시작할 수 없어요. 이미 진행 중인 틈새 운동이 있거나, 오늘 보상을 다 받았을 수 있어요."
+                        }
+                    }
+                },
             )
         }
     }
@@ -199,6 +223,17 @@ fun ExerciseMissionRunningScreen(
     onStopRunning: () -> Unit = {},
     onStartStairs: () -> Unit = {},
     onStopStairs: () -> Unit = {},
+    // ⚠️ 2026-09-16 추가(QA) - "이어하기" 진입 시(화면을 나갔다 돌아온 경우) 서버가
+    // 갖고 있던 마지막 걸음수부터 이어서 셈. 기본 onStartStepInPlace()(항상 0부터)와
+    // 시그니처가 달라서 별도 파라미터로 추가 - 기존 콜백(오늘의 카드, 테스트 화면)은
+    // 안 건드림.
+    onStartStepInPlaceResume: (Int) -> Unit = {},
+    // ⚠️ 2026-09-16 추가(QA) - "천천히 걷기" 이어하기용, 위와 같은 이유.
+    onStartWalkingResume: (Int) -> Unit = {},
+    // ⚠️ 2026-09-16 추가(QA F01) - 계단·달리기 이어하기용, 위와 같은 이유.
+    onStartRunningDistanceResume: (Int) -> Unit = {},
+    onStartRunningDurationResume: (Int) -> Unit = {},
+    onStartStairsResume: (Int) -> Unit = {},
 ) {
     val colors = LocalTmtnColors.current
     val session = state.activeExerciseSession.value ?: return
@@ -221,11 +256,26 @@ fun ExerciseMissionRunningScreen(
     // 화면 진입 시 해당 센서만 시작, 벗어나면(완료·취소·뒤로가기 전부) 반드시 정지.
     androidx.compose.runtime.DisposableEffect(execType) {
         when {
-            isStepInPlace -> onStartStepInPlace()
-            isWalkingDuration -> onStartWalking()
-            isRunningDuration -> onStartRunningDuration()
-            isRunningDistance -> onStartRunningDistance()
-            isStairs -> onStartStairs()
+            isStepInPlace -> {
+                if (session.accumulated_count > 0) onStartStepInPlaceResume(session.accumulated_count)
+                else onStartStepInPlace()
+            }
+            isWalkingDuration -> {
+                if (session.accumulated_duration_seconds > 0) onStartWalkingResume(session.accumulated_duration_seconds)
+                else onStartWalking()
+            }
+            isRunningDuration -> {
+                if (session.accumulated_duration_seconds > 0) onStartRunningDurationResume(session.accumulated_duration_seconds)
+                else onStartRunningDuration()
+            }
+            isRunningDistance -> {
+                if (session.accumulated_count > 0) onStartRunningDistanceResume(session.accumulated_count)
+                else onStartRunningDistance()
+            }
+            isStairs -> {
+                if (session.accumulated_count > 0) onStartStairsResume(session.accumulated_count)
+                else onStartStairs()
+            }
         }
         onDispose {
             when {
@@ -264,7 +314,7 @@ fun ExerciseMissionRunningScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "틈새 운동", onBack = { state.step.value = CardHomeStep.EXTRA_DETAIL })
+        TmtnTopBar(title = "틈새 운동", onBack = { state.errorMessage.value = null; state.step.value = CardHomeStep.EXTRA_DETAIL })
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -318,21 +368,32 @@ fun ExerciseMissionRunningScreen(
                 onClick = {
                     scope.launch {
                         // ⚠️ 실제 센서형은 manual_check=false로 서버가 검증하게 함(목표
-                        // 미달성이면 409로 정직하게 거절됨). 카운트형만 실측값을 같이 보냄 -
-                        // 시간형은 서버가 자체 계산하므로 안 보내도 됨.
+                        // 미달성이면 409로 정직하게 거절됨).
+                        // ⚠️ 2026-09-16 버그 수정(QA F05) - "시간형은 서버가 자체 계산하므로
+                        // 안 보내도 됨"이라는 예전 전제가 틀렸음. 서버는 "시작~완료 경과
+                        // 시각"으로 대신 계산하고 있었고, 이러면 센서가 전혀 못 재도(0초여도)
+                        // 시간만 지나면 목표 달성으로 잘못 판정됨(원인분석 문서 재현 사례).
+                        // 이제 서버가 시간형은 클라이언트 확정값만 신뢰하도록 고쳤으니, 화면이
+                        // 실제로 보여주고 있던 currentSeconds를 반드시 실어 보내야 함.
                         when {
                             isStepInPlace || isRunningDistance || isStairs ->
                                 state.completeExerciseMission(manualCheck = false, accumulatedCount = currentCount)
                             isWalkingDuration || isRunningDuration ->
-                                state.completeExerciseMission(manualCheck = false)
+                                state.completeExerciseMission(manualCheck = false, accumulatedDurationSeconds = currentSeconds)
                             else -> state.completeExerciseMission(manualCheck = true)
                         }
                     }
                 },
             )
+            // ⚠️ 2026-09-16 추가(QA F09) - 완료/취소 실패 메시지를 진행 화면에서도
+            // 보여줌(예전엔 상세 화면에만 있었음) - cancelExerciseMission()이 실패
+            // 시 세션을 그대로 유지하도록 고쳤으니, 그 실패 사유도 사용자에게 보여야 함.
+            state.errorMessage.value?.let { message ->
+                Text(message, style = TmtnType.caption, color = colors.error)
+            }
             TmtnTextButton(
                 text = "그만두기",
-                onClick = { scope.launch { state.cancelExerciseMission() } },
+                onClick = { scope.launch { state.errorMessage.value = null; state.cancelExerciseMission() } },
             )
         }
     }

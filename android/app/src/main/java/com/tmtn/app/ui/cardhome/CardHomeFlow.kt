@@ -113,12 +113,19 @@ fun CardHomeFlow(
     // ⚠️ 2026-09-11 추가 - 틈새 운동(제자리걸음) 전용. 오늘의 카드 센서 추적과 독립적.
     onStartStepInPlace: () -> Unit = {},
     onStopStepInPlace: () -> Unit = {},
+    // ⚠️ 2026-09-16 추가(QA) - "이어하기"용, 위 onStartStepInPlace와 별개 콜백.
+    onStartStepInPlaceResume: (Int) -> Unit = {},
     onStartWalking: () -> Unit = {},
+    // ⚠️ 2026-09-16 추가(QA) - "천천히 걷기" 이어하기용.
+    onStartWalkingResume: (Int) -> Unit = {},
     onStopWalking: () -> Unit = {},
     onStartRunningDistance: () -> Unit = {},
+    onStartRunningDistanceResume: (Int) -> Unit = {},
     onStartRunningDuration: () -> Unit = {},
+    onStartRunningDurationResume: (Int) -> Unit = {},
     onStopRunning: () -> Unit = {},
     onStartStairs: () -> Unit = {},
+    onStartStairsResume: (Int) -> Unit = {},
     onStopStairs: () -> Unit = {},
     // ⚠️ 2026-09-04 추가: 센서 측정 일시정지/재개 - TIMER형과 같은 일시정지 개념을 센서형에도 적용.
     onPauseSensorTracking: () -> Unit = {},
@@ -155,6 +162,16 @@ fun CardHomeFlow(
         // 로딩한 적 있는지" 판단 - 앱 켜고 이 탭에 처음 들어올 때만 null).
         if (state.setId.value == null) {
             state.loadToday()
+            // ⚠️ 2026-09-16 추가(QA F06) - "프로세스 종료·재부팅을 복구할 영속 세션이
+            // 없다"는 지적 대응. 예전엔 사용자가 "틈새 운동 둘러보기"를 직접 눌러야만
+            // active_session을 확인했음(ExerciseMissionListScreen의 LaunchedEffect) -
+            // 앱이 강제 종료됐다가 재시작되면, 진행 중이던 틈새 운동이 있어도 사용자가
+            // 스스로 그 화면을 다시 찾아 들어가야만 이어하기가 발동했음. 별도 Room
+            // 로컬 저장까지는 안 만들고(서버가 이미 ACTIVE/PAUSED의 authoritative 값을
+            // 갖고 있으니), 앱 최초 진입 시 이 조회를 여기서도 하게 해서 서버 상태와
+            // 항상 맞춰지게 함 - loadExerciseMissionsToday() 자체가 이미 active_session
+            // 발견 시 자동으로 EXTRA_RUNNING까지 이어주는 로직을 갖고 있음.
+            state.loadExerciseMissionsToday()
             // ⚠️ 이미 오늘 카드를 고른 상태(isSelected/완료/쉼 등)면 건너뛰고 그대로 홈을 보여줌 -
             // 온보딩 막 끝낸 신규 계정에서만 실제로 의미가 있는 분기.
             if (startAtDeckPick && state.step.value == CardHomeStep.HOME && state.todayChallengeId.value == null) {
@@ -342,7 +359,8 @@ fun CardHomeFlow(
             CardHomeStep.EXTRA_RUNNING -> ExerciseMissionRunningScreen(
                 state, scope, onStartStepInPlace, onStopStepInPlace,
                 onStartWalking, onStopWalking, onStartRunningDistance, onStartRunningDuration, onStopRunning,
-                onStartStairs, onStopStairs,
+                onStartStairs, onStopStairs, onStartStepInPlaceResume, onStartWalkingResume,
+                onStartRunningDistanceResume, onStartRunningDurationResume, onStartStairsResume,
             )
             CardHomeStep.EXTRA_REWARD -> ExerciseMissionRewardScreen(state)
         }
