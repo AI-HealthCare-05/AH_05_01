@@ -47,7 +47,7 @@ private class LaunchTracks(json: String) {
     }
 }
 
-/** A brief final-pose greeting, started only after the system splash is removed.
+/** The full character greeting, started only after the system splash is removed.
  * The caller composes the destination underneath, so completion never exposes an empty window.
  */
 @Composable
@@ -59,7 +59,9 @@ fun TmtnLaunchOverlay(
 ) {
     val latestFinished by rememberUpdatedState(onFinished)
     val latestExitStarted by rememberUpdatedState(onExitStarted)
-    val frame = remember { Animatable(108f) }
+    // Frame 43 is the resting pose (scale 1, no tilt, eyes open), the cleanest handoff from the static system mark.
+    // It skips the opening bob, blink and idle hold; frames past 126 change nothing.
+    val frame = remember { Animatable(43f) }
     val opacity = remember { Animatable(1f) }
     var finished by remember { mutableStateOf(false) }
     LaunchedEffect(ready, reducedMotion) {
@@ -71,8 +73,8 @@ fun TmtnLaunchOverlay(
             withFrameNanos { }
             opacity.animateTo(0f, tween(TmtnMotion.PressMillis, easing = TmtnMotion.EaseOut))
         } else {
-            // Keep the original face and settle into its final pose; don't replay a 2.2s intro.
-            frame.animateTo(132f, tween(240, easing = TmtnMotion.EaseOut))
+            // Nod, smile and exit at the designed speed (60fps, about 1.4s). Home data loads underneath.
+            frame.animateTo(126f, tween(((126f - frame.value) / 60f * 1000).toInt(), easing = LinearEasing))
             latestExitStarted()
             withFrameNanos { }
             opacity.animateTo(0f, tween(120, easing = TmtnMotion.EaseOut))

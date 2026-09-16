@@ -36,7 +36,15 @@ object TmtnMotion {
     const val TouchDownMillis = 100
     const val PressMillis = 120
     const val EnterMillis = 240
+    const val FirstRepairTravelMillis = 560
+    const val FirstRepairSettleMillis = 180
+    // Bottom sheets: a longer, drawer-like entry; the exit is shorter because the system is responding.
+    const val SheetEnterMillis = 320
+    const val SheetExitMillis = 200
+    const val SheetReducedMillis = 160
     val EaseOut = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
+    // iOS-like drawer curve (Ionic). Only for surfaces that arrive from a screen edge.
+    val EaseDrawer = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
     // Critically damped spring, response 0.3s (stiffness = (2π / response)²).
     val TouchStiffness = ((2.0 * Math.PI / 0.3) * (2.0 * Math.PI / 0.3)).toFloat()
 }

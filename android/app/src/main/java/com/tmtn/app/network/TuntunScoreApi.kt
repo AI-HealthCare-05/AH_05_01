@@ -9,6 +9,12 @@ import retrofit2.Response
 import retrofit2.http.GET
 
 interface TuntunScoreApi {
+    @GET("tuntun-score/personal")
+    suspend fun getPersonalXai(): Response<com.tmtn.app.network.model.PersonalXaiResponse>
+
+    @GET("tuntun-score/editorial")
+    suspend fun getJournalEditorial(): Response<com.tmtn.app.network.model.JournalEditorialResponse>
+
 
     @GET("tuntun-score")
     suspend fun getTuntunScore(): Response<TuntunScoreOrEligibilityResponse>

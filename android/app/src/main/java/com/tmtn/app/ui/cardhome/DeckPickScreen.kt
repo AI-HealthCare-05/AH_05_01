@@ -92,7 +92,7 @@ fun DeckPickScreen(state: CardHomeState, scope: CoroutineScope, onBack: () -> Un
                 if (picked == null) {
                     "카드 한 장을 골라 주세요"
                 } else {
-                    "${listOf("첫", "두", "세").getOrElse(picked) { "그" }} 번째 카드로 정할까?"
+                    "${listOf("첫", "두", "세").getOrElse(picked) { "그" }} 번째 카드로 정할까요?"
                 },
                 style = TmtnType.headline, color = colors.onSurface, textAlign = TextAlign.Center,
             )

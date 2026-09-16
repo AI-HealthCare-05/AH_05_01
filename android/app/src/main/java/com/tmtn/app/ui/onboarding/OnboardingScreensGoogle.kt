@@ -72,8 +72,9 @@ internal fun GoogleContinueButton(onClick: () -> Unit, enabled: Boolean = true) 
 @Composable
 internal fun GoogleLinkDialog(email: String, busy: Boolean, error: String?, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     val colors = LocalTmtnColors.current
-    TmtnSheetDialog(onDismiss = { if (!busy) onDismiss() }) {
-      Surface(Modifier.fillMaxWidth().align(Alignment.BottomCenter), color = colors.surface,
+    TmtnSheetDialog(onDismiss = onDismiss, canDismiss = !busy) {
+      val sheet = this
+      Surface(Modifier.fillMaxWidth().align(Alignment.BottomCenter).tmtnSheetMotion(), color = colors.surface,
           shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -83,7 +84,7 @@ internal fun GoogleLinkDialog(email: String, busy: Boolean, error: String?, onCo
                 style = TmtnType.body, color = colors.onSurfaceVariant)
             if (error != null) OnboardingErrorMessage(error)
             TmtnPrimaryButton("기존 계정에 연결하기", onConfirm, enabled = !busy, loading = busy)
-            if (!busy) TmtnTextButton("다른 방법으로 로그인", onDismiss, Modifier.align(Alignment.CenterHorizontally))
+            if (!busy) TmtnTextButton("다른 방법으로 로그인", { sheet.dismiss(onDismiss) }, Modifier.align(Alignment.CenterHorizontally))
         }
       }
     }

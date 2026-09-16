@@ -186,7 +186,7 @@ fun HomeGiveUpNoCardScreen(
             illustrationDescription = "연장을 내려놓고 하늘을 보는 비버. 지친 표정은 아니다.",
             badgeText = "포기",
             message = "오늘은 여기까지",
-            primaryLabel = "오늘 카드 고르기",
+            primaryLabel = "오늘의 카드 고르기",
             onPrimaryClick = onPickCardAgain,
             links = listOf(
                 HomeLink("오늘은 쉬어가기", emphasized = true, onClick = onRestInstead),

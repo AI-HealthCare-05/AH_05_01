@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.cardhome
 
+import com.tmtn.app.ui.common.tmtnMaterialName
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -122,7 +124,7 @@ internal fun ExerciseMissionOptionCard(option: ExerciseMissionOption, enabled: B
             color = if (enabled) colors.onSurface else colors.onSurfaceVariant,
         )
         Text(
-            if (option.already_completed_today) "오늘 이미 완료했어요" else "${option.target_value}${option.unit} · ${option.material_name} 1개",
+            if (option.already_completed_today) "오늘 이미 완료했어요" else "${option.target_value}${option.unit} · ${tmtnMaterialName(option.five_element, option.material_name)} 1개",
             style = TmtnType.caption, color = colors.onSurfaceVariant,
         )
         Text(if (isModel) "움직임 인식" else "직접 확인", style = TmtnType.navigationLabel, color = colors.onSurfaceVariant)
@@ -153,7 +155,7 @@ fun ExerciseMissionDetailScreen(state: CardHomeState, scope: CoroutineScope) {
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text("${option.material_name} 1개", style = TmtnType.label, color = colors.onSurface)
+                Text("${tmtnMaterialName(option.five_element, option.material_name)} 1개", style = TmtnType.label, color = colors.onSurface)
                 Text(
                     if (isModel && sensorAvailable) "목표를 채우면 댐에 재료가 더해져요." else "${option.target_value}${option.unit}를 마치고 직접 완료를 확인해요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
@@ -345,18 +347,18 @@ fun ExerciseMissionRunningScreen(
 
 /** Figma B38(1회)/B41(2회) · 틈새 운동 완료 보상. */
 @Composable
-fun ExerciseMissionRewardScreen(state: CardHomeState) {
+fun ExerciseMissionRewardScreen(state: CardHomeState, onOpenDam: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
     val result = state.exerciseRewardResult.value ?: return
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "틈새 운동 완료", onBack = { })
+        TmtnTopBar(title = "틈새 운동 완료", onBack = null)
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("댐에 한 조각,\n더해졌어요.", style = TmtnType.headline, color = colors.onSurface)
-            Text("${result.material_name} +1", style = TmtnType.display, color = colors.onSurface)
+            Text("${tmtnMaterialName("", result.material_name)} +1", style = TmtnType.display, color = colors.onSurface)
 
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(16.dp),
@@ -381,7 +383,7 @@ fun ExerciseMissionRewardScreen(state: CardHomeState) {
                     state.step.value = CardHomeStep.HOME
                 },
             )
-            TmtnTextButton(text = "내 댐 보기", onClick = { state.activeExerciseSession.value = null; state.exerciseRewardResult.value = null; state.step.value = CardHomeStep.HOME })
+            TmtnTextButton(text = "내 댐 보러 가기", onClick = { state.activeExerciseSession.value = null; state.exerciseRewardResult.value = null; state.step.value = CardHomeStep.HOME; onOpenDam() })
         }
     }
 }

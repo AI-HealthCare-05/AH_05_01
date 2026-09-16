@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tmtn.app.R
 import com.tmtn.app.network.model.*
+import com.tmtn.app.ui.common.tmtnMaterialName
 import com.tmtn.app.ui.common.TmtnActionButton
 import com.tmtn.app.ui.common.TmtnActionStyle
 import com.tmtn.app.ui.reference.ScorePeerPositionUi
@@ -71,6 +72,10 @@ fun JournalScreen(
     requestedEdition: Int? = null,
     onEditionOpened: () -> Unit = {},
     exercises: JournalLoad<List<ExerciseMissionRecordItem>>? = null,
+    editorial: JournalLoad<JournalEditorialResponse>? = null,
+    personal: JournalLoad<PersonalXaiResponse>? = null,
+    onRetryPersonal: () -> Unit = {},
+    reviewPreview: Boolean = false,
 ) {
     var edition by rememberSaveable { mutableIntStateOf(0) }
     val editionStates = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
@@ -86,6 +91,7 @@ fun JournalScreen(
             onEditionOpened()
         }
     }
+    val practice = JournalPracticeContext(today, collection, exercises)
     val report = (weekly as? JournalLoad.Ready)?.value
     val allCards = (collection as? JournalLoad.Ready)?.value.orEmpty()
     val cards = remember(allCards, report) { issueCards(allCards, report) }
@@ -113,11 +119,12 @@ fun JournalScreen(
             }
             if (edition == 0) {
                 WeeklyCover(report, cards)
-                SectionTitle("01", "실천한 발자국")
+                SectionTitle("실천한 발자국")
                 WeeklyFootprints(weekly, collection, cards, onRefresh, exercises)
-                SectionTitle("02", "생활 읽을거리")
-                LivingArticles()
-                SectionTitle("03", "틈튼이의 작은 수리일지")
+                SectionTitle("생활 읽을거리")
+                JournalReadingColumns(editorial, onRefresh, weekly = true, reviewPreview = reviewPreview)
+                ConsistencyArticle()
+                SectionTitle("틈튼이의 작은 수리일지")
                 RepairDiary()
             } else {
                 DailyCover(today, onGoPickCard, onRefresh)
@@ -125,16 +132,16 @@ fun JournalScreen(
                     ExtraExerciseClippings(exercises, date, onRefresh)
                 }
                 QuoteBlock("오늘의 한 문장", dailyEditorial(today).sentence)
-                SectionTitle("01", "오늘의 카드 옆에")
+                SectionTitle("오늘의 카드 옆에")
                 DailyArticle(today)
-                SectionTitle("02", "잠깐 읽고, 가볍게 실천")
-                TableArticle()
+                SectionTitle("잠깐 읽고, 가볍게 실천")
+                JournalReadingColumns(editorial, onRefresh, weekly = false, reviewPreview = reviewPreview)
             }
             Box(Modifier.onGloballyPositioned { resultsY = it.positionInParent().y.toInt() }
                 .testTag("journal-results-heading")) {
-                SectionTitle(if (edition == 0) "04" else "03", "내 신체·운동 정보")
+                SectionTitle("내 신체·운동 정보")
             }
-            PersonalRecord(score, waist, cards, peerPositions, onEditInformation, onRetryWaist)
+            PersonalRecord(score, cards, onEditInformation, personal, onRetryPersonal, practice, onGoPickCard)
             NextCard(today, onGoPickCard)
             Text("작은 실천을 모아, 매일 한 장.\n틈튼이가 전하는 생활 소식", style = TmtnType.caption,
                 color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -154,8 +161,8 @@ private fun Masthead(edition: Int, report: WeeklyReportResponse?, serviceDate: S
         Spacer(Modifier.height(3.dp))
         HorizontalDivider(thickness = .5.dp, color = Ink)
         Spacer(Modifier.height(10.dp))
-        Text(if (edition == 0) "주간면  ·  ${report?.let { "${shortDate(it.start_date)} — ${shortDate(it.end_date)}" } ?: "나의 일곱 날"}"
-            else "일간면  ·  ${shortDate(serviceDate ?: LocalDate.now(JournalZone).toString())}", style = TmtnType.caption, color = Muted)
+        Text(if (edition == 0) "주간면 · ${report?.let { "${shortDate(it.start_date)} ~ ${shortDate(it.end_date)}" } ?: "나의 일곱 날"}"
+            else "일간면 · ${shortDate(serviceDate ?: LocalDate.now(JournalZone).toString())}", style = TmtnType.caption, color = Muted)
     }
 }
 
@@ -164,16 +171,10 @@ private fun WeeklyCover(report: WeeklyReportResponse?, cards: List<CardHistoryIt
     val lead = weeklyLead(report, cards)
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Kicker("이번 주의 1면")
-        Text(lead.title, style = TmtnType.editorialHeadline, color = Ink,
+        Text(lead.title.replace('\n', ' '), style = TmtnType.editorialHeadline, color = Ink,
             modifier = Modifier.semantics { heading() })
-        Row(Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(20.dp)).padding(12.dp),
-            verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(Modifier.weight(2.2f)) {
-                com.tmtn.app.ui.common.DamArtwork(0, description = "작은 빈틈부터 고쳐 가는 댐")
-            }
-            Image(painterResource(R.drawable.beaver_fixing), "댐의 작은 틈을 고치는 틈튼이",
-                Modifier.weight(1f).aspectRatio(1f), contentScale = ContentScale.Fit)
-        }
+        Image(painterResource(R.drawable.journal_weekly_scene_v2), "작은 댐 곁에서 나뭇가지를 모으는 틈튼이",
+            Modifier.fillMaxWidth().aspectRatio(1.5f).clip(RoundedCornerShape(20.dp)), contentScale = ContentScale.Fit)
         Text(lead.body, style = TmtnType.body, color = Ink)
     }
 }
@@ -209,17 +210,18 @@ private fun WeeklyFootprints(weekly: JournalLoad<WeeklyReportResponse>, collecti
                 Row(Modifier.fillMaxWidth().testTag("journal-week-dates").horizontalScroll(rememberScrollState()).selectableGroup()) {
                     dates.forEach { date ->
                         val status = report.days.firstOrNull { it.date == date.toString() }?.status
+                        val future = status == "FUTURE"
                         val isSelected = selected == date.toString()
                         Column(Modifier.width(cellWidth).clip(RoundedCornerShape(12.dp))
-                            .selectable(isSelected, role = Role.Tab) { selected = if (isSelected) null else date.toString() }
+                            .selectable(isSelected, enabled = !future, role = Role.Tab) { selected = if (isSelected) null else date.toString() }
                             .semantics { contentDescription = "${date.monthValue}월 ${date.dayOfMonth}일, ${statusLabel(status)}" }
                             .padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(date.format(DateTimeFormatter.ofPattern("E", Locale.KOREAN)), style = TmtnType.caption, color = Muted)
                             Box(Modifier.size(dateSize).border(if (isSelected) 2.dp else 1.dp,
                                 if (isSelected) Orange else if (status == "REST") Ink else Color.Transparent, CircleShape)
-                                .padding(3.dp).background(if (status == "COMPLETED") Ink else Paper, CircleShape), contentAlignment = Alignment.Center) {
-                                Text(date.dayOfMonth.toString(), style = TmtnType.label, color = if (status == "COMPLETED") Color.White else Ink)
+                                .padding(3.dp).background(if (status == "COMPLETED") Ink else if (future) Color.Transparent else Paper, CircleShape), contentAlignment = Alignment.Center) {
+                                Text(date.dayOfMonth.toString(), style = TmtnType.label, color = if (status == "COMPLETED") Color.White else if (future) Muted else Ink)
                             }
                         }
                     }
@@ -255,7 +257,7 @@ private fun WeeklyFootprints(weekly: JournalLoad<WeeklyReportResponse>, collecti
                         row.forEach { material ->
                             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Image(painterResource(materialArt(material.element)), null, Modifier.size(44.dp))
-                                Text("${material.material_name} ${material.count}개", style = TmtnType.caption, color = Ink, textAlign = TextAlign.Center)
+                                Text("${tmtnMaterialName(material.element, material.material_name)} ${material.count}개", style = TmtnType.caption, color = Ink, textAlign = TextAlign.Center)
                             }
                         }
                         repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -284,7 +286,7 @@ private fun ExtraExerciseClippings(records: JournalLoad<List<ExerciseMissionReco
                             Image(painterResource(materialArt(item.five_element)), null, Modifier.size(40.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(item.title, style = TmtnType.label, color = Ink)
-                                Text("${shortDate(item.service_date)} · ${item.material_name}", style = TmtnType.caption, color = Muted)
+                                Text("${shortDate(item.service_date)} · ${tmtnMaterialName(item.five_element, item.material_name)}", style = TmtnType.caption, color = Muted)
                             }
                         }
                     }
@@ -307,44 +309,14 @@ private fun Legend(text: String, filled: Boolean) {
 }
 
 @Composable
-private fun LivingArticles() {
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Kicker("움직임에 관하여")
-        Text("운동할 시간,\n일상 뒤에 붙여볼까요?", style = TmtnType.title, color = Ink)
-        Row(Modifier.fillMaxWidth().background(Color(0xFFE7ECDF), RoundedCornerShape(16.dp)).padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("식사 뒤에", style = TmtnType.label, color = Forest)
-                Spacer(Modifier.height(8.dp))
-                Text("익숙한 길\n한 바퀴", style = TmtnType.title, color = Ink)
-            }
-            Image(painterResource(R.drawable.beaver_wave), "함께 산책을 권하는 틈튼이", Modifier.size(110.dp))
-        }
-        Text("시간을 따로 내기 어려운 날에는 늘 하던 일 뒤에 짧은 움직임을 붙여보세요. ‘점심을 먹고 나서’처럼 시작할 때를 정해두는 거예요.", style = TmtnType.body, color = Ink)
-        HorizontalDivider(color = Hairline)
-        TableArticle()
+private fun ConsistencyArticle() {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         HorizontalDivider(color = Hairline)
         Kicker("꾸준함에 관하여")
-        Text("쉬어간 다음 날엔,\n한 장만 꺼내도 좋아요.", style = TmtnType.title, color = Ink)
+        Text("쉬어간 다음 날엔, 한 장만 꺼내도 좋아요.", style = TmtnType.title, color = Ink)
         Image(painterResource(R.drawable.beaver_rest), "편안하게 쉬는 틈튼이", Modifier.fillMaxWidth().height(146.dp))
         Text("비어 있는 하루를 밀린 숙제처럼 채우지 않아도 돼요. 지난번에 해낸 카드와 모아둔 재료는 남아 있으니까요.", style = TmtnType.body, color = Ink)
-        QuoteBlock(null, "어제 못 한 만큼 말고,\n오늘 할 수 있는 만큼만.")
-    }
-}
-
-@Composable
-private fun TableArticle() {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Kicker("식탁에서 · 혈압을 돌보는 습관")
-        Text("소금통보다,\n첫 한입을 먼저.", style = TmtnType.title, color = Ink)
-        Row(Modifier.fillMaxWidth().background(Color(0xFFF4E3D0), RoundedCornerShape(12.dp)).padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            Text("맛보고", style = TmtnType.title, color = Ink)
-            Text("→", style = TmtnType.title, color = Ink)
-            Text("정하기", style = TmtnType.title, color = Ink)
-        }
-        Text("소금이나 소스를 더하기 전에 한입 맛보세요. 이미 간이 맞는다면 그대로 먹어보는 거예요. 평소 무심코 더하던 한 번을 줄여볼 수 있어요.", style = TmtnType.body, color = Ink)
-        Text("오늘의 작은 실천 · 더하기 전에 한입 맛보기", style = TmtnType.caption, color = Muted)
+        QuoteBlock(null, "어제 못 한 만큼 말고, 오늘 할 수 있는 만큼만.")
     }
 }
 
@@ -354,12 +326,12 @@ private fun RepairDiary() {
         Triple(R.drawable.beaver_fixing, "이 틈에 딱 맞겠는걸?", "실천으로 얻은 재료로 한 곳을 메우고"),
         Triple(R.drawable.beaver_rest, "내일 또 이어가자.", "오늘의 작은 수리를 마칩니다"))
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        panels.forEachIndexed { index, panel ->
+        panels.forEach { panel ->
             Row(Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(14.dp)).padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Image(painterResource(panel.first), null, Modifier.size(80.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("0${index + 1}  ${panel.second}", style = TmtnType.label, color = Ink)
+                    Text(panel.second, style = TmtnType.label, color = Ink)
                     Text(panel.third, style = TmtnType.caption, color = Muted)
                 }
             }
@@ -375,7 +347,7 @@ private fun DailyCover(today: JournalLoad<JournalToday>, onGo: () -> Unit, onRet
     val editorial = dailyEditorial(today)
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Kicker("오늘의 1면")
-        Text(editorial.title, style = TmtnType.editorialHeadline, color = Ink)
+        Text(editorial.title.replace('\n', ' '), style = TmtnType.title, color = Ink)
         Image(painterResource(if (rest) R.drawable.beaver_rest else if (done) R.drawable.beaver_cheer else R.drawable.beaver_card),
             null, Modifier.fillMaxWidth().height(164.dp))
         when (today) {
@@ -411,14 +383,15 @@ private fun DailyCover(today: JournalLoad<JournalToday>, onGo: () -> Unit, onRet
 private fun DailyArticle(today: JournalLoad<JournalToday>) {
     val editorial = dailyEditorial(today)
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(editorial.articleTitle, style = TmtnType.title, color = Ink)
+        Text(editorial.articleTitle.replace('\n', ' '), style = TmtnType.title, color = Ink)
         Text(editorial.articleBody, style = TmtnType.body, color = Ink)
     }
 }
 
 @Composable
-private fun PersonalRecord(score: TuntunScorePeerV2Response?, waist: WaistEstimateUi, cards: List<CardHistoryItem>,
-    peers: List<ScorePeerPositionUi>, onEdit: () -> Unit, onRetryWaist: () -> Unit) {
+private fun PersonalRecord(score: TuntunScorePeerV2Response?, cards: List<CardHistoryItem>,
+    onEdit: () -> Unit, personal: JournalLoad<PersonalXaiResponse>?, onRetry: () -> Unit,
+    practice: JournalPracticeContext, onGo: () -> Unit) {
     var domain by rememberSaveable { mutableIntStateOf(3) }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -429,7 +402,7 @@ private fun PersonalRecord(score: TuntunScorePeerV2Response?, waist: WaistEstima
                     Kicker("최근 신체·운동 정보 기준")
                     Text("틈튼지수", style = TmtnType.title, color = Ink)
                 }
-                Text(available?.let { String.format(Locale.KOREAN, "%.1f", it) } ?: "—", style = TmtnType.display, color = LocalTmtnColors.current.secondary)
+                Text(available?.let { String.format(Locale.KOREAN, "%.1f", it) } ?: "-", style = TmtnType.display, color = LocalTmtnColors.current.secondary)
                 if (available != null) Text("점", style = TmtnType.label, color = Muted, modifier = Modifier.padding(start = 4.dp, top = 12.dp))
             }
             if (available == null) Text("지수가 준비되면 여기에 함께 담아둘게요.", style = TmtnType.caption, color = Muted)
@@ -442,6 +415,9 @@ private fun PersonalRecord(score: TuntunScorePeerV2Response?, waist: WaistEstima
             } else {
                 Text("아직 비교 결과가 없어요.", style = TmtnType.caption, color = Muted)
             }
+            val snapshot = verifiedPersonalSnapshot(personal)
+            val explanation = snapshot?.let { boundPersonalDomain(score, it, keys[domain]) }
+            if (explanation != null) JournalPersonalExplanation(snapshot!!, explanation, showActivity = false, practice = practice)
             // Domain titles are editorial navigation, never fabricated personalized XAI claims.
             val title = listOf("오늘의 나를 알고,\n편한 속도를 찾아요.", "일상에 움직임을\n남겨두는 방법.", "익숙한 작은 습관,\n한 번 더 돌아봐요.", if (cards.isNotEmpty()) "해낸 카드마다,\n내 이야기가 있어요." else "나에게 맞는 실천을\n한 장씩 찾아봐요.")[domain]
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -459,6 +435,9 @@ private fun PersonalRecord(score: TuntunScorePeerV2Response?, waist: WaistEstima
                 Kicker("실천 기록 · 이번 주에 완료한 카드")
                 cards.take(2).forEach { MissionClipping(it) }
             }
+            HorizontalDivider(color = Hairline)
+            if (snapshot != null) verifiedActivityComparison(snapshot)?.let { JournalActivityComparison(it, practice, onGo) }
+            else JournalPersonalStatus(personal, onRetry, onEdit, practice, onGo)
             TextButton(onClick = onEdit) { Text("내 몸 · 운동 정보 살펴보기  →", style = TmtnType.label, color = Forest) }
             if (peerText != null) Text("등수는 진단이나 질병이 생길 확률이 아니에요.", style = TmtnType.caption, color = Muted)
         }
@@ -471,7 +450,7 @@ private fun MissionClipping(card: CardHistoryItem) {
         Image(painterResource(materialArt(card.five_element)), null, Modifier.size(36.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(card.title, style = TmtnType.label, color = Ink)
-            Text("${shortDate(card.completed_at)} · ${card.material_name}", style = TmtnType.caption, color = Muted)
+            Text("${shortDate(card.completed_at)} · ${tmtnMaterialName(card.five_element, card.material_name)}", style = TmtnType.caption, color = Muted)
         }
     }
 }
@@ -514,13 +493,10 @@ private fun JournalTabs(labels: List<String>, selected: Int, onSelect: (Int) -> 
 }
 
 @Composable
-private fun SectionTitle(number: String, text: String) {
+private fun SectionTitle(text: String) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HorizontalDivider(thickness = 1.dp, color = Ink)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-            Text(number, style = TmtnType.label, color = Forest, modifier = Modifier.background(Color(0xFFFFE5D1), RoundedCornerShape(6.dp)).padding(horizontal = 7.dp, vertical = 3.dp))
-            Text(text, style = TmtnType.sectionHeading, color = Ink, modifier = Modifier.weight(1f).semantics { heading() })
-        }
+        Text(text, style = TmtnType.sectionHeading, color = Ink, modifier = Modifier.semantics { heading() })
     }
 }
 
@@ -530,7 +506,7 @@ private fun QuoteBlock(label: String?, quote: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         label?.let { Kicker(it) }
         Box(Modifier.width(28.dp).height(3.dp).background(Orange))
-        Text("“$quote”", style = TmtnType.bodyLarge, color = Forest)
+        Text("“${quote.replace('\n', ' ')}”", style = TmtnType.bodyLarge, color = Forest)
         Text("틈튼이의 한마디", style = TmtnType.caption, color = Muted)
     }
 }
@@ -552,5 +528,7 @@ private fun statusLabel(status: String?): String = when (status) {
     "COMPLETED" -> "실천"
     "REST" -> "쉼"
     "INCOMPLETE" -> "미완료"
+    "FUTURE" -> "아직 오지 않은 날"
+    "UNKNOWN" -> "기록 확인 필요"
     else -> "기록 없음"
 }

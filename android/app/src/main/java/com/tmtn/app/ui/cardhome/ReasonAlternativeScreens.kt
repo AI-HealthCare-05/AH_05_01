@@ -141,7 +141,7 @@ fun AlternativeRequestScreen(state: CardHomeState, onBack: () -> Unit) {
                 onClick = { state.step.value = CardHomeStep.ALTERNATIVE_APPLIED },
                 enabled = selectedReason != null,
             )
-            TmtnTextButton(text = "그냥 할래", onClick = onBack)
+            TmtnTextButton(text = "이대로 할래요", onClick = onBack)
         }
     }
 }
@@ -177,7 +177,7 @@ fun AlternativeAppliedScreen(state: CardHomeState, onStartAction: () -> Unit) {
                 )
             }
 
-            TmtnPrimaryButton(text = "이 행동 시작하기", onClick = onStartAction)
+            TmtnPrimaryButton(text = "이 카드 실천하기", onClick = onStartAction)
         }
     }
 }

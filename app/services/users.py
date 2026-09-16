@@ -16,7 +16,7 @@ from app.dtos.users import (
 from app.models.assessments import AssessmentJob, TmtnIndexResult
 from app.models.cards import DailyCardSet
 from app.models.challenges import PointLedger
-from app.models.companion import CompanionStageLog, CompanionState, RecommendationPreference
+from app.models.companion import CompanionFirstRepair, CompanionStageLog, CompanionState, RecommendationPreference
 from app.models.health import ExerciseHabitSnapshot, HealthInputSnapshot
 from app.models.mission_recommendation import ElementRecommendationScore
 from app.models.notifications import DailyActionSummary
@@ -115,6 +115,7 @@ class UserManageService:
             await ExerciseHabitSnapshot.filter(user=user).delete()
             await PointLedger.filter(user=user).delete()
             await CompanionState.filter(user=user).delete()
+            await CompanionFirstRepair.filter(user=user).delete()
             await CompanionStageLog.filter(user=user).delete()
             await DailyRecordNote.filter(user=user).delete()
             await DailyActionSummary.filter(user=user).delete()

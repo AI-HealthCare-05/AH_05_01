@@ -15,7 +15,8 @@ data class MaterialHistoryResponse(
     val material_name: String,
     val domain_label: String,
     val count: Int,
-    val recent_history: List<CardHistoryItem>
+    val recent_history: List<CardHistoryItem>,
+    val welcome_gift_count: Int = 0,
 )
 
 // ===== G06: 카드첩 =====

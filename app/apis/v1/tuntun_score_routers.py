@@ -1,8 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 
 from app.dependencies.security import get_request_user
+from app.dtos.journal_editorial import JournalEditorialResponse
+from app.dtos.personal_xai import PersonalXaiResponse
 from app.dtos.tuntun_score import (
     ScoreInputsResponse,
     TmtnScoreResponse,
@@ -11,6 +13,8 @@ from app.dtos.tuntun_score import (
 )
 from app.dtos.tuntun_score_peer import TuntunScorePeerV2Response
 from app.models.users import User
+from app.services.journal_editorial_service import JournalEditorialService
+from app.services.personal_xai_service import PersonalXaiService
 from app.services.tuntun_score_peer_service import TuntunScorePeerService
 from app.services.tuntun_score_service import TuntunScoreService
 
@@ -79,3 +83,23 @@ async def get_tuntun_score_peer_v2(
     """
 
     return await service.get_score(user)
+
+
+@tuntun_score_router.get("/personal", response_model=PersonalXaiResponse)
+async def get_personal_xai(
+    user: Annotated[User, Depends(get_request_user)],
+    service: Annotated[PersonalXaiService, Depends(PersonalXaiService)],
+    response: Response,
+) -> PersonalXaiResponse:
+    """로그인한 사용자의 최신 입력으로 개인 점수와 SHAP를 함께 계산한다."""
+    response.headers["Cache-Control"] = "no-store"
+    return await service.get_personal(user)
+
+
+@tuntun_score_router.get("/editorial", response_model=JournalEditorialResponse)
+async def get_journal_editorial(
+    user: Annotated[User, Depends(get_request_user)],
+    service: Annotated[JournalEditorialService, Depends(JournalEditorialService)],
+) -> JournalEditorialResponse:
+    """틈튼일보 출처 읽을거리. 승인된 문장만 반환하며 DB/모델 상태를 변경하지 않는다."""
+    return await service.get_editorial(user)

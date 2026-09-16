@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.dam
 
+import com.tmtn.app.ui.common.tmtnMaterialName
+
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.tmtn.app.ui.common.TmtnMascot
@@ -62,19 +64,8 @@ fun StageUpCelebrationScreen(pending: StageUpPendingResponse, onGoToDam: () -> U
                     .padding(horizontal = 20.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-              val expandedText = androidx.compose.ui.platform.LocalDensity.current.fontScale *
-                  com.tmtn.app.ui.theme.LocalTmtnTextScale.current > 1.25f
-              Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("${pending.previous_stage}단계", style = TmtnType.bodyLarge, color = colors.onSurfaceVariant)
-                Text("→", style = TmtnType.title, color = colors.primary)
-                Text(
-                    if (expandedText) "${pending.new_stage}단계" else
-                        "${pending.new_stage}단계 · ${com.tmtn.app.ui.common.damRepairLabel(pending.new_stage)}",
-                    style = TmtnType.bodyLarge, color = colors.onSurface,
-                )
-              }
-              if (expandedText) Text(com.tmtn.app.ui.common.damRepairLabel(pending.new_stage),
-                  style = TmtnType.bodyLarge, color = colors.onSurface)
+                Text("${pending.previous_stage}단계에서 ${pending.new_stage}단계로", style = TmtnType.bodyLarge, color = colors.onSurface)
+                Text(com.tmtn.app.ui.common.damRepairLabel(pending.new_stage), style = TmtnType.body, color = colors.onSurfaceVariant)
             }
 
             Column(
@@ -86,13 +77,13 @@ fun StageUpCelebrationScreen(pending: StageUpPendingResponse, onGoToDam: () -> U
             ) {
                 Text("${pending.previous_stage}단계에서 쌓은 것", style = TmtnType.label, color = colors.onSurface)
                 Text(
-                    "재료 ${pending.materials_gained_this_stage}개 · 실천 ${pending.days_practiced_this_stage}일 · " +
+                    "재료 ${pending.materials_gained_this_stage}개, 실천 ${pending.days_practiced_this_stage}일, " +
                         "쉼 ${pending.days_rested_this_stage}일",
                     style = TmtnType.body, color = colors.onSurfaceVariant,
                 )
                 if (pending.top_material_name != null) {
                     Text(
-                        "가장 많이 모은 재료는 ${pending.top_material_name}였어요.",
+                        "가장 많이 모은 재료는 ${tmtnMaterialName("", pending.top_material_name)}였어요.",
                         style = TmtnType.caption, color = colors.onSurfaceVariant,
                     )
                 }

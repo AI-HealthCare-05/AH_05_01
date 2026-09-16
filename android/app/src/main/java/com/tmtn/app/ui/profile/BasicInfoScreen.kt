@@ -31,7 +31,7 @@ internal fun BasicInfoScreen(state: ProfileState, scope: CoroutineScope, onBack:
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("나를 소개해 주세요.", style = TmtnType.editorialHeadline, color = colors.onSurface)
             Text("이름과 생년월은 필수 정보예요.", style = TmtnType.body, color = colors.onSurfaceVariant)
-            TmtnTextField(name, { name = it.take(20) }, "이름 · 필수", supportingText = "1–20자", imeAction = ImeAction.Next)
+            TmtnTextField(name, { name = it.take(20) }, "이름 · 필수", supportingText = "1~20자", imeAction = ImeAction.Next)
             Text("생년월", style = TmtnType.label, color = colors.onSurface, modifier = Modifier.padding(top = 8.dp))
             ResponsiveFieldPair(first = {
                 TmtnTextField(year, { year = it.filter(Char::isDigit).take(4) }, "태어난 연도", it, keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)

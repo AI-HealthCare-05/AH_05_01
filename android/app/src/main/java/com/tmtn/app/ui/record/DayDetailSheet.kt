@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.record
 
+import com.tmtn.app.ui.common.tmtnMaterialName
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -73,7 +75,7 @@ fun DayDetailSheet(state: RecordState, scope: CoroutineScope) {
                         MaterialIcon(detail.element, 64.dp)
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("모은 재료", style = TmtnType.label, color = colors.onSurfaceVariant)
-                            Text("${detail.material_name.orEmpty()} 1개", style = TmtnType.title, color = colors.onSurface)
+                            Text("${tmtnMaterialName(detail.element.orEmpty(), detail.material_name.orEmpty())} 1개", style = TmtnType.title, color = colors.onSurface)
                         }
                     }
                     if (!detail.memo.isNullOrBlank()) {

@@ -349,7 +349,7 @@ fun CardHomeFlow(
                 onStartWalking, onStopWalking, onStartRunningDistance, onStartRunningDuration, onStopRunning,
                 onStartStairs, onStopStairs,
             )
-            CardHomeStep.EXTRA_REWARD -> ExerciseMissionRewardScreen(state)
+            CardHomeStep.EXTRA_REWARD -> ExerciseMissionRewardScreen(state, onOpenDam = onOpenDam)
         }
 
         // ⚠️ B16(오늘 쉬어가기)은 진짜 바텀시트여야 함 — "화면"으로 취급해서 REST_DAY_SHEET라는
@@ -368,8 +368,8 @@ fun CardHomeFlow(
                 busy = state.isLoading.value,
                 errorMessage = state.errorMessage.value,
                 dateLabel = state.displayDateLabel().toKoreanDateLabel(),
-                restTicketValue = "${state.restDaysRemainingThisWeek.value}회 → " +
-                    "${(state.restDaysRemainingThisWeek.value + 1).coerceAtMost(2)}회",
+                restTicketValue = "${state.restDaysRemainingThisWeek.value}회에서 " +
+                    "${(state.restDaysRemainingThisWeek.value + 1).coerceAtMost(2)}회로",
                 onCancelRestAndChallenge = {
                     scope.launch {
                         if (!state.cancelRestDay()) return@launch
@@ -399,8 +399,8 @@ fun CardHomeFlow(
                 // RestCancelSheet는 "남은 횟수"(restDaysRemainingThisWeek) 기준으로 "1회 → 2회"
                 // 였는데 여기만 기준이 달라서 반대로 보인 것 - 실제 서버 값·최종 결과는 항상
                 // 맞았고(리포트에서도 확인됨), 이 문자열 조립부만 기준이 안 맞았음. 통일함.
-                restTicketValue = "${state.restDaysRemainingThisWeek.value}회 → " +
-                    "${(state.restDaysRemainingThisWeek.value + 1).coerceAtMost(2)}회 · 1회 돌아옴",
+                restTicketValue = "${state.restDaysRemainingThisWeek.value}회에서 " +
+                    "${(state.restDaysRemainingThisWeek.value + 1).coerceAtMost(2)}회로 돌아와요",
                 onKeepResting = { state.showRestToGiveUpSheet.value = false; state.errorMessage.value = null },
                 onSwitchToGiveUp = {
                     scope.launch {

@@ -440,14 +440,15 @@ fun TmtnCheckRow(
         Row(Modifier.weight(1f).heightIn(min = 56.dp)
             .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange)
             .padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.material3.Checkbox(checked = checked, onCheckedChange = null,
-                modifier = Modifier.padding(horizontal = 12.dp))
+            Box(Modifier.width(48.dp), contentAlignment = Alignment.Center) {
+                androidx.compose.material3.Checkbox(checked = checked, onCheckedChange = null)
+            }
             Text(label, style = TmtnType.body,
                 color = if (optional) colors.onSurfaceVariant else colors.onSurface,
                 modifier = Modifier.weight(1f))
         }
         onViewClick?.let {
-            TextButton(onClick = it, modifier = Modifier.heightIn(min = TmtnLayout.TouchTarget)) {
+            TextButton(onClick = it, modifier = Modifier.heightIn(min = TmtnLayout.TouchTarget).semantics { contentDescription = "$label 보기" }) {
                 Text("보기", style = TmtnType.label, color = colors.primary)
             }
         }

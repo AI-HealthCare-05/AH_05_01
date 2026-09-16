@@ -114,3 +114,6 @@ jobs:
         run: |
           uv run coverage run -m pytest app
           uv run coverage report -m
+
+      - name: Run isolated first repair and journal XAI tests
+        run: uv run python -m pytest tests/first_repair tests/test_journal_xai_integration.py -q

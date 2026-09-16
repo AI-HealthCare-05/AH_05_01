@@ -1,0 +1,262 @@
+{
+  "schema_version": "knhanes-activity-2019-2021-weighted-v1",
+  "source_kind": "knhanes_population_survey",
+  "years": [
+    2019,
+    2020,
+    2021
+  ],
+  "weighting": "wt_itvex / 3",
+  "grouping": "age19_39_40_64_65plus_by_survey_sex",
+  "source_label": "국민건강영양조사 2019~2021",
+  "source_url": "https://knhanes.kdca.go.kr/knhanes/main.do",
+  "sources": [
+    {
+      "file": "hn19_all.csv",
+      "year": 2019,
+      "sha256": "34b87583dd5eeac553fbc6fa19adecdd698b9639fa52c3a8de62e65cc5f0a0d7",
+      "rows": 8110,
+      "adult_rows": 6606
+    },
+    {
+      "file": "hn20_all.csv",
+      "year": 2020,
+      "sha256": "3970e1e376d8ad700e6d6659f80dd94674d66cf9dc2bba91c4f47ade0f82ba2f",
+      "rows": 7359,
+      "adult_rows": 6133
+    },
+    {
+      "file": "hn21_all.csv",
+      "year": 2021,
+      "sha256": "578ab64da503b6b0d51f640aa4e39aa7e973a8dbd05f4c7adecaac66c95788d8",
+      "rows": 7090,
+      "adult_rows": 5952
+    }
+  ],
+  "adult_source_rows": 18691,
+  "variance_method": "Taylor domain ratio; year-nested strata and PSU; with-replacement; no FPC; normal 95% interval",
+  "suppression_policy": "n>=30, Kish effective_n>=30, RSE<=0.30, no singleton strata",
+  "definitions": {
+    "leisure_aerobic_moderate_equivalent_min_week": "leisure moderate + 2 * leisure vigorous; zero only when participation=no; invalid/missing excluded",
+    "strength_days_week": "BE5_1 codes 1..6 -> 0..5 days; 5+ topcoded at 5; codes 8/9/missing excluded"
+  },
+  "definition_evidence": "Frozen activity_features.py; KDCA raw-data user guide updated 2026-07 PDF pp.38,41,177; official pa_aerobic reproduction in each pinned CSV",
+  "crosschecks": {
+    "official_aerobic_compared": 16632,
+    "official_aerobic_mismatch": 0,
+    "official_strength_compared": 0,
+    "official_strength_mismatch": 0
+  },
+  "groups": {
+    "19-39:1": {
+      "n": 2165,
+      "metrics": {
+        "leisure_aerobic_moderate_equivalent_min_week": {
+          "status": "ready",
+          "n": 2087,
+          "mean": 155.33183148636854,
+          "median": 0.0,
+          "standard_error": 7.123276706647482,
+          "relative_standard_error": 0.04585844793359434,
+          "effective_n": 1638.9738125288056,
+          "ci95_normal": [
+            141.37020914133947,
+            169.2934538313976
+          ],
+          "zero_response_n": 1091
+        },
+        "strength_days_week": {
+          "status": "ready",
+          "n": 2087,
+          "mean": 1.4743229489905658,
+          "median": 0.0,
+          "standard_error": 0.0494039248533486,
+          "relative_standard_error": 0.03350956782377586,
+          "effective_n": 1638.9738125288056,
+          "ci95_normal": [
+            1.3774912562780026,
+            1.571154641703129
+          ],
+          "zero_response_n": 1167,
+          "topcoded_n": 284,
+          "two_or_more_days_percent": 38.11522328450529
+        }
+      }
+    },
+    "19-39:2": {
+      "n": 2409,
+      "metrics": {
+        "leisure_aerobic_moderate_equivalent_min_week": {
+          "status": "ready",
+          "n": 2311,
+          "mean": 79.91925196641353,
+          "median": 0.0,
+          "standard_error": 4.041150680386411,
+          "relative_standard_error": 0.05056542173448677,
+          "effective_n": 1760.7656027635983,
+          "ci95_normal": [
+            71.99859663285616,
+            87.83990729997089
+          ],
+          "zero_response_n": 1508
+        },
+        "strength_days_week": {
+          "status": "ready",
+          "n": 2311,
+          "mean": 0.6000713780822459,
+          "median": 0.0,
+          "standard_error": 0.03144020086435208,
+          "relative_standard_error": 0.05239410178974222,
+          "effective_n": 1760.7656027635983,
+          "ci95_normal": [
+            0.5384485843881158,
+            0.6616941717763759
+          ],
+          "zero_response_n": 1782,
+          "topcoded_n": 59,
+          "two_or_more_days_percent": 18.56607320086193
+        }
+      }
+    },
+    "40-64:1": {
+      "n": 3561,
+      "metrics": {
+        "leisure_aerobic_moderate_equivalent_min_week": {
+          "status": "ready",
+          "n": 3336,
+          "mean": 91.10198268403441,
+          "median": 0.0,
+          "standard_error": 3.8146951077357656,
+          "relative_standard_error": 0.04187280007907325,
+          "effective_n": 2639.179055084245,
+          "ci95_normal": [
+            83.62518027287231,
+            98.57878509519651
+          ],
+          "zero_response_n": 2161
+        },
+        "strength_days_week": {
+          "status": "ready",
+          "n": 3335,
+          "mean": 1.0664498815742356,
+          "median": 0.0,
+          "standard_error": 0.03578008043998874,
+          "relative_standard_error": 0.033550644112006575,
+          "effective_n": 2638.5284968023184,
+          "ci95_normal": [
+            0.9963209239118577,
+            1.1365788392366136
+          ],
+          "zero_response_n": 2233,
+          "topcoded_n": 355,
+          "two_or_more_days_percent": 27.929365453823248
+        }
+      }
+    },
+    "40-64:2": {
+      "n": 4598,
+      "metrics": {
+        "leisure_aerobic_moderate_equivalent_min_week": {
+          "status": "ready",
+          "n": 4402,
+          "mean": 62.59663296719431,
+          "median": 0.0,
+          "standard_error": 2.8789408898025903,
+          "relative_standard_error": 0.04599194482731025,
+          "effective_n": 3296.534874485462,
+          "ci95_normal": [
+            56.95390882318123,
+            68.23935711120738
+          ],
+          "zero_response_n": 3226
+        },
+        "strength_days_week": {
+          "status": "ready",
+          "n": 4404,
+          "mean": 0.5804513599847025,
+          "median": 0.0,
+          "standard_error": 0.02233176598847653,
+          "relative_standard_error": 0.03847310477326657,
+          "effective_n": 3298.2442634334316,
+          "ci95_normal": [
+            0.5366810986472885,
+            0.6242216213221166
+          ],
+          "zero_response_n": 3583,
+          "topcoded_n": 229,
+          "two_or_more_days_percent": 15.855792367202548
+        }
+      }
+    },
+    "65+:1": {
+      "n": 2216,
+      "metrics": {
+        "leisure_aerobic_moderate_equivalent_min_week": {
+          "status": "ready",
+          "n": 1982,
+          "mean": 60.05183590998667,
+          "median": 0.0,
+          "standard_error": 4.420161752104829,
+          "relative_standard_error": 0.07360577216540606,
+          "effective_n": 1500.1520641718237,
+          "ci95_normal": [
+            51.3883188758612,
+            68.71535294411214
+          ],
+          "zero_response_n": 1576
+        },
+        "strength_days_week": {
+          "status": "ready",
+          "n": 1978,
+          "mean": 1.3617302483629454,
+          "median": 0.0,
+          "standard_error": 0.05488441715880411,
+          "relative_standard_error": 0.04030491150856452,
+          "effective_n": 1496.8979319985867,
+          "ci95_normal": [
+            1.2541567907316893,
+            1.4693037059942016
+          ],
+          "zero_response_n": 1353,
+          "topcoded_n": 363,
+          "two_or_more_days_percent": 31.724730182083107
+        }
+      }
+    },
+    "65+:2": {
+      "n": 2954,
+      "metrics": {
+        "leisure_aerobic_moderate_equivalent_min_week": {
+          "status": "ready",
+          "n": 2545,
+          "mean": 23.891777419283596,
+          "median": 0.0,
+          "standard_error": 2.030767428243582,
+          "relative_standard_error": 0.08499859146538438,
+          "effective_n": 1910.114714641232,
+          "ci95_normal": [
+            19.911473259926176,
+            27.872081578641016
+          ],
+          "zero_response_n": 2254
+        },
+        "strength_days_week": {
+          "status": "ready",
+          "n": 2542,
+          "mean": 0.487014430725164,
+          "median": 0.0,
+          "standard_error": 0.0298995135939062,
+          "relative_standard_error": 0.06139348591659975,
+          "effective_n": 1908.9381264558583,
+          "ci95_normal": [
+            0.42841138408110785,
+            0.5456174773692202
+          ],
+          "zero_response_n": 2226,
+          "topcoded_n": 159,
+          "two_or_more_days_percent": 11.735175927422006
+        }
+      }
+    }
+  }
+}

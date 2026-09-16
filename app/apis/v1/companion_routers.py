@@ -6,6 +6,7 @@ from app.dependencies.security import get_request_user
 from app.dtos.companion import (
     CardCollectionResponse,
     CompanionResponse,
+    FirstRepairResponse,
     MaterialHistoryResponse,
     StageUpPendingResponse,
 )
@@ -13,6 +14,33 @@ from app.models.users import User
 from app.services.companion_service import CompanionService
 
 companion_router = APIRouter(prefix="/companion", tags=["companion"])
+
+
+@companion_router.get("/first-repair", response_model=FirstRepairResponse)
+async def get_first_repair(
+    user: Annotated[User, Depends(get_request_user)],
+    service: Annotated[CompanionService, Depends(CompanionService)],
+) -> FirstRepairResponse:
+    """새 가입자의 첫 선물·복구 진행 상태를 조회한다."""
+    return await service.get_first_repair(user)
+
+
+@companion_router.post("/first-repair/gift", response_model=FirstRepairResponse)
+async def receive_first_gift(
+    user: Annotated[User, Depends(get_request_user)],
+    service: Annotated[CompanionService, Depends(CompanionService)],
+) -> FirstRepairResponse:
+    """나뭇가지 하나를 받는다. 반복 호출해도 같은 선물을 반환한다."""
+    return await service.advance_first_repair(user, complete=False)
+
+
+@companion_router.post("/first-repair/complete", response_model=FirstRepairResponse)
+async def complete_first_repair(
+    user: Annotated[User, Depends(get_request_user)],
+    service: Annotated[CompanionService, Depends(CompanionService)],
+) -> FirstRepairResponse:
+    """첫 선물을 댐에 더한다. 운동 기록과 점수는 변경하지 않는다."""
+    return await service.advance_first_repair(user, complete=True)
 
 
 @companion_router.get("", response_model=CompanionResponse, status_code=status.HTTP_200_OK)

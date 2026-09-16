@@ -38,7 +38,7 @@ class HomeHierarchyTest {
         compose.onNodeWithText("가입 전", substring = true).assertDoesNotExist()
         compose.onNodeWithText("실천").assertIsDisplayed()
         compose.onNodeWithText("미완료").assertIsDisplayed()
-        compose.onNodeWithText("댐 2단계").assertIsDisplayed()
+        compose.onNodeWithText("댐 2단계").assertDoesNotExist()
         compose.onNodeWithText("재료", substring = true).assertDoesNotExist()
     }
 
@@ -61,9 +61,9 @@ class HomeHierarchyTest {
             } }
         }
         compose.onNodeWithText("예시").assertDoesNotExist()
-        compose.onNodeWithText("지수 보기 ›").performScrollTo().performClick()
+        compose.onNodeWithText("이번 호 펼치기").performScrollTo().performClick()
         compose.runOnIdle { org.junit.Assert.assertTrue(opened) }
         compose.onNodeWithContentDescription("9월 3일 오늘, 실천").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("댐 2단계").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("댐 2단계").assertDoesNotExist()
     }
 }

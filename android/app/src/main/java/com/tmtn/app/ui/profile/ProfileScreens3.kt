@@ -34,17 +34,19 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import com.tmtn.app.ui.legal.LegalDocument
+import androidx.compose.material3.TextButton
 
 private val MANDATORY_PURPOSES = listOf(
     "TERMS_OF_SERVICE" to "서비스 이용약관",
-    "PRIVACY_POLICY" to "개인정보 처리방침",
+    "PRIVACY_POLICY" to "개인정보 수집 · 이용 동의",
     "AGE_OVER_14" to "만 14세 이상",
     "HEALTH_DATA_USAGE" to "건강정보 수집 · 이용",
 )
 private val OPTIONAL_PURPOSES = listOf(
     "LOCATION_DATA_USAGE" to ("위치정보 수집 · 이용" to "거리를 재는 미션에서 사용해요"),
     "HEALTH_REFERENCE_ANALYSIS" to ("틈튼지수 산출을 위한 분석" to "동의하지 않아도 챌린지는 그대로 이용할 수 있습니다"),
-    "NOTIFICATION" to ("알림 받기" to "생활시간에 맞춰 알려드립니다"),
+    "NOTIFICATION" to ("카드 · 미션 알림 받기" to "기기 알림 권한은 별도로 설정해요"),
 )
 
 /** Figma F10 · 동의 관리 (+ F11 선택 동의 철회 확인 다이얼로그 통합) */
@@ -66,7 +68,10 @@ fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             ) {
                 MANDATORY_PURPOSES.forEach { (purpose, label) ->
-                    ProfileListItem(label, agreedDateText(consentByPurpose[purpose]?.agreed_at))
+                    val document = LegalDocument.forPurpose(purpose)
+                    ProfileListItem(label, agreedDateText(consentByPurpose[purpose]?.agreed_at),
+                        horizontalInset = 20.dp,
+                        onClick = document?.let { { state.openLegal(it) } })
                 }
             }
 
@@ -100,6 +105,11 @@ fun ConsentScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit
                             enabled = !state.isLoading.value,
                             onCheckedChange = null,
                         )
+                    }
+                    LegalDocument.forPurpose(purpose)?.let { document ->
+                        TextButton(onClick = { state.openLegal(document) }, modifier = Modifier.padding(horizontal = 12.dp)) {
+                            Text("${document.title} 보기", style = TmtnType.caption)
+                        }
                     }
                 }
             }

@@ -14,8 +14,10 @@ internal object SystemMotionTest {
         shell("settings put global animator_duration_scale 0")
     }
     fun restore() {
-        previous?.let { if (it == "null") shell("settings delete global animator_duration_scale")
-            else shell("settings put global animator_duration_scale $it") }
+        // Deleting the key leaves WindowManager's cached scale at 0 (its Settings read defaults to the
+        // current value), which switches every app on the device to reduced motion until reboot.
+        // Write the platform default back explicitly instead.
+        previous?.let { shell("settings put global animator_duration_scale ${if (it == "null") "1.0" else it}") }
         previous = null
     }
 }

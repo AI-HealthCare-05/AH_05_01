@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-16",
+  "android": {
+    "tests": 122,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "apk_build": "assembleDebug passed",
+  "backend": {
+    "tests": 10,
+    "failures": 0,
+    "suite": "tests/test_journal_xai_integration.py"
+  },
+  "browser": [
+    "주간 월요일~일요일 및 미래 날짜 비활성",
+    "벽 짚고 밀기: 받침돌",
+    "주간 서로 다른 주제 2개, 일간 1개",
+    "검토용 문장/섹션 번호/상단 새로고침 제거",
+    "개인 SHAP 펼침",
+    "공식 자료 출처 다이얼로그",
+    "홈 허리둘레 및 신문 진입",
+    "360px 홈 레이아웃",
+    "새 주간 삽화 전체 표시"
+  ],
+  "real_account_e2e": false,
+  "deployed": false,
+  "peer_fixture_binding": {
+    "fixture": "tuntun_peer_bridge/examples/base_64kg.expected.json",
+    "same_model": true,
+    "diabetes_output_difference": 0,
+    "hypertension_output_difference": 0,
+    "both_ranks_match": true
+  },
+  "pr_validation": {
+    "backend_tests": 21,
+    "suites": [
+      "tests/first_repair",
+      "tests/test_journal_xai_integration.py"
+    ],
+    "ruff": "passed",
+    "mypy_files": 8,
+    "android_build": "passed, current-source Gradle up-to-date",
+    "uv_limit": "installed 0.12.3; required 0.12.5; used existing Python environment",
+    "mysql_full_suite_run": false,
+    "production_deployed": false
+  }
+}

@@ -41,6 +41,7 @@ private fun previousStepFor(step: OnboardingStep): OnboardingStep? = when (step)
     OnboardingStep.A13_NEW_PASSWORD -> OnboardingStep.A05_LOGIN
     OnboardingStep.A14_TERMS_DETAIL -> OnboardingStep.A06_CONSENT
     OnboardingStep.A15_COMPLETE -> null // 온보딩 마지막 요약 - 더 되돌아갈 곳 없음
+    OnboardingStep.FIRST_DAM -> OnboardingStep.A15_COMPLETE
     OnboardingStep.A16_PERMISSIONS -> OnboardingStep.A08_EXERCISE
     OnboardingStep.SIGNUP_COMPLETE -> null
     OnboardingStep.DONE -> null
@@ -91,10 +92,15 @@ fun OnboardingFlow(
     LaunchedEffect(state.accountCreated) {
         state.restoreProfileForResume()
     }
-    val previousStep = if (state.accountCreated && state.step.value == OnboardingStep.A06_CONSENT) null else previousStepFor(state.step.value)
+    val previousStep = when {
+        state.accountCreated && state.step.value == OnboardingStep.A06_CONSENT -> null
+        state.step.value == OnboardingStep.FIRST_DAM && !state.canReturnToInputSummary -> null
+        else -> previousStepFor(state.step.value)
+    }
     BackHandler(enabled = previousStep != null || state.isLoading.value || state.googlePicking.value) {
         if (!state.isLoading.value && !state.googlePicking.value) {
             if (state.step.value == OnboardingStep.A06_CONSENT) state.leaveConsent()
+            else if (state.step.value == OnboardingStep.FIRST_DAM) state.returnToInputSummary()
             else previousStep?.let { state.step.value = it }
         }
     }
@@ -127,7 +133,8 @@ fun OnboardingFlow(
             OnboardingStep.A12_PASSWORD_RESET_REQUEST -> A12PasswordResetRequestScreen(state)
             OnboardingStep.A13_NEW_PASSWORD -> A13NewPasswordScreen(state)
             OnboardingStep.A14_TERMS_DETAIL -> A14TermsDetailScreen(state)
-            OnboardingStep.A15_COMPLETE -> A15CompleteScreen(state) {
+            OnboardingStep.A15_COMPLETE -> A15CompleteScreen(state, state::openFirstDam)
+            OnboardingStep.FIRST_DAM -> FirstDamRoute(state) {
                 OnboardingCheckpoint.clear()
                 onOnboardingComplete()
             }

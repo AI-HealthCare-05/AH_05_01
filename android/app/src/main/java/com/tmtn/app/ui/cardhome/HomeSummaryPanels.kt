@@ -42,22 +42,32 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 
-/** Figma home keeps the selected mission first; the newspaper is a short reading link. */
+/** The newspaper entry borrows its own masthead rules and paper tone so it reads as print, not as another panel. */
 @Composable
 internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(colors.surface)
-        .tmtnClickable(onClick = onOpenTuntunScore).padding(18.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("나의 일주일이 한 장의 소식으로", style = TmtnType.caption, color = colors.onSurfaceVariant)
-            Text("틈튼일보", style = TmtnType.title, color = colors.onSurface)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-                Text("이번 호 펼치기", style = TmtnType.label, color = colors.onSurface)
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp), tint = colors.onSurface)
-            }
+    val paper = Color(0xFFF5F2EE) // sampled from beaver_newspaper.png so the artwork sits flush
+    val shape = RoundedCornerShape(20.dp)
+    Column(Modifier.fillMaxWidth().clip(shape).background(paper)
+        .border(TmtnLayout.Hairline, colors.outlineVariant, shape)
+        .tmtnClickable(onClick = onOpenTuntunScore)
+        .padding(horizontal = 18.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("TMTN DAILY", style = TmtnType.label, color = ColorBrandForest)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Box(Modifier.fillMaxWidth().height(2.dp).background(colors.onSurface))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(colors.onSurface))
         }
-        Image(painterResource(R.drawable.beaver_newspaper), null, Modifier.size(88.dp), contentScale = ContentScale.Fit)
+        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("틈튼일보", style = TmtnType.editorialHeadline, color = colors.onSurface)
+                Text("나의 일주일이 한 장의 소식으로", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    Text("이번 호 펼치기", style = TmtnType.label, color = ColorBrandForest)
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp), tint = ColorBrandForest)
+                }
+            }
+            Image(painterResource(R.drawable.beaver_newspaper), null, Modifier.size(100.dp), contentScale = ContentScale.Fit)
+        }
     }
 }
 
@@ -83,7 +93,7 @@ internal fun RecentSummaryListCard(state: CardHomeState) {
                     append(" 실천했어요")
                 }, style = TmtnType.bodyLarge, color = colors.onSurface)
             }
-            Text("${days.first().monthValue}월 ${days.first().dayOfMonth}일 – ${today.monthValue}월 ${today.dayOfMonth}일",
+            Text("${days.first().monthValue}월 ${days.first().dayOfMonth}일 ~ ${today.monthValue}월 ${today.dayOfMonth}일",
                 style = TmtnType.caption, color = colors.onSurfaceVariant)
             Column(Modifier.fillMaxWidth().tmtnSurface(TmtnSurfaceRole.Panel, outlined = false)
                 .padding(horizontal = 12.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

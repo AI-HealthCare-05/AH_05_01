@@ -2,9 +2,11 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import EmailStr
+from tortoise.transactions import in_transaction
 
 from app.core import config
 from app.core.logger import default_logger
+from app.models.companion import CompanionFirstRepair
 from app.models.users import User
 
 # v2: birthday -> birth_year/birth_month, name/gender/phone_number 전부 온보딩 후반부에 채워짐
@@ -26,7 +28,10 @@ class UserRepository:
         """v2: 이메일 인증 완료 직후 생성되는 계정. 이 시점엔 이메일+비밀번호뿐이고
         나머지(이름/성별/생년월일 등)는 온보딩 후속 단계(PATCH /users/me)에서 채워짐."""
 
-        return await self._model.create(email=email, hashed_password=hashed_password)
+        async with in_transaction():
+            user = await self._model.create(email=email, hashed_password=hashed_password)
+            await CompanionFirstRepair.create(user_id=user.id)
+            return user
 
     async def get_user_by_email(self, email: str) -> User | None:
         return await self._model.get_or_none(email=email)
@@ -89,12 +94,15 @@ class UserRepository:
         """
 
         safe_name = name.strip()[:20] if name and name.strip() else None
-        return await self._model.create(
-            email=email,
-            hashed_password=None,
-            google_sub=google_sub,
-            name=safe_name,
-        )
+        async with in_transaction():
+            user = await self._model.create(
+                email=email,
+                hashed_password=None,
+                google_sub=google_sub,
+                name=safe_name,
+            )
+            await CompanionFirstRepair.create(user_id=user.id)
+            return user
 
     async def link_google_sub(self, user_id: int, google_sub: str) -> None:
         """이미 있는 계정(이메일 가입)에 구글 계정을 연결."""
