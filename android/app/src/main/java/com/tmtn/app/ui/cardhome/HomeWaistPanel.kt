@@ -1,5 +1,6 @@
 package com.tmtn.app.ui.cardhome
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,31 +35,24 @@ internal fun HomeWaistPanel(state: WaistEstimateState, loadOnEntry: Boolean = tr
 internal fun HomeWaistCard(result: WaistEstimateUi, expanded: Boolean, onToggle: () -> Unit, onRetry: () -> Unit) {
     val colors = LocalTmtnColors.current
     Column(Modifier.fillMaxWidth().testTag("home-waist"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (!expanded) {
-            // A quiet reference row under a hairline: the estimate is context, not today's task.
-            HorizontalDivider(color = colors.outlineVariant)
-            Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("허리둘레", style = TmtnType.label, color = colors.onSurface, modifier = Modifier.semantics { heading() })
-                if (result is WaistEstimateUi.Available) {
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(result.displayValue, style = TmtnType.title, color = colors.onSurface)
-                        Text("cm · 추정값", style = TmtnType.caption, color = colors.onSurfaceVariant, modifier = Modifier.padding(bottom = 3.dp))
-                    }
-                    Text("입력한 신체 정보로 추정한 값이에요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                } else {
-                    Text(when (result) {
-                        WaistEstimateUi.Loading -> "추정값을 확인하고 있어요."
-                        WaistEstimateUi.Failed -> "허리둘레를 불러오지 못했어요."
-                        else -> "아직 준비된 추정값이 없어요."
-                    }, style = TmtnType.caption, color = colors.onSurfaceVariant)
-                }
-            }
-            if (result != WaistEstimateUi.Loading) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Text("허리둘레 자세히 보기", style = TmtnType.label, color = colors.onSurface,
-                    modifier = Modifier.tmtnClickable(onClick = onToggle).heightIn(min = 48.dp).wrapContentHeight().padding(horizontal = 4.dp))
+        val shape = RoundedCornerShape(20.dp)
+        if (!expanded && result is WaistEstimateUi.Available) {
+            HomeWaistSummary(result, onToggle)
+        } else if (!expanded) {
+            Column(Modifier.fillMaxWidth().background(colors.background, shape)
+                .border(TmtnLayout.Hairline, colors.outlineVariant, shape).padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("허리둘레", style = TmtnType.missionName, color = colors.onSurface, modifier = Modifier.semantics { heading() })
+                Text(when (result) {
+                    WaistEstimateUi.Loading -> "추정값을 확인하고 있어요."
+                    WaistEstimateUi.Failed -> "허리둘레를 불러오지 못했어요."
+                    else -> "아직 준비된 추정값이 없어요."
+                }, style = TmtnType.caption, color = colors.onSurfaceVariant)
+                if (result != WaistEstimateUi.Loading) TmtnActionButton("허리둘레 자세히 보기", onToggle, TmtnActionStyle.Text)
             }
         } else {
-            Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(20.dp)).padding(18.dp),
+            Column(Modifier.fillMaxWidth().background(colors.background, shape)
+                .border(TmtnLayout.Hairline, colors.outlineVariant, shape).padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 WaistEstimateArticle(result, onRetry)
                 if (result != WaistEstimateUi.Loading) TmtnActionButton("설명 접기", onToggle, TmtnActionStyle.Text)

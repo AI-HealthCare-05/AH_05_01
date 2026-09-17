@@ -46,7 +46,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 @Composable
 internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
-    val paper = com.tmtn.app.ui.theme.ColorArtworkPaper
+    val paper = colors.background
+    val large = LocalTmtnTextScale.current * LocalDensity.current.fontScale > 1.25f
     val shape = RoundedCornerShape(20.dp)
     Column(Modifier.fillMaxWidth().clip(shape).background(paper)
         .border(TmtnLayout.Hairline, colors.outlineVariant, shape)
@@ -62,11 +63,11 @@ internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () ->
                 Text("틈튼일보", style = TmtnType.editorialHeadline, color = colors.onSurface)
                 Text("나의 일주일이 한 장의 소식으로", style = TmtnType.caption, color = colors.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                    Text("이번 호 펼치기", style = TmtnType.label, color = ColorBrandForest)
+                    Text("이번 호 펼치기", style = TmtnType.label, color = ColorBrandForest, modifier = Modifier.weight(1f, fill = false))
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp), tint = ColorBrandForest)
                 }
             }
-            Image(painterResource(R.drawable.beaver_newspaper), null, Modifier.size(100.dp), contentScale = ContentScale.Fit)
+            Image(painterResource(R.drawable.beaver_newspaper_white), null, Modifier.size(if (large) 64.dp else 100.dp), contentScale = ContentScale.Fit)
         }
     }
 }
@@ -87,7 +88,7 @@ internal fun RecentSummaryListCard(state: CardHomeState) {
                 failed -> Text("기록을 불러오지 못했어요", style = TmtnType.body, color = colors.onSurfaceVariant)
                 records.isEmpty() -> Text("기록을 불러오는 중이에요", style = TmtnType.body, color = colors.onSurfaceVariant)
                 else -> Text(buildAnnotatedString {
-                    withStyle(SpanStyle(color = colors.secondary, fontSize = TmtnType.headline.fontSize, fontWeight = FontWeight.Bold)) {
+                    withStyle(SpanStyle(color = colors.primary, fontSize = TmtnType.headline.fontSize, fontWeight = FontWeight.Bold)) {
                         append("${completedCount}일")
                     }
                     append(" 실천했어요")

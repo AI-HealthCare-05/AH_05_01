@@ -48,12 +48,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import kotlinx.coroutines.launch
 
-private val Paper = Color(0xFFF7F4EE)
-private val Ink = Color(0xFF2C2C2C)
+private val Paper = ColorBackground
+private val Ink = ColorOnSurface
 private val Muted: Color @Composable get() = LocalTmtnColors.current.onSurfaceVariant
-private val Forest = Color(0xFF3F5D4B)
-private val Orange = Color(0xFFFF7A1A)
-private val Hairline = Color(0xFFDEDAD1)
+private val Forest = ColorBrandForest
+private val Hairline = ColorOutlineVariant
 
 /** Native, read-only edition. No HTML bridge, model call, invented rank or new persistence. */
 @Composable
@@ -192,7 +191,7 @@ private fun WeeklyFootprints(weekly: JournalLoad<WeeklyReportResponse>, collecti
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text("${report.completed_count.coerceIn(0, report.total_days.coerceAtLeast(0))}", style = TmtnType.display, color = LocalTmtnColors.current.secondary)
+                    Text("${report.completed_count.coerceIn(0, report.total_days.coerceAtLeast(0))}", style = TmtnType.display, color = Forest)
                     Text("일 실천", style = TmtnType.label, color = Ink, modifier = Modifier.padding(start = 6.dp, bottom = 5.dp))
                     Spacer(Modifier.weight(1f))
                     Text("쉼 ${report.days.count { it.status == "REST" }}일", style = TmtnType.caption, color = Muted)
@@ -219,7 +218,7 @@ private fun WeeklyFootprints(weekly: JournalLoad<WeeklyReportResponse>, collecti
                             verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(date.format(DateTimeFormatter.ofPattern("E", Locale.KOREAN)), style = TmtnType.caption, color = Muted)
                             Box(Modifier.size(dateSize).border(if (isSelected) 2.dp else 1.dp,
-                                if (isSelected) Orange else if (status == "REST") Ink else Color.Transparent, CircleShape)
+                                if (isSelected) Forest else if (status == "REST") Ink else Color.Transparent, CircleShape)
                                 .padding(3.dp).background(if (status == "COMPLETED") Ink else if (future) Color.Transparent else Paper, CircleShape), contentAlignment = Alignment.Center) {
                                 Text(date.dayOfMonth.toString(), style = TmtnType.label, color = if (status == "COMPLETED") Color.White else if (future) Muted else Ink)
                             }
@@ -356,7 +355,7 @@ private fun DailyCover(today: JournalLoad<JournalToday>, onGo: () -> Unit, onRet
             is JournalLoad.Ready -> if (today.value.card != null) {
                 val card = today.value.card
                 Column(Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(16.dp))
-                    .then(if (card.exec_type.startsWith("SENSOR_")) Modifier.border(1.dp, Orange, RoundedCornerShape(16.dp)) else Modifier)
+                    .border(1.dp, Hairline, RoundedCornerShape(16.dp))
                     .padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Kicker(if (done) "오늘 해낸 카드" else "오늘 고른 카드", Modifier.weight(1f))
@@ -402,7 +401,7 @@ private fun PersonalRecord(score: TuntunScorePeerV2Response?, cards: List<CardHi
                     Kicker("최근 신체·운동 정보 기준")
                     Text("틈튼지수", style = TmtnType.title, color = Ink)
                 }
-                Text(available?.let { String.format(Locale.KOREAN, "%.1f", it) } ?: "-", style = TmtnType.display, color = LocalTmtnColors.current.secondary)
+                Text(available?.let { String.format(Locale.KOREAN, "%.1f", it) } ?: "-", style = TmtnType.display, color = Forest)
                 if (available != null) Text("점", style = TmtnType.label, color = Muted, modifier = Modifier.padding(start = 4.dp, top = 12.dp))
             }
             if (available == null) Text("지수가 준비되면 여기에 함께 담아둘게요.", style = TmtnType.caption, color = Muted)
@@ -422,7 +421,7 @@ private fun PersonalRecord(score: TuntunScorePeerV2Response?, cards: List<CardHi
             val title = listOf("오늘의 나를 알고,\n편한 속도를 찾아요.", "일상에 움직임을\n남겨두는 방법.", "익숙한 작은 습관,\n한 번 더 돌아봐요.", if (cards.isNotEmpty()) "해낸 카드마다,\n내 이야기가 있어요." else "나에게 맞는 실천을\n한 장씩 찾아봐요.")[domain]
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title.replace('\n', ' '), style = TmtnType.bodyLarge, color = Ink, modifier = Modifier.weight(1f))
-                Image(painterResource(if (domain == 0) R.drawable.beaver_wave else R.drawable.beaver_newspaper), null, Modifier.size(88.dp))
+                Image(painterResource(if (domain == 0) R.drawable.beaver_wave else R.drawable.beaver_newspaper_white), null, Modifier.size(88.dp))
             }
             Text(when (domain) {
                 0 -> "몸의 정보는 오늘 나에게 편한 실천을 고를 때 함께 살펴봐요. 최근 키나 몸무게가 달라졌다면 새로 알려주세요."
@@ -460,7 +459,7 @@ internal fun materialArt(element: String): Int = com.tmtn.app.ui.common.tmtnMate
 @Composable
 private fun NextCard(today: JournalLoad<JournalToday>, onGo: () -> Unit) {
     val editorial = dailyEditorial(today)
-    Column(Modifier.fillMaxWidth().background(Color(0xFFE7ECDF), RoundedCornerShape(18.dp)).padding(20.dp)
+    Column(Modifier.fillMaxWidth().background(ColorBackground, RoundedCornerShape(18.dp)).border(1.dp, Forest, RoundedCornerShape(18.dp)).padding(20.dp)
         .testTag("journal-card-entry"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Kicker("오늘의 카드")
         Text("읽은 뒤에는, 작은 실천 하나.", style = TmtnType.sectionHeading, color = Ink)
@@ -486,7 +485,7 @@ private fun JournalTabs(labels: List<String>, selected: Int, onSelect: (Int) -> 
                 Text(label, style = TmtnType.label, color = if (selected == index) Ink else Muted,
                     textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 3.dp, vertical = 12.dp))
                 Spacer(Modifier.weight(1f))
-                Box(Modifier.fillMaxWidth().height(2.dp).background(if (selected == index) Orange else Hairline))
+                Box(Modifier.fillMaxWidth().height(2.dp).background(if (selected == index) Forest else Hairline))
             }
         }
     }
@@ -505,7 +504,7 @@ private fun QuoteBlock(label: String?, quote: String) {
     Column(Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(14.dp)).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         label?.let { Kicker(it) }
-        Box(Modifier.width(28.dp).height(3.dp).background(Orange))
+        Box(Modifier.width(28.dp).height(3.dp).background(Forest))
         Text("“${quote.replace('\n', ' ')}”", style = TmtnType.bodyLarge, color = Forest)
         Text("틈튼이의 한마디", style = TmtnType.caption, color = Muted)
     }

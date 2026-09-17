@@ -16,6 +16,9 @@ sealed interface WaistEstimateUi {
     data object Failed : WaistEstimateUi
     data class Available(val centimeters: BigDecimal, val computedAt: Instant?) : WaistEstimateUi {
         val displayValue: String get() = centimeters.setScale(1, RoundingMode.HALF_UP).toPlainString()
+        // 표시용 환산만 수행한다. 서버 원값·저장 단위는 센티미터 그대로 유지한다.
+        val displayInches: String get() = centimeters.divide(BigDecimal("2.54"), 1, RoundingMode.HALF_UP).toPlainString()
+        val readingDescription: String get() = "모델이 추정한 허리둘레 약 $displayValue 센티미터, 약 $displayInches 인치"
     }
 }
 

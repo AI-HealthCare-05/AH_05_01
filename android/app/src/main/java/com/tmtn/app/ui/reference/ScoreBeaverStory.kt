@@ -44,9 +44,9 @@ internal fun ScoreBeaverStory(score: TuntunScorePeerV2Response, positions: List<
                     onClick = { selectedKey = key },
                 ).heightIn(min = 52.dp).padding(horizontal = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Text(label, style = TmtnType.bodyLarge, color = if (selected) colors.onSurface else colors.onSurfaceVariant)
+                    Text(label, style = TmtnType.bodyLarge, color = if (selected) colors.primary else colors.onSurfaceVariant)
                     Spacer(Modifier.height(10.dp))
-                    Box(Modifier.width(24.dp).height(3.dp).background(if (selected) colors.secondary else colors.surface))
+                    Box(Modifier.width(24.dp).height(3.dp).background(if (selected) colors.primary else colors.surface))
                 }
             }
         }

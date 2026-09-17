@@ -216,7 +216,7 @@ fun TmtnChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Mod
             .tmtnPressFeedback(interactions)
             .tmtnFocusOutline(interactions, RoundedCornerShape(999.dp))
             .clip(RoundedCornerShape(999.dp))
-            .background(if (selected) colors.outlineVariant else colors.background)
+            .background(colors.background)
             .border(
                 width = 1.dp,
                 color = if (selected) colors.primary else colors.outlineVariant,
@@ -229,7 +229,7 @@ fun TmtnChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Mod
     ) {
         Text(
             text, style = TmtnType.label,
-            color = if (selected) colors.onSurface else colors.onSurfaceVariant,
+            color = if (selected) colors.primary else colors.onSurfaceVariant,
         )
     }
 }
@@ -268,8 +268,8 @@ fun TmtnIntensityCard(
     ) {
         androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (selected) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = colors.onSurface)
-                Text(title, style = TmtnType.choiceLabel, color = colors.onSurface, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
+                if (selected) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = if (selected) colors.primary else colors.onSurface)
+                Text(title, style = TmtnType.choiceLabel, color = if (selected) colors.primary else colors.onSurface, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
             }
             if (description.isNotBlank()) Text(description, style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
         }

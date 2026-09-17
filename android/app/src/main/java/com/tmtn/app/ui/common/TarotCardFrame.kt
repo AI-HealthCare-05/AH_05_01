@@ -1,14 +1,15 @@
 package com.tmtn.app.ui.common
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
@@ -18,6 +19,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.R
+import com.tmtn.app.ui.theme.ColorBackground
+import com.tmtn.app.ui.theme.ColorBrandForest
 
 /**
  * ⚠️ 2026-09-14 추가 - TMTN_V19 카드 리디자인이 "Noto Sans KR 기준으로 제작"했다고
@@ -48,11 +51,16 @@ val TarotCardFontFamily = FontFamily(
 fun TarotCardFrame(
     modifier: Modifier = Modifier,
     isBack: Boolean = false,
-    modelMission: Boolean = false,
     content: @Composable () -> Unit = {},
 ) {
+    // 완료 카드 앞면도 흰색·숲색 기준으로 통일하고, 센서 여부에 따른 테두리를 두지 않는다.
+    if (!isBack) {
+        val shape = RoundedCornerShape(24.dp)
+        Box(modifier.background(ColorBackground, shape).border(1.dp, ColorBrandForest, shape)) { content() }
+        return
+    }
     val context = androidx.compose.ui.platform.LocalContext.current
-    val drawableId = if (isBack) R.drawable.tarot_card_back else R.drawable.tarot_card_front
+    val drawableId = R.drawable.tarot_card_back
     // ⚠️ 2026-09-13 버그 수정: androidx.compose.ui.res.imageResource가 이 프로젝트의
     // Compose 버전에서 Unresolved reference로 빌드 실패함(모듈/버전 차이로 추정) -
     // 표준 android.graphics.BitmapFactory로 우회. drawableId가 바뀔 때만 다시 디코드.
@@ -78,16 +86,6 @@ fun TarotCardFrame(
                 drawArtworkRegion(artwork, srcYStart = 0, srcYEnd = 578, dstTop = 0f, dstBottom = topDp)
                 drawArtworkRegion(artwork, srcYStart = 578, srcYEnd = 1570, dstTop = topDp, dstBottom = size.height - bottomDp)
                 drawArtworkRegion(artwork, srcYStart = 1570, srcYEnd = 1710, dstTop = size.height - bottomDp, dstBottom = size.height)
-            }
-            if (modelMission) {
-                val strokeWidth = 1.5f * density
-                drawRoundRect(
-                    color = Color(0xFFFF7A1A),
-                    topLeft = Offset(strokeWidth / 2, strokeWidth / 2),
-                    size = Size(size.width - strokeWidth, size.height - strokeWidth),
-                    cornerRadius = cornerRadius,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth),
-                )
             }
         }
         content()

@@ -294,7 +294,7 @@ internal fun StageGuideScreen(companion: CompanionResponse?, onBack: () -> Unit)
                     Text("${number}단계", style = TmtnType.label,
                         color = if (selected) colors.background else colors.onSurface,
                         modifier = Modifier.clip(RoundedCornerShape(50))
-                            .background(if (selected) colors.onSurface else colors.surface)
+                            .background(if (selected) colors.primary else colors.surface)
                             .selectable(selected = selected, role = Role.RadioButton, onClick = { previewStage = number })
                             .padding(horizontal = 16.dp, vertical = 14.dp))
                 }

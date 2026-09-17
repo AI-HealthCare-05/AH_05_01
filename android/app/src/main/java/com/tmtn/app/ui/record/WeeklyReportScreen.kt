@@ -111,10 +111,10 @@ private fun ComparisonBar(label: String, days: Int, current: Boolean, modifier: 
     val colors = LocalTmtnColors.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(label, style = TmtnType.caption, color = colors.onSurfaceVariant)
-        Text("${days}일", style = TmtnType.display, color = if (current) colors.secondary else colors.onSurface)
+        Text("${days}일", style = TmtnType.display, color = if (current) colors.primary else colors.onSurface)
         Box(Modifier.fillMaxWidth().height(96.dp), contentAlignment = Alignment.BottomCenter) {
             Box(Modifier.fillMaxWidth().height((96 * days.coerceIn(0, 7) / 7f).dp)
-                .background(if (current) colors.secondary else colors.outline, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)))
+                .background(if (current) colors.primary else colors.outline, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)))
         }
     }
 }

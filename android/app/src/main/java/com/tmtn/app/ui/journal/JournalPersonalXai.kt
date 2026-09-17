@@ -78,7 +78,7 @@ internal fun JournalActivityComparison(activity: PersonalActivityComparison, pra
                         Text(amount, style = TmtnType.label, color = colors.onSurface)
                     }
                     Box(Modifier.fillMaxWidth().height(5.dp).background(colors.outlineVariant)) {
-                        if (value > 0) Box(Modifier.fillMaxWidth((value / maximum).toFloat()).fillMaxHeight().background(if (label == "내 설문") colors.secondary else colors.onSurfaceVariant))
+                        if (value > 0) Box(Modifier.fillMaxWidth((value / maximum).toFloat()).fillMaxHeight().background(if (label == "내 설문") colors.primary else colors.onSurfaceVariant))
                     }
                 }
             }
@@ -204,7 +204,7 @@ internal fun JournalPersonalExplanation(snapshot: PersonalXaiSnapshot, domain: P
                     }
                     Box(Modifier.width(1.dp).height(13.dp).background(colors.onSurfaceVariant))
                     Box(Modifier.weight(1f).height(5.dp)) {
-                        if (value > personalDisplayEpsilon) Box(Modifier.fillMaxWidth((abs(value) / maximum).toFloat()).fillMaxHeight().background(colors.secondary))
+                        if (value > personalDisplayEpsilon) Box(Modifier.fillMaxWidth((abs(value) / maximum).toFloat()).fillMaxHeight().background(colors.primary))
                     }
                 }
             }

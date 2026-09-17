@@ -105,33 +105,7 @@ internal fun ExtraExerciseHomeEntry(state: CardHomeState) {
         if (completed) state.loadExerciseMissionsToday()
     }
     val today = state.exerciseMissionsToday.value
-    val shape = RoundedCornerShape(20.dp)
-    // Locked: a plain hairline row so the home is not a stack of beige boxes.
-    // Unlocked: a tinted, tappable strip with the current watercolor mascot as the invitation.
-    if (!completed) androidx.compose.material3.HorizontalDivider(color = colors.outlineVariant)
-    Row(Modifier.fillMaxWidth()
-        .then(if (completed) Modifier.clip(shape).background(colors.secondaryContainer).tmtnClickable { state.openExerciseMissionList() } else Modifier)
-        .padding(start = if (completed) 18.dp else 0.dp, top = if (completed) 14.dp else 4.dp, bottom = if (completed) 14.dp else 4.dp, end = if (completed) 10.dp else 0.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("틈새 운동", style = TmtnType.label, color = colors.onSurface)
-                if (!completed) Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp), tint = colors.onSurfaceVariant)
-            }
-            Text(
-                if (completed) (if (today != null) "오늘 추가 재료 ${today.used} / ${today.limit}회" else "조금 더 움직이고 싶은 날, 재료를 하나 더.")
-                else "오늘의 카드를 마치면 열려요.",
-                style = TmtnType.body, color = if (completed) colors.onSurface else colors.onSurfaceVariant,
-            )
-            if (completed) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("틈새 운동 둘러보기", style = TmtnType.label, color = colors.onSurface, modifier = Modifier.weight(1f, fill = false))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp), tint = colors.onSurface)
-            }
-        }
-        Image(painterResource(com.tmtn.app.R.drawable.beaver_wave), null,
-            Modifier.size(if (completed) 84.dp else 72.dp))
-    }
+    ExtraExerciseCard(completed, today?.used, today?.limit) { state.openExerciseMissionList() }
 }
 
 @Composable
