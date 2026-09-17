@@ -288,6 +288,7 @@ class MissionSensorService : Service() {
             ACTION_STOP_STEP_IN_PLACE -> {
                 stepInPlaceManager.stop()
                 SensorDataHolder.setStepInPlaceActive(false)
+                stopExerciseMissionTrackingIfIdle()
             }
 
             // ⚠️ 2026-09-11 추가 - 틈새 운동(계단) 실제 센서 연동. stairClimbManager는
@@ -303,6 +304,7 @@ class MissionSensorService : Service() {
             }
             ACTION_STOP_STAIRS -> {
                 stairClimbManager.stop()
+                stopExerciseMissionTrackingIfIdle()
             }
 
             ACTION_START_STAIR_IN_PLACE -> {
@@ -322,6 +324,8 @@ class MissionSensorService : Service() {
                 if (resumeMeters > 0) runningManager.resumeFrom(resumeMeters) else runningManager.reset()
                 runningManager.start()
                 SensorDataHolder.setRunningActive(true)
+                // ⚠️ 2026-09-17 추가(QA Q06) - 새 구간을 시작하는 순간은 아직 첫 신호를 못 받은 상태.
+                SensorDataHolder.setRunningSignalAcquired(false)
                 startUpdateLoop()
             }
             ACTION_START_RUNNING_DURATION -> {
@@ -343,6 +347,8 @@ class MissionSensorService : Service() {
                 runningManager.stop()
                 runningCadenceManager.stop()
                 SensorDataHolder.setRunningActive(false)
+                SensorDataHolder.setRunningSignalAcquired(false)
+                stopExerciseMissionTrackingIfIdle()
             }
 
             ACTION_START_WALKING -> {
@@ -374,6 +380,7 @@ class MissionSensorService : Service() {
             ACTION_STOP_WALKING -> {
                 walkingCadenceManager.stop()
                 SensorDataHolder.setWalkingActive(false)
+                stopExerciseMissionTrackingIfIdle()
             }
 
             else -> {
@@ -496,6 +503,8 @@ class MissionSensorService : Service() {
                 SensorDataHolder.updateStepInPlaceCount(stepInPlaceManager.stepCount)
                 SensorDataHolder.updateStairInPlaceFloors(stairInPlaceManager.floorsClimbed)
                 SensorDataHolder.updateRunningDistanceM(runningManager.totalDistanceMeters)
+                // ⚠️ 2026-09-17 추가(QA Q06) - 거리(GPS)와 같은 주기에 신호 확보 상태도 같이 반영.
+                SensorDataHolder.setRunningSignalAcquired(runningManager.hasFix())
                 SensorDataHolder.updateRunningSeconds(runningCadenceManager.getCurrentTotalSeconds())
                 SensorDataHolder.updateWalkingSeconds(walkingCadenceManager.getCurrentTotalSeconds())
                 // ⚠️ 2026-09-07 QA 반영: "지금 이 순간 실제로 케이던스가 감지되는지"를
@@ -528,6 +537,17 @@ class MissionSensorService : Service() {
                         walkSeconds = walkingCadenceManager.getCurrentTotalSeconds(),
                         timestamp = now
                     )
+                    // ⚠️ 2026-09-17 추가(QA 리뷰 #3) - 위 saveToLocalDbAndSync()는 "오늘의
+                    // 카드" challengeId 기준이라 틈새 운동 세션엔 동작 안 함. 같은 주기에
+                    // 얹어서 틈새 운동 세션의 누적값도 서버에 반영한다(이어하기가 0부터
+                    // 다시 시작하지 않도록).
+                    syncExerciseSessionIfActive(
+                        stepInPlace = stepInPlaceManager.stepCount,
+                        floors = floors,
+                        runDistanceM = runningManager.totalDistanceMeters,
+                        runSeconds = runningCadenceManager.getCurrentTotalSeconds(),
+                        walkSeconds = walkingCadenceManager.getCurrentTotalSeconds(),
+                    )
                     lastSavedAt = now
                 }
 
@@ -553,6 +573,63 @@ class MissionSensorService : Service() {
      * 찍히고 있었음 - 기능상 계단값 자체는 정상 전송됐지만, 불필요한 DB 쓰기·네트워크
      * 페이로드·로그 노이즈였음. 지금 CurrentChallengeHolder.execType에 해당하는 것만 저장.
      */
+    // ⚠️ 2026-09-17 추가(QA 리뷰 #4) - "정상 완료·취소 후 화면이 보내는 틈새운동별
+    // STOP도 센서 매니저만 중지하며, 갱신 작업 취소·포그라운드 해제·서비스 종료로
+    // 이어지지 않는다"는 지적 대응. ACTION_STOP_TRACKING(오늘의 카드 전용)은 이미
+    // updateJob 취소·stopForeground·stopSelf까지 하는데, 틈새운동 전용 STOP 액션들에는
+    // 이게 없었음. "오늘의 카드 완료 후에만 틈새 운동 시작 가능"이라는 제품 규칙 덕에,
+    // 이 시점에 CurrentChallengeHolder.challengeId도 비어 있으면 정말 아무것도 더 돌고
+    // 있지 않다고 안전하게 판단할 수 있다.
+    private fun stopExerciseMissionTrackingIfIdle() {
+        CurrentExerciseSessionHolder.clear()
+        if (CurrentChallengeHolder.challengeId == null) {
+            updateJob?.cancel()
+            SensorDataHolder.setServiceRunning(false)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+    }
+
+    // ⚠️ 2026-09-17 추가(QA 리뷰 #3) - 틈새 운동 세션 누적값 주기 동기화. 상태는 안
+    // 바꾸는(ACTIVE 유지) PATCH .../sync를 쏜다 - pause/resume과 달리 실패해도(버전
+    // 경합, 이미 완료됨 등) 사용자에게 보여줄 오류가 아니라 조용히 넘어가고 다음
+    // 주기에 다시 시도한다(best-effort).
+    private fun syncExerciseSessionIfActive(
+        stepInPlace: Int,
+        floors: Int,
+        runDistanceM: Float,
+        runSeconds: Int,
+        walkSeconds: Int,
+    ) {
+        val sessionId = CurrentExerciseSessionHolder.sessionId ?: return
+        val execType = CurrentExerciseSessionHolder.execType ?: return
+        val accumulatedCount: Int? = when (execType) {
+            "SENSOR_STEPS_IN_PLACE" -> stepInPlace
+            "SENSOR_FLOORS_CLIMBED" -> floors
+            "SENSOR_RUNNING_DISTANCE" -> runDistanceM.toInt()
+            else -> null
+        }
+        val accumulatedDurationSeconds: Int? = when (execType) {
+            "SENSOR_RUNNING_DURATION" -> runSeconds
+            "SENSOR_WALKING_DURATION" -> walkSeconds
+            else -> null
+        }
+        if (accumulatedCount == null && accumulatedDurationSeconds == null) return
+        val sessionUuid = runCatching { java.util.UUID.fromString(sessionId) }.getOrNull() ?: return
+        serviceScope.launch {
+            runCatching {
+                com.tmtn.app.network.ApiClient.exerciseMissionApi.patchSession(
+                    sessionUuid,
+                    com.tmtn.app.network.model.ExerciseMissionActionRequest(
+                        action = "sync",
+                        accumulated_count = accumulatedCount,
+                        accumulated_duration_seconds = accumulatedDurationSeconds,
+                    ),
+                )
+            }
+        }
+    }
+
     private fun saveToLocalDbAndSync(
         steps: Int,
         floors: Int,

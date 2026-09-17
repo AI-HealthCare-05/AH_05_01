@@ -51,7 +51,7 @@ fun TarotCardFrame(
     modelMission: Boolean = false,
     content: @Composable () -> Unit = {},
 ) {
-    val context = androidx.co   mpose.ui.platform.LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val drawableId = if (isBack) R.drawable.tarot_card_back else R.drawable.tarot_card_front
     // ⚠️ 2026-09-13 버그 수정: androidx.compose.ui.res.imageResource가 이 프로젝트의
     // Compose 버전에서 Unresolved reference로 빌드 실패함(모듈/버전 차이로 추정) -

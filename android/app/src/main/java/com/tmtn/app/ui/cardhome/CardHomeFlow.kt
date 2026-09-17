@@ -360,14 +360,21 @@ fun CardHomeFlow(
             CardHomeStep.SENSOR_PERMISSION_FALLBACK -> SensorPermissionFallbackScreen(state, onOpenSettings)
             CardHomeStep.SENSOR_RESULT -> SensorResultScreen(state, scope)
             CardHomeStep.EXTRA_LIST -> ExerciseMissionListScreen(state, scope)
-            CardHomeStep.EXTRA_DETAIL -> ExerciseMissionDetailScreen(state, scope)
+            // ⚠️ 2026-09-17 추가(QA Q03/Q04 - PR #21 패키지) - "오늘의 카드"
+            // SensorIntroScreen과 같은 hasSensorPermissions/onRequestSensorPermissions를
+            // 틈새운동 쪽에도 넘긴다. 예전엔 이 두 화면이 권한을 아예 확인하지 않아서,
+            // 신체 활동 권한이 없어도 "측정 중" 화면으로 그냥 들어갔었음.
+            CardHomeStep.EXTRA_DETAIL -> ExerciseMissionDetailScreen(
+                state, scope, hasSensorPermissions, onRequestSensorPermissions,
+            )
             CardHomeStep.EXTRA_RUNNING -> ExerciseMissionRunningScreen(
-                state, scope, onStartStepInPlace, onStopStepInPlace,
+                state, scope, hasSensorPermissions,
+                onStartStepInPlace, onStopStepInPlace,
                 onStartWalking, onStopWalking, onStartRunningDistance, onStartRunningDuration, onStopRunning,
                 onStartStairs, onStopStairs, onStartStepInPlaceResume, onStartWalkingResume,
                 onStartRunningDistanceResume, onStartRunningDurationResume, onStartStairsResume,
             )
-            CardHomeStep.EXTRA_REWARD -> ExerciseMissionRewardScreen(state)
+            CardHomeStep.EXTRA_REWARD -> ExerciseMissionRewardScreen(state, onOpenDam)
         }
 
         // ⚠️ B16(오늘 쉬어가기)은 진짜 바텀시트여야 함 — "화면"으로 취급해서 REST_DAY_SHEET라는

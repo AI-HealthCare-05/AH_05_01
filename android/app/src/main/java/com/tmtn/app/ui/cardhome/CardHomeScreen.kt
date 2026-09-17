@@ -191,9 +191,25 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
             },
         )
         if (isCompleted || (isRestDay && !isSelected)) {
-            Text("연속 기록 ${state.currentStreak.value}일째", style = TmtnType.caption,
-                color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("연속 기록 ${state.currentStreak.value}일째", style = TmtnType.caption,
+                    color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
+                // 2026-09-17 추가(QA H01/H02) - refreshHomeOnReturn()이 조용히 실패하면
+                // 연속 기록이 예전 값에 멈춰 있는데도 사용자는 알 방법이 없었음. 실패했을
+                // 때만 작게 안내하고, 눌렀을 때 loadStreak()만 다시 부른다(오늘의 카드
+                // 재조회나 완료 API 재호출 없이 이 조회만 재시도 - H02 요건).
+                if (state.streakLoadFailed.value) {
+                    com.tmtn.app.ui.onboarding.TmtnTextButton(
+                        "연속 기록을 새로 가져오지 못했어요 · 다시 시도",
+                        onClick = { scope.launch { state.loadStreak() } },
+                    )
+                } else if (state.isHomeRefreshing.value) {
+                    Text("새로 확인하는 중…", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                }
+            }
         } else if (!isGivenUp) {
             com.tmtn.app.ui.onboarding.TmtnTextButton("오늘은 쉬어가기",
                 onClick = { scope.launch { state.openRestDaySheet() } })

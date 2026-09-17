@@ -54,7 +54,10 @@ class CreateExerciseMissionSessionRequest(BaseModel):
 class ExerciseMissionActionRequest(BaseModel):
     """PATCH /exercise-mission-sessions/{id}"""
 
-    action: Literal["pause", "resume"]
+    # ⚠️ 2026-09-17 추가(QA #3) - "sync"는 상태를 안 바꾸고(ACTIVE 유지) 측정 중 누적값만
+    # 주기적으로 반영하는 용도. 서버의 주기 저장이 "오늘의 카드" challengeId 기준이라
+    # 틈새 운동 세션엔 반영이 전혀 안 되고 있었던 문제(리뷰 #3) 대응.
+    action: Literal["pause", "resume", "sync"]
     accumulated_count: int | None = None  # 카운터형(SENSOR_STEPS 등) 센서값 동기화용
     # ⚠️ 2026-09-16 추가(QA F05) - 시간형(SENSOR_WALKING_DURATION/SENSOR_RUNNING_DURATION)
     # 센서 확정값. 서버가 "시작~일시정지 경과 시각"으로 대신 계산하던 걸 막기 위해,

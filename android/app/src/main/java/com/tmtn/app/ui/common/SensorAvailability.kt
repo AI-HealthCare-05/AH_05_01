@@ -40,3 +40,13 @@ fun isGpsProviderEnabled(context: Context): Boolean {
     val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
 }
+
+// ⚠️ 2026-09-17 추가(QA 리뷰 #5) - hasLocationPermission()은 fine||coarse라 "대략적
+// 위치"만 허용해도 통과한다. 근데 RunningManager.minAccuracyMeters(20m)가 정확도
+// 나쁜 위치를 계산에서 제외하므로, coarse만 허용된 기기는 시작은 되지만 거리가 거의
+// 안 늘어날 수 있음(리뷰 지적 그대로). 시작 자체를 막을 정도는 아니라고 보고(기기에
+// 따라 network 기반 위치도 종종 20m 안에 들어옴), "정확한 위치"가 아니면 화면에서
+// 미리 안내하는 용도로만 씀 - 차단은 hasLocationPermission()/isGpsProviderEnabled()가
+// 계속 담당.
+fun hasPreciseLocationPermission(context: Context): Boolean =
+    context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED

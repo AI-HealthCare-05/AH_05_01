@@ -260,6 +260,28 @@ class ExerciseMissionService:
                 to_state=ExerciseMissionSessionState.ACTIVE,
                 extra_fields=extra,
             )
+        elif action == "sync":
+            # ⚠️ 2026-09-17 추가(QA #3) - 측정 중(ACTIVE) 세션에 주기적으로 누적값만
+            # 반영. pause/resume과 달리 상태를 바꾸지 않는다(ACTIVE 유지) - 그래야 화면이
+            # 다른 탭으로 갔다 돌아와도 이 세션이 계속 진행 중으로 남아있음. 이미
+            # 일시정지·완료된 세션에 뒤늦게 도착한 동기화 요청(레이스 컨디션)은 오류로
+            # 보여줄 일이 아니라 조용히 무시하고 지금 상태를 그대로 돌려준다 - 어차피
+            # 다음 주기 동기화가 다시 시도되거나, 이미 완료됐으면 더 보낼 값이 없다.
+            if session.state == ExerciseMissionSessionState.ACTIVE:
+                extra: dict = {}
+                if accumulated_count is not None:
+                    extra["accumulated_count"] = accumulated_count
+                if accumulated_duration_seconds is not None:
+                    extra["accumulated_duration_seconds"] = accumulated_duration_seconds
+                if extra:
+                    await self.repo.try_transition(
+                        session,
+                        from_states=[ExerciseMissionSessionState.ACTIVE],
+                        to_state=ExerciseMissionSessionState.ACTIVE,
+                        extra_fields=extra,
+                    )
+            session = await self.repo.get_owned_session(user.id, session_id)
+            return self._to_session_response(session, session.template_snapshot)
         else:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="알 수 없는 action이에요.")
 
