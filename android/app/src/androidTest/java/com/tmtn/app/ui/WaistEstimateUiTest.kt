@@ -22,7 +22,7 @@ class WaistEstimateUiTest {
     @Test fun estimateIsClearlyCmAndNotMeasuredOrRanked() {
         compose.setContent { TMTNv1Theme { ReferenceWaistScreen(ReferenceState(), estimate) {} } }
         compose.onNodeWithText("추정 허리둘레").assertIsDisplayed()
-        compose.onNodeWithContentDescription("모델이 추정한 허리둘레 약 82.4 센티미터").assertIsDisplayed()
+        compose.onNodeWithContentDescription("모델이 추정한 허리둘레 약 82.4 센티미터, 약 32.4 인치").assertIsDisplayed()
         compose.onNodeWithText("줄자로 잰 값과는 달라요").assertIsDisplayed()
         compose.onNodeWithText("82.4점").assertDoesNotExist()
         compose.onNodeWithText("82.4%").assertDoesNotExist()
@@ -34,7 +34,7 @@ class WaistEstimateUiTest {
         compose.setContent { TMTNv1Theme { ReferenceWaistScreen(ReferenceState(), result.value) { retries++; result.value = estimate } } }
         compose.onNodeWithText("추정값을 불러오지 못했어요").assertIsDisplayed()
         compose.onNodeWithText("다시 불러오기").performClick()
-        compose.onNodeWithContentDescription("모델이 추정한 허리둘레 약 82.4 센티미터").assertIsDisplayed()
+        compose.onNodeWithContentDescription("모델이 추정한 허리둘레 약 82.4 센티미터, 약 32.4 인치").assertIsDisplayed()
         compose.runOnIdle { assertEquals(1, retries) }
     }
 
@@ -50,7 +50,7 @@ class WaistEstimateUiTest {
         compose.setContent { TMTNv1Theme { CompositionLocalProvider(LocalTmtnTextScale provides 2f) {
             Box(Modifier.width(320.dp)) { ReferenceWaistScreen(state, estimate) {} }
         } } }
-        compose.onNodeWithContentDescription("모델이 추정한 허리둘레 약 82.4 센티미터").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("모델이 추정한 허리둘레 약 82.4 센티미터, 약 32.4 인치").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("입력 정보 확인").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(ReferenceStep.INPUTS, state.step.value); state.goBack(); assertEquals(ReferenceStep.LOADING, state.step.value) }
     }

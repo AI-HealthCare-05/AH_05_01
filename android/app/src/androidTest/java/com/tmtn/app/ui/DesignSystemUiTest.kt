@@ -77,26 +77,31 @@ class DesignSystemUiTest {
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Error))
     }
 
-    @Test fun highContrastReachesMaterialFieldsAndCustomComponents() {
+    @Test fun forestThemeReachesMaterialFieldsAndCustomComponents() {
         var materialMuted = Color.Unspecified
         var materialBorder = Color.Unspecified
         var customMuted = Color.Unspecified
         var customAccent = Color.Unspecified
         var materialAccent = Color.Unspecified
+        var materialBackground = Color.Unspecified
+        var materialOnPrimary = Color.Unspecified
         compose.setContent { TMTNv1Theme {
             materialMuted = MaterialTheme.colorScheme.onSurfaceVariant
             materialBorder = MaterialTheme.colorScheme.outlineVariant
             customMuted = LocalTmtnColors.current.onSurfaceVariant
-            customAccent = LocalTmtnColors.current.secondary
-            materialAccent = MaterialTheme.colorScheme.secondary
+            customAccent = LocalTmtnColors.current.primary
+            materialAccent = MaterialTheme.colorScheme.primary
+            materialBackground = MaterialTheme.colorScheme.background
+            materialOnPrimary = MaterialTheme.colorScheme.onPrimary
         } }
-        compose.runOnIdle { AccessibilitySettingsHolder.seniorMode.value = true }
         compose.runOnIdle {
-            assertEquals(ColorOnSurface, materialMuted)
+            assertEquals(ColorOnSurfaceVariant, materialMuted)
             assertEquals(customMuted, materialMuted)
-            assertEquals(ColorOutline, materialBorder)
-            assertEquals(ColorOnSurface, customAccent)
+            assertEquals(ColorOutlineVariant, materialBorder)
+            assertEquals(Color(0xFF3F5D4B), customAccent)
             assertEquals(customAccent, materialAccent)
+            assertEquals(Color.White, materialBackground)
+            assertEquals(Color.White, materialOnPrimary)
         }
     }
 

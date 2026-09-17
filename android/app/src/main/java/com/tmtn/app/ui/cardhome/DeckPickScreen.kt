@@ -40,6 +40,7 @@ import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.onboarding.TmtnTextButton
 import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.LocalTmtnColors
+import com.tmtn.app.ui.theme.ColorBackground
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -68,7 +69,7 @@ import com.tmtn.app.ui.theme.tmtnFocusOutline
 private val CardWoodDark = Color(0xFF12352A)
 private val CardWoodGrain = Color(0xFF2F6B4C)
 private val CardGold = Color(0xFFF5B71E)
-private val CardRadioUnselected = Color(0xFFF4F4F0)
+private val CardRadioUnselected = ColorBackground
 
 /** Figma B03(고르기 전)·B04(한 장 선택됨)·B05(확정 다이얼로그)를 로컬 상태로 통합. */
 @Composable
@@ -184,7 +185,7 @@ private fun CardBackTile(selected: Boolean, onClick: () -> Unit, modifier: Modif
             .background(CardWoodDark, RoundedCornerShape(12.dp))
             .then(
                 if (selected) {
-                    Modifier.border(2.dp, colors.secondary, RoundedCornerShape(12.dp))
+                    Modifier.border(2.dp, colors.primary, RoundedCornerShape(12.dp))
                 } else {
                     Modifier
                 }
@@ -195,8 +196,8 @@ private fun CardBackTile(selected: Boolean, onClick: () -> Unit, modifier: Modif
     ) {
         Image(painterResource(com.tmtn.app.R.drawable.mission_tarot_back), null, Modifier.fillMaxSize().padding(if (selected) 3.dp else 0.dp))
         if (selected) Box(Modifier.align(Alignment.TopEnd).padding(7.dp)
-            .size(24.dp).background(colors.secondary, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = colors.onSurface)
+            .size(24.dp).background(colors.primary, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = colors.background)
         }
 
     }

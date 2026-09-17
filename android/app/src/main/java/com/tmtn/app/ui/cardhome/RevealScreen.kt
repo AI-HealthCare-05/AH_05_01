@@ -29,6 +29,13 @@ import com.tmtn.app.network.model.CardRevealResponse
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.LocalTmtnColors
+import com.tmtn.app.ui.theme.ColorBrandForest
+import com.tmtn.app.ui.theme.ColorBackground
+import com.tmtn.app.ui.theme.ColorReward
+import com.tmtn.app.ui.theme.ColorWood
+import com.tmtn.app.ui.theme.ColorOnSurface
+import com.tmtn.app.ui.theme.ColorOnSurfaceVariant
+import com.tmtn.app.ui.theme.ColorSurface
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -67,10 +74,10 @@ fun MaterialIcon(element: String, size: androidx.compose.ui.unit.Dp, modifier: M
 }
 
 // Figma B06 카드는 앱 전역 테마(검정/주황)와 별개로 항상 이 초록 카드 디자인을 씀.
-private val NoteCardBg = Color(0xFF0C3B2E)
-private val NoteCream = Color(0xFFFFF8ED)
-private val NoteGold = Color(0xFFFFBA00)
-private val NoteStampColor = Color(0xFFBB8A52)
+private val NoteCardBg = ColorBrandForest
+private val NoteCream = ColorBackground
+private val NoteGold = ColorReward
+private val NoteStampColor = ColorWood
 
 /** Figma B06 · 카드 공개(winner) — "오늘의 틈 노트" 디자인 */
 @Composable
@@ -170,17 +177,14 @@ fun RevealScreen(
 @Composable
 fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
     val material = MATERIAL_NAMES[card.five_element]
-    val cardFont = com.tmtn.app.ui.common.TarotCardFontFamily
-    // ⚠️ 2026-09-12 반영: TMTN_V19 카드 리디자인 - 다크 "신문" 감성에서 크림색 종이 +
-    // 갈색 장식 프레임(TarotCardFrame, 실제 원화 이미지 9-patch 스트레칭)으로 전면 교체.
-    // 모델 인식 배지 규칙(V17)은 그대로 유지 - 프레임 자체에 주황 테두리를 그려 넣음.
+    val cardFont = com.tmtn.app.ui.theme.TmtnFontFamily
+    // 완료 카드에도 흰색 바탕과 숲색 테두리를 사용한다. 측정 방식은 배지로 안내한다.
     val isModelMission = com.tmtn.app.ui.common.isModelRecognitionExecType(card.exec_type)
-    val ink = Color(0xFF16181C) // V19 본문 색
-    val secondary = Color(0xFF666A71) // V19 보조정보 색
+    val ink = ColorOnSurface // V19 본문 색
+    val secondary = ColorOnSurfaceVariant // V19 보조정보 색
 
     com.tmtn.app.ui.common.TarotCardFrame(
         isBack = false,
-        modelMission = isModelMission,
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 650.dp), // V19: "기본 카드 너비 350, 최소 높이 650"
@@ -194,7 +198,7 @@ fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
 
             // 원형 메달리온에 재료 이미지
             Box(
-                modifier = Modifier.size(90.dp).background(Color(0xFFF7F4EE), CircleShape),
+                modifier = Modifier.size(90.dp).background(ColorSurface, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 MaterialIcon(element = card.five_element, size = 56.dp)
@@ -216,8 +220,8 @@ fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 LuckyRowV19(label = "행운의 행동", value = card.title, ink = ink, secondary = secondary, cardFont = cardFont)
                 if (card.lucky_location != null) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.weight(1f)) {
                             Text("행운의 위치", style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
                             Text(card.lucky_location, style = TmtnType.label.copy(fontFamily = cardFont), color = ink)
                         }
@@ -238,7 +242,7 @@ fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFF7F4EE), RoundedCornerShape(16.dp))
+                        .background(ColorSurface, RoundedCornerShape(16.dp))
                         .padding(horizontal = 16.dp, vertical = 13.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
@@ -263,9 +267,9 @@ fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
 
 @Composable
 private fun LuckyRowV19(label: String, value: String, ink: Color, secondary: Color, cardFont: androidx.compose.ui.text.font.FontFamily) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text(label, style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
-        Text(value, style = TmtnType.label.copy(fontFamily = cardFont), color = ink)
+        Text(value, style = TmtnType.bodyLarge.copy(fontFamily = cardFont), color = ink)
     }
 }
 

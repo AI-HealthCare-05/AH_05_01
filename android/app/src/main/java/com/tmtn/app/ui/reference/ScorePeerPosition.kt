@@ -64,16 +64,16 @@ internal fun ScorePeerPositions(positions: List<ScorePeerPositionUi>, showHeadin
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(item.label, style = TmtnType.label, color = if (selected) colors.onSurface else colors.onSurfaceVariant)
+                    Text(item.label, style = TmtnType.label, color = if (selected) colors.primary else colors.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
-                    Box(Modifier.width(24.dp).height(3.dp).background(if (selected) colors.secondary else colors.surface))
+                    Box(Modifier.width(24.dp).height(3.dp).background(if (selected) colors.primary else colors.surface))
                 }
             }
         }
         Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(current.groupLabel + " 100명 중", style = TmtnType.body, color = colors.onSurfaceVariant)
-            Text(current.positionFromHigherIndex.toString() + "번째쯤", style = TmtnType.display, color = colors.secondary)
+            Text(current.positionFromHigherIndex.toString() + "번째쯤", style = TmtnType.display, color = colors.primary)
             Text(current.label + " 지수가 높은 쪽부터 본 참고 위치예요.",
                 style = TmtnType.caption, color = colors.onSurfaceVariant)
         }
@@ -89,7 +89,7 @@ internal fun ScorePeerPositions(positions: List<ScorePeerPositionUi>, showHeadin
             TmtnMascot(R.drawable.beaver_standing, null,
                 Modifier.width(64.dp).height(80.dp).graphicsLayer { translationX = x }, greet = false)
             Box(Modifier.padding(start = 30.dp).width(4.dp).height(12.dp)
-                .align(Alignment.BottomStart).graphicsLayer { translationX = x }.background(colors.secondary))
+                .align(Alignment.BottomStart).graphicsLayer { translationX = x }.background(colors.primary))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("1번째", style = TmtnType.caption, color = colors.onSurfaceVariant)

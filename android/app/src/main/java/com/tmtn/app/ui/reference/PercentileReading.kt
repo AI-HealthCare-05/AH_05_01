@@ -29,7 +29,7 @@ internal fun PercentileReading(result: ScorePercentileUi, withMascot: Boolean = 
             }) {
                 if (!result.isPreview) Text("비버 100명 중", style = TmtnType.body, color = colors.onSurfaceVariant)
                 Text(result.primaryLabel, style = if (compact || large) TmtnType.headline else TmtnType.display,
-                    color = colors.secondary)
+                    color = colors.primary)
             }
         }
         if (withMascot && !large) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -61,7 +61,7 @@ internal fun PercentilePositionTrack(result: ScorePercentileUi, showMascot: Bool
             if (showMascot) TmtnMascot(R.drawable.beaver_standing, null,
                 Modifier.size(56.dp).align(Alignment.BottomStart).graphicsLayer { translationX = x }, greet = false)
             Box(Modifier.padding(start = 26.dp).width(4.dp).height(10.dp).align(Alignment.BottomStart)
-                .graphicsLayer { translationX = x }.background(colors.secondary))
+                .graphicsLayer { translationX = x }.background(colors.primary))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("1번째", style = TmtnType.caption, color = colors.onSurfaceVariant)

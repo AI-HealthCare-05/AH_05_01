@@ -39,7 +39,7 @@ import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.*
 import kotlinx.coroutines.launch
 
-internal val NewsPaper = Color(0xFFFFFEFA)
+internal val NewsPaper = ColorBackground
 internal val newsAreas = listOf("overall" to "종합", "physical" to "신체", "diabetes" to "당뇨", "hypertension" to "고혈압", "lifestyle" to "생활습관")
 
 @Composable
@@ -188,9 +188,9 @@ internal fun NewsResultArtwork(position: Int?, scoreValue: String? = null, overa
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (number != null) {
                     Text(caption, style = TmtnType.body, color = ColorBrandForest, modifier = Modifier.padding(top = 16.dp))
-                    Text(number + suffix, style = TmtnType.display, color = colors.secondary)
+                    Text(number + suffix, style = TmtnType.display, color = colors.primary)
                 } else Text(description, style = TmtnType.title, modifier = Modifier.padding(top = 16.dp))
-                Image(painterResource(R.drawable.beaver_newspaper), null, Modifier.fillMaxWidth().height(140.dp), contentScale = ContentScale.Fit)
+                Image(painterResource(R.drawable.beaver_newspaper_white), null, Modifier.fillMaxWidth().height(140.dp), contentScale = ContentScale.Fit)
             }
         } else {
             Image(painterResource(R.drawable.score_news_frontpage), null,
@@ -200,7 +200,7 @@ internal fun NewsResultArtwork(position: Int?, scoreValue: String? = null, overa
                     lineHeight = 14.sp), color = ColorBrandForest)
                 if (number != null) Row(verticalAlignment = Alignment.Bottom) {
                     Text(number, style = TmtnType.display.copy(fontSize = (artWidth.value * if (number.length >= 3) .10f else .13f).sp,
-                        lineHeight = (artWidth.value * .135f).sp, letterSpacing = (-1).sp), color = colors.secondary)
+                        lineHeight = (artWidth.value * .135f).sp, letterSpacing = (-1).sp), color = colors.primary)
                     Text(suffix, style = TmtnType.label.copy(fontSize = (artWidth.value * .038f).sp, lineHeight = 17.sp),
                         color = colors.onSurface, modifier = Modifier.padding(start = 3.dp, bottom = 4.dp))
                 } else Text("입력 대기 중", style = TmtnType.label.copy(fontSize = (artWidth.value * .048f).sp), color = ColorBrandForest)

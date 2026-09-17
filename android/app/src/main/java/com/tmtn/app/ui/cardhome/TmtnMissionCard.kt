@@ -31,10 +31,10 @@ fun TmtnMissionCard(card: CardRevealResponse, date: LocalDate, compact: Boolean 
         HomeMissionCard(card)
         return
     }
-    val forest = Color(0xFF315342)
-    val muted = Color(0xFF696456)
-    val cream = Color(0xFFFFF8E9)
-    val rim = Color(0xFFAC8E61)
+    val forest = ColorBrandForest
+    val muted = ColorOnSurfaceVariant
+    val cream = ColorBackground
+    val rim = ColorBrandForest
     val shape = RoundedCornerShape(24.dp)
     Column(Modifier.fillMaxWidth().background(cream, shape)
         .border(1.dp, rim, shape)
@@ -47,7 +47,7 @@ fun TmtnMissionCard(card: CardRevealResponse, date: LocalDate, compact: Boolean 
         if (card.exec_type.startsWith("SENSOR_")) Text("움직임 감지 미션", style = TmtnType.label,
             color = ColorOnSurface, modifier = Modifier.background(ColorSecondaryContainer, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 5.dp))
         Box(Modifier.size(if (compact) 70.dp else 98.dp).border(1.dp, rim, CircleShape).padding(8.dp)
-            .background(Color(0xFFF2E5C9), CircleShape), contentAlignment = Alignment.Center) {
+            .background(ColorBackground, CircleShape), contentAlignment = Alignment.Center) {
             Image(painterResource(tmtnMaterialDrawable(card.five_element)), MATERIAL_NAMES[card.five_element]?.first,
                 Modifier.size(if (compact) 52.dp else 72.dp))
         }
@@ -67,7 +67,7 @@ fun TmtnMissionCard(card: CardRevealResponse, date: LocalDate, compact: Boolean 
             Text(card.unit, style = TmtnType.label, color = muted, modifier = Modifier.padding(start = 5.dp))
         }
         if (!compact) card.line_text?.takeIf { it.isNotBlank() }?.let {
-            Column(Modifier.fillMaxWidth().background(Color(0xFFEEEAD7), RoundedCornerShape(12.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.fillMaxWidth().background(ColorSurface, RoundedCornerShape(12.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("오늘의 한 줄", style = TmtnType.caption, color = muted)
                 Text(it, style = TmtnType.body, color = forest)
             }
@@ -81,7 +81,7 @@ internal fun HomeMissionCard(card: CardRevealResponse, completed: Boolean = fals
     val colors = LocalTmtnColors.current
     val measured = card.exec_type.startsWith("SENSOR_")
     val shape = RoundedCornerShape(24.dp)
-    Column(Modifier.fillMaxWidth().background(colors.surface, shape)
+    Column(Modifier.fillMaxWidth().background(colors.background, shape).border(1.dp, colors.outlineVariant, shape)
         .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (measured) Text("틈튼 움직임 인식", style = TmtnType.label, color = colors.onSurface,

@@ -106,7 +106,7 @@ class SeptemberReviewUiTest {
             JournalScreen(JournalLoad.Ready(weekly.copy(materials_this_week = weekMaterials(cards))), JournalLoad.Ready(cards),
                 JournalLoad.Failed, null, WaistEstimateUi.Loading, false, {}, {}, {}, {})
         } } }
-        compose.onNodeWithText("1일의 실천,\n이번 주에 남았어요.").assertIsDisplayed()
+        compose.onNodeWithText("1일의 실천, 이번 주에 남았어요.").performScrollTo().assertIsDisplayed()
         capture("weekly-monday-top")
         compose.onNodeWithTag("journal-week-dates").performScrollTo()
         compose.onNodeWithContentDescription("9월 14일, 미완료").assertIsDisplayed()
