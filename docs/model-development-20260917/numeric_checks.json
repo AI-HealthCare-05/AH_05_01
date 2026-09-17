@@ -1,0 +1,34 @@
+[
+  {
+    "name": "01_waist_actual_errors",
+    "n": 16403,
+    "mae": 2.8658572424530884,
+    "rmse": 3.650451555526345,
+    "residual_min": -19.054630971386928,
+    "residual_max": 21.84060296587996,
+    "all_rows_plotted": true
+  },
+  {
+    "name": "02_muscle_actual_errors",
+    "n": 4466,
+    "mae": 0.8158931279708301,
+    "rmse": 1.071035683140431,
+    "residual_min": -3.851279549633194,
+    "residual_max": 9.084399451743163,
+    "all_rows_plotted": true
+  },
+  {
+    "name": "당뇨_D0_seed42",
+    "n": 15720,
+    "auc": 0.7575091074532687,
+    "brier": 0.10243113679537903,
+    "roc_points": 15716
+  },
+  {
+    "name": "고혈압_D0_seed42",
+    "n": 16325,
+    "auc": 0.7054802718123737,
+    "brier": 0.12019367363006142,
+    "roc_points": 16313
+  }
+]
