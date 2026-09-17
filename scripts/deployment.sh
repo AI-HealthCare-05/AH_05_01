@@ -136,7 +136,7 @@ ssh -i ~/.ssh/${ssh_key_file} ubuntu@${ec2_ip} \
   docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PAT"
 
   echo "Deploying services: $DEPLOY_SERVICES"
-  docker compose up -d --pull always --no-deps $DEPLOY_SERVICES
+  docker compose --env-file .env.prod up -d --pull always --no-deps $DEPLOY_SERVICES
 
   docker image prune -af
 EOF
