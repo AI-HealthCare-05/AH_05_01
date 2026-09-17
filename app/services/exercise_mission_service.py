@@ -14,6 +14,7 @@ from tortoise.exceptions import IntegrityError
 from tortoise.transactions import in_transaction
 
 from app.core import config
+from app.core.logger import default_logger
 from app.core.time_utils import service_today
 from app.dtos.companion import MATERIAL_INFO
 from app.dtos.exercise_missions import (
@@ -261,10 +262,20 @@ class ExerciseMissionService:
         self, user: User, session_id, idempotency_key: str, manual_check: bool,
         accumulated_count: int | None, accumulated_duration_seconds: int | None = None,
     ) -> CompleteExerciseMissionSessionResponse:
+        # ⚠️ 2026-09-17 추가(QA F14, 홍주님 회신) - 원인 확인용 로그. 인증 토큰·설문
+        # 원문 등 민감정보는 남기지 않고, 세션 식별·판정에 필요한 값만 남긴다.
+        default_logger.info(
+            "exercise_mission.complete start: user_id=%s session_id=%s manual_check=%s "
+            "accumulated_count=%s accumulated_duration_seconds=%s",
+            user.id, session_id, manual_check, accumulated_count, accumulated_duration_seconds,
+        )
         existing = await self.repo.get_session_by_idempotency_key(idempotency_key, user.id)
         if existing is not None:
             if existing.id != session_id:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Idempotency-Key가 다른 세션에 이미 사용됐어요.")
+            default_logger.info(
+                "exercise_mission.complete idempotent replay: user_id=%s session_id=%s", user.id, session_id,
+            )
             return await self._build_complete_response(user, existing)
 
         session = await self._get_owned_active_session(user, session_id)
@@ -278,6 +289,12 @@ class ExerciseMissionService:
             session.accumulated_duration_seconds = accumulated_duration_seconds
 
         if not manual_check and not _is_goal_achieved(session):
+            default_logger.warning(
+                "exercise_mission.complete rejected(goal not met): user_id=%s session_id=%s "
+                "accumulated_count=%s accumulated_duration_seconds=%s target_count=%s target_duration_seconds=%s",
+                user.id, session_id, session.accumulated_count, session.accumulated_duration_seconds,
+                session.target_count, session.target_duration_seconds,
+            )
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="아직 목표에 도달하지 못했어요.")
 
         today = session.service_date
@@ -311,11 +328,19 @@ class ExerciseMissionService:
         except HTTPException:
             raise
         except IntegrityError as exc:
+            default_logger.warning(
+                "exercise_mission.complete integrity conflict: user_id=%s session_id=%s error=%s",
+                user.id, session_id, exc,
+            )
             existing = await self.repo.get_session_by_idempotency_key(idempotency_key, user.id)
             if existing is not None:
                 return await self._build_complete_response(user, existing)
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="중복 요청이거나 이미 오늘 보상을 다 받았어요.") from exc
 
+        default_logger.info(
+            "exercise_mission.complete success: user_id=%s session_id=%s reward_slot=%s",
+            user.id, session_id, next_slot,
+        )
         session = await self.repo.get_owned_session(user.id, session_id)
         return await self._build_complete_response(user, session)
 
@@ -345,7 +370,11 @@ class ExerciseMissionService:
             from_states=[ExerciseMissionSessionState.ACTIVE, ExerciseMissionSessionState.PAUSED],
             to_state=ExerciseMissionSessionState.CANCELLED,
         )
-        if not ok:
+        # ⚠️ 2026-09-17 추가(QA F08/F14) - 종료(취소) 처리 결과 확인용 로그.
+        if ok:
+            default_logger.info("exercise_mission.cancel success: user_id=%s session_id=%s", user.id, session_id)
+        else:
+            default_logger.warning("exercise_mission.cancel rejected: user_id=%s session_id=%s", user.id, session_id)
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 완료되었거나 취소할 수 없는 상태예요.")
 
     async def get_records(self, user: User, from_date, to_date) -> ExerciseMissionRecordsResponse:

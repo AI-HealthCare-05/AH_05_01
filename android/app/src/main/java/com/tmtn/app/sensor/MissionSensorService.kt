@@ -71,7 +71,9 @@ class MissionSensorService : Service() {
             if (android.os.Build.VERSION.SDK_INT >= 29) {
                 startForeground(notificationId, buildNotification(), SensorPermissions.serviceType(measurement, android.os.Build.VERSION.SDK_INT))
             } else startForeground(notificationId, buildNotification())
-        } catch (_: SecurityException) {
+        } catch (e: SecurityException) {
+            // ⚠️ 2026-09-17 추가(QA F07/F14) - 권한 거부로 측정을 시작 못 한 원인 확인용.
+            android.util.Log.e("MissionDiag", "start denied: measurement=$measurement error=${e.message}")
             SensorDataHolder.setServiceRunning(false)
             SensorDataHolder.setServiceError("측정 권한을 확인해 주세요. 잰 기록은 남아 있어요.")
             stopSelf()
@@ -235,6 +237,11 @@ class MissionSensorService : Service() {
             // 공통으로 이걸 씀 — 지금 CurrentChallengeHolder에 어떤 exec_type이 돌고 있는지
             // 보고 그것만 정확히 멈춤 (다른 매니저는 안 건드림).
             ACTION_STOP_TRACKING -> {
+                // ⚠️ 2026-09-17 추가(QA F08/F14) - 측정 종료 시점의 원인 확인용 로그.
+                android.util.Log.i(
+                    "MissionDiag",
+                    "measurement stop: challengeId=${CurrentChallengeHolder.challengeId} execType=${CurrentChallengeHolder.execType}",
+                )
                 when (CurrentChallengeHolder.execType) {
                     "SENSOR_STEPS" -> stepCounterManager.stop()
                     "SENSOR_FLOORS_CLIMBED" -> stairClimbManager.stop()
@@ -397,6 +404,13 @@ class MissionSensorService : Service() {
         ageYears: Int? = null,
         targetValue: Int? = null,
     ) {
+        // ⚠️ 2026-09-17 추가(QA F14, 홍주님 회신) - 측정 시작 시점의 원인 확인용 로그.
+        // 인증 토큰·설문 원문 등 민감정보는 남기지 않고, 세션 식별에 필요한 값만 남긴다.
+        android.util.Log.i(
+            "MissionDiag",
+            "measurement start: challengeId=$challengeId execType=$execType resumeCount=$resumeCount " +
+                "appVersion=${com.tmtn.app.BuildConfig.VERSION_NAME}",
+        )
         CurrentChallengeHolder.challengeId = challengeId
         CurrentChallengeHolder.execType = execType
         CurrentChallengeHolder.targetValue = targetValue

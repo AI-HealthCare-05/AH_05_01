@@ -25,6 +25,9 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
+// ⚠️ 2026-09-17 추가(QA F13) - 틈새 운동 완료 저장 상태.
+enum class ExerciseSaveState { IDLE, SAVING, FAILED }
+
 enum class CardHomeStep {
     LOADING,       // B08
     HOME,          // B01 / B01b (draw_state로 구분)
@@ -311,6 +314,14 @@ class CardHomeState(
             applyHomeWindow(window)
             if (card != null) revealedCard.value = card
             errorMessage.value = null
+            // ⚠️ 2026-09-17 추가(QA 3번) - 미션 완료 후 홈으로 돌아오면 오늘의 카드만
+            // 다시 불러오고 댐(재료)·틈튼지수·연속 기록은 완료 전 값 그대로 남아있던
+            // 문제 수정. loadHome() 초기 로드와 같은 항목을 병렬로 함께 새로 불러온다.
+            coroutineScope {
+                launch { loadCompanion() }
+                launch { loadTuntunIndexSummary() }
+                launch { loadStreak() }
+            }
         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (_: Exception) {
             if (homeCanRefresh() && setId.value == previousSet) {
@@ -954,6 +965,11 @@ class CardHomeState(
     var exerciseMissionsToday = mutableStateOf<ExerciseMissionsTodayResponse?>(null)
     var selectedExerciseOption = mutableStateOf<ExerciseMissionOption?>(null)
     var activeExerciseSession = mutableStateOf<ExerciseMissionSessionResponse?>(null)
+
+    // ⚠️ 2026-09-17 추가(QA F13, 홍주님 회신) - "저장 중/저장 실패/저장 완료"를 구분해서
+    // 화면이 참고할 수 있게 함. 저장 완료는 별도 값 없이 exerciseRewardResult가 채워지고
+    // step이 EXTRA_REWARD로 넘어가는 것 자체로 표현한다(서버가 확인해준 결과만 완료로 침).
+    var exerciseSaveState = mutableStateOf(ExerciseSaveState.IDLE)
     var exerciseRewardResult = mutableStateOf<CompleteExerciseMissionSessionResponse?>(null)
 
     suspend fun loadExerciseMissionsToday() {
@@ -1038,6 +1054,17 @@ class CardHomeState(
         // 바꿔서, 같은 세션에 대한 재시도는 항상 같은 키가 나오게 함(서버가 그 키로
         // 기존 결과를 그대로 복구해서 돌려줌).
         val idempotencyKey = UUID.nameUUIDFromBytes("exercise-complete:${session.id}".toByteArray()).toString()
+        // ⚠️ 2026-09-17 추가(QA F13/F14) - "저장 중" 표시 + 원인 확인용 로그. 같은
+        // idempotencyKey로 재시도해도(F09에서 이미 결정론적 키로 바꿔둠) 중복 지급은
+        // 안 되고, 서버가 이미 처리했으면 그 결과를 그대로 돌려받는다.
+        exerciseSaveState.value = ExerciseSaveState.SAVING
+        errorMessage.value = null
+        android.util.Log.i(
+            "ExerciseMissionSave",
+            "complete start: sessionId=${session.id} manualCheck=$manualCheck " +
+                "accumulatedCount=$accumulatedCount accumulatedDurationSeconds=$accumulatedDurationSeconds " +
+                "appVersion=${com.tmtn.app.BuildConfig.VERSION_NAME}",
+        )
         runCatching {
             ApiClient.exerciseMissionApi.completeSession(
                 session.id,
@@ -1049,9 +1076,15 @@ class CardHomeState(
             )
         }.onSuccess { response ->
             if (response.isSuccessful) {
+                android.util.Log.i("ExerciseMissionSave", "complete success: sessionId=${session.id} rewardSlot=${response.body()?.reward_slot}")
+                exerciseSaveState.value = ExerciseSaveState.IDLE
                 exerciseRewardResult.value = response.body()
                 step.value = CardHomeStep.EXTRA_REWARD
             } else {
+                // ⚠️ 목표 미달성(409)은 "저장 실패"가 아니라 정상적인 검증 결과라
+                // FAILED로 두지 않는다 - "다시 저장하기"가 아니라 운동을 더 해야 함.
+                android.util.Log.w("ExerciseMissionSave", "complete rejected: sessionId=${session.id} httpCode=${response.code()}")
+                exerciseSaveState.value = ExerciseSaveState.IDLE
                 errorMessage.value = "아직 목표에 도달하지 못했어요."
             }
         }.onFailure { e ->
@@ -1059,7 +1092,11 @@ class CardHomeState(
             // 처리가 없어서 "완료 버튼을 눌러도 반응 없음"처럼 보였음. 취소된 코루틴은
             // 그대로 전파해야 함(정상적인 화면 이탈 취소).
             if (e is kotlinx.coroutines.CancellationException) throw e
-            errorMessage.value = "연결이 원활하지 않아요. 다시 시도해 주세요. (재시도해도 중복 지급되지 않아요)"
+            // ⚠️ 2026-09-17 수정(QA F13, 홍주님 지정 문구) - "저장 실패"를 화면에 명확히
+            // 남기고, 운동 기록(activeExerciseSession)은 건드리지 않아 재시도해도 유지되게 함.
+            android.util.Log.e("ExerciseMissionSave", "complete failed: sessionId=${session.id} error=${e::class.simpleName}: ${e.message}")
+            exerciseSaveState.value = ExerciseSaveState.FAILED
+            errorMessage.value = "운동은 마쳤어요. 기록 저장을 다시 시도해주세요."
         }
     }
 

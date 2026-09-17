@@ -11,17 +11,21 @@
   - 원장 상태(loaded/confirmed_empty_new/unavailable)를 "시간 필터링 이전의 완료
     레코드 존재 여부"로 판정 - 시간 미수집 이벤트만 있어도 "loaded"로 봄(빈 원장 아님)
 
+⚠️ 2026-09-16 병합 - 원격(develop 계열, 다른 팀 에이전트) 버전을 베이스로 로컬의
+초기 습관 실제 계산·가입 시점 확인·쉼(rest) 연결을 다시 얹음. 두 changeset이 서로
+겹치지 않는 부분(원격: 미션 도메인 필터·additional 전면 보류·SHA256 리비전·엄격한
+confirmed_empty_new 판정 / 로컬: 초기 습관 계산·쉼 연결)이라 양쪽 다 보존.
+
 ⚠️ 아직 반영 안 한 것(명확히 구분):
-  - 쉼(rest) 연동 - "오늘은 쉬어가기"의 정확한 의미(오늘의 카드만 건너뛴 것인지, 그
-    날 운동을 안 했다는 확인인지)를 먼저 확인해야 함(강호님 요청). 지금은 전부 unknown.
-  - CHECK형 시간 미수집 additional의 "이유 표시" - 지금은 그냥 집계에서 제외만 하고
-    있음(그 날 mission 점수는 안 깨지게는 이미 처리돼 있음). 제외 사유를 응답에
-    구조적으로 남기는 건 다음 단계.
-  - 초기 습관 세부 배점 산식 - 검토안 단계라 이번에 구현 안 함.
+  - additional은 모든 실행 유형에서 실제 활동시간이 확인되기 전까지 가산 보류.
+    additional_time_policy로 이 정책을 알리며 완료 원장과 재료 보상은 보존한다.
 """
 
+import hashlib
+import json
 from datetime import date, timedelta
 
+from app.core import config
 from app.core.time_utils import service_today
 from app.models.assessments import InitialHabitSnapshot
 from app.models.challenges import Challenge, ChallengeState
@@ -38,27 +42,20 @@ from app.services.practice_formula import policy as practice_policy
 from app.services.practice_formula import trajectory
 from app.services.tuntun_score_peer_service import TuntunScorePeerService
 
-MAX_REVIEW_DAYS = 730
 HEALTH_KEYS = ("physical", "diabetes", "hypertension")
+ADDITIONAL_TIME_POLICY = "withheld_until_verified_activity_duration"
 _STRENGTH_INTENSITY_MAP = {"LIGHT": "light", "MODERATE": "moderate", "HARD": "hard"}
-# ⚠️ 2026-09-16 모듈 상수로 분리 - app/scripts/backfill_initial_habit_scores.py(기존
-# pending 사용자 일괄 전환)가 여기와 똑같은 판정 기준을 써야 해서, 매직넘버 중복을
-# 피하려고 여기서만 정의하고 스크립트가 import해서 씀.
+# ⚠️ 2026-09-16 - app/scripts/backfill_initial_habit_scores.py가 여기와 똑같은 판정
+# 기준을 써야 해서, 매직넘버 중복을 피하려고 여기서만 정의하고 스크립트가 import.
 SIGNUP_CONFIRMATION_WINDOW_SECONDS = 3600
 
 
 def _calculate_initial_habit_from_snapshot(habit, input_revision: str) -> dict:
-    """⚠️ 2026-09-16 추가 - 강호님 "초기습관_산식과_모델표시_확정_v1" 반영. 아직 실제로
-    호출되는 곳 없음(_get_or_create_initial_snapshot()이 policy_status='pending'만
-    저장하는 중) - 온보딩이 "가입 당시 완성 설문"을 식별할 수 있는 방법이 확인되면
-    바로 연결할 수 있게 계산 로직만 미리 준비해둠.
+    """⚠️ 2026-09-16 추가 - 강호님 "초기습관_산식과_모델표시_확정_v1" 반영.
+    strength_days=habit.strength_weekly_count 그대로 씀 - 앱의 "주 N회"가 실제로는
+    운동한 일수라는 건 이미 확인 완료. input_definition('leisure_bouts10_strength_days_v1')
+    이 실제 온보딩 설문 문항과 일치하는지는 별도 확인 필요."""
 
-    ⚠️ strength_days=habit.strength_weekly_count 그대로 씀 - 앱의 "주 N회"가 실제로는
-    운동한 일수라는 건 이미 확인 완료(tuntun_score_peer_service.py의 같은 매핑 참고).
-    ⚠️ input_definition('leisure_bouts10_strength_days_v1', "10분 이상 지속 활동" 기준)
-    이 실제 온보딩 설문 문항과 일치하는지는 별도 확인 필요 - 확인 전까지 이 함수를
-    실제 계산에 쓰면 안 됨.
-    """
     if habit is None:
         return dict(score=None, contributions=None, formula_version="pending-selection",
                     input_definition=None, policy_status="pending")
@@ -97,29 +94,19 @@ class PracticeScoreService:
             state=ChallengeState.COMPLETED,
             selection__card_set__service_date__gte=start,
             selection__card_set__service_date__lte=end,
-        ).prefetch_related("selection__card_set")
+        ).prefetch_related("selection__card_set", "selection__card_option__mission_template_version")
         for c in challenges:
+            domain = c.mission_snapshot.get("domain")
+            if not domain:
+                domain = c.selection.card_option.mission_template_version.domain
+            if domain not in {"유산소", "근력운동", "근력"}:
+                continue
             d = c.selection.card_set.service_date
             by_day.setdefault(d, []).append(dict(sessionId=str(c.id), kind="mission", minutes=None))
 
-        sessions = await ExerciseMissionSession.filter(
-            user_id=user.id,
-            state=ExerciseMissionSessionState.COMPLETED,
-            service_date__gte=start,
-            service_date__lte=end,
-        )
-        for s in sessions:
-            minutes = (s.accumulated_duration_seconds or 0) / 60
-            # ⚠️ 강호님 요청: "시간 없는 additional은 시간을 만들어 넣지 않는다. 기록은
-            # 보존하고 가산은 보류". 지금은 daily_units() 입력에서만 제외하고(mission
-            # 점수가 깨지지 않게), 완료 기록 자체(ExerciseMissionSession row)는 그대로
-            # DB에 남아있음 - "보존"은 이미 되고 있음. 제외 사유를 응답에 구조적으로
-            # 남기는 건 다음 단계(위 docstring 참고).
-            if minutes <= 0:
-                continue
-            by_day.setdefault(s.service_date, []).append(
-                dict(sessionId=str(s.id), kind="additional", minutes=minutes)
-            )
+        # 세션의 accumulated_duration_seconds는 목표 상한이 있는 경과시간이다.
+        # 실제 활동시간 수집 전에는 양수여도 additional 시간 가산에 쓰지 않는다.
+        # 완료 원장/재료는 변경하지 않으며 원장 존재 판단에서는 계속 포함한다.
 
         return by_day
 
@@ -147,16 +134,11 @@ class PracticeScoreService:
         """가입 시점 신체정보+운동습관 스냅샷을 기준으로 최초 1회만 생성 - 이후 절대
         덮어쓰지 않음(user OneToOneField가 DB 레벨에서 재생성을 막음).
 
-        ⚠️ 2026-09-16 갱신 - 온보딩 코드 확인 완료: OnboardingState.submitProfile()
-        (A07, 신체정보 포함)이 성공하면 자동으로 OnboardingStep.A08_EXERCISE로 넘어가고
-        그 화면에서 submitExerciseHabits()(A08, 운동습관)를 호출하는 강제 순차 흐름이다.
-        즉 정상적으로 온보딩을 거친 사용자는 "가장 오래된 신체정보"와 "가장 오래된
-        운동습관"의 서버 저장 시각이 항상 몇 분 이내로 근접한다. "서로 무관한 가장
-        오래된 두 행을 가입 당시 완성본으로 단정하지 말라"는 원칙에 따라, 이 근접성이
-        확인될 때만 실제 계산(policy_status='approved')을 수행하고, 확인 안 되면(둘
-        중 하나가 없거나, 시간 차이가 비정상적으로 크면 - 예: 온보딩 없이 나중에 개별
-        입력한 경우) pending으로 유지한다.
-        """
+        ⚠️ 2026-09-16 갱신 - 온보딩 코드 확인 완료: A07(신체정보)→A08(운동습관) 강제
+        순차 흐름이라, 정상 온보딩 사용자는 두 스냅샷 저장 시각이 몇 분 이내로 근접함.
+        "서로 무관한 가장 오래된 두 행을 가입 당시로 단정하지 말라"는 원칙에 따라,
+        이 근접성이 확인될 때만 실제 계산(policy_status='approved')을 수행하고,
+        확인 안 되면(온보딩 없이 나중에 개별 입력한 경우 등) pending으로 유지."""
 
         existing = await InitialHabitSnapshot.get_or_none(user_id=user.id)
         if existing is not None:
@@ -165,10 +147,6 @@ class PracticeScoreService:
         earliest_health = await self.health_repo.get_earliest(user.id)
         earliest_habit = await self.exercise_repo.get_earliest(user.id)
 
-        # ⚠️ 온보딩 A07→A08 화면 전환에 걸리는 실제 시간을 실측한 근거는 아직 없음 -
-        # 여유 있게 1시간(SIGNUP_CONFIRMATION_WINDOW_SECONDS)으로 잡은 값. 너무 좁으면
-        # 정상 가입자도 놓치고, 너무 넓으면 "무관한 두 행"이 섞일 위험이 있어 실측 후
-        # 조정이 필요할 수 있음.
         signup_confirmed = (
             earliest_health is not None and earliest_habit is not None
             and abs((earliest_health.created_at - earliest_habit.recorded_at).total_seconds())
@@ -202,13 +180,16 @@ class PracticeScoreService:
             contributions=calc["contributions"],
         )
 
-    async def get_practice_score(self, user: User) -> dict:  # noqa: C901 - 분기가 많아짐(v1→v2→쉼 연결), 다음에 정리 예정
+    async def get_practice_score(self, user: User) -> dict:
         today = service_today(user.id)
-        start = user.created_at.date() if hasattr(user, "created_at") and user.created_at else today
-        start = max(start, today - timedelta(days=MAX_REVIEW_DAYS))
+        created_at = getattr(user, "created_at", None)
+        start = created_at.astimezone(config.TIMEZONE).date() if created_at else today
+        # 누적 성취를 보존한다. 검토용 730일 제한으로 과거 실천을 버리지 않는다.
+        start = min(start, today)
 
         try:
             has_any = await self._has_any_completion(user, start, today)
+            by_day = await self._daily_events(user, start, today) if has_any else {}
         except Exception:  # noqa: BLE001 - DB 조회 자체 실패는 ledger_state=unavailable로
             has_any = None
 
@@ -217,16 +198,15 @@ class PracticeScoreService:
             ledger_state = "unavailable"
             practice_score = None
             ledger_revision = None
-        elif not has_any:
+        elif not has_any and created_at is not None and created_at.astimezone(config.TIMEZONE).date() == today:
             ledger_state = "confirmed_empty_new"
             practice_score = None  # compose()가 0.0으로 취급
             ledger_revision = f"empty:{start.isoformat()}:{today.isoformat()}"
         else:
             ledger_state = "loaded"
-            by_day = await self._daily_events(user, start, today)
-            # ⚠️ 2026-09-15 추가 - 강호님 확정: "사용자가 명시적으로 쉬어가기를 선택한
+            # ⚠️ 2026-09-16 추가 - 강호님 확정: "사용자가 명시적으로 쉬어가기를 선택한
             # 날만 쉼으로 표시. 기록이 없는 날을 자동으로 쉼 처리하지 않음." 기존
-            # DailyRecordNote.is_rest_day(D05 "쉼" 표시)를 그대로 재사용 - 새 테이블 없음.
+            # DailyRecordNote.is_rest_day를 그대로 재사용 - 새 테이블 없음.
             notes = await self.record_repo.get_notes_in_range(user.id, start, today)
             days = []
             for d in _date_range(start, today):
@@ -242,7 +222,17 @@ class PracticeScoreService:
             rows = trajectory(days)
             latest = rows[-1]
             practice_score = latest["practiceScore"]
-            ledger_revision = f"{start.isoformat()}:{today.isoformat()}:{latest['cumulativeUnits']}"
+            # 같은 총 단위여도 날짜/활동이 달라지면 유지 보너스가 다를 수 있다.
+            revision_input = [
+                (d.isoformat(), sorted(events, key=lambda e: e["sessionId"])) for d, events in sorted(by_day.items())
+            ]
+            ledger_revision = hashlib.sha256(
+                json.dumps(
+                    [start.isoformat(), today.isoformat(), has_any, revision_input],
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode()
+            ).hexdigest()
 
         initial = await self._get_or_create_initial_snapshot(user)
         compose_initial = ComposeInitialSnapshot(
@@ -273,16 +263,29 @@ class PracticeScoreService:
             # 아예 시도하지 않고, 실천 점수만이라도 정확히 반환함.
             return dict(
                 as_of=today.isoformat(),
-                daily_units=(rows[-1]["dailyUnits"] if ledger_state == "loaded" else 0.0),
-                cumulative_units=(rows[-1]["cumulativeUnits"] if ledger_state == "loaded" else 0.0),
-                practice_score=0.0 if ledger_state == "confirmed_empty_new" else (practice_score or 0.0),
+                daily_units=(rows[-1]["dailyUnits"] if rows else (None if ledger_state == "unavailable" else 0.0)),
+                cumulative_units=(
+                    rows[-1]["cumulativeUnits"] if rows else (None if ledger_state == "unavailable" else 0.0)
+                ),
+                practice_score=0.0 if ledger_state == "confirmed_empty_new" else practice_score,
                 confirmed_rest_run=(rows[-1]["confirmedRestRun"] if ledger_state == "loaded" else 0),
                 unknown_run=(rows[-1]["unknownRun"] if ledger_state == "loaded" else 0),
-                freshness=(rows[-1]["freshness"] if ledger_state == "loaded" else "current_or_recent"),
+                freshness=(
+                    rows[-1]["freshness"]
+                    if rows
+                    else ("unavailable" if ledger_state == "unavailable" else "current_or_recent")
+                ),
                 policy_version=p["version"],
                 lifestyle_score=None,
                 composite_score=None,
-                composite_blocked_reason="HEALTH_COMPONENTS_UNAVAILABLE",
+                composite_blocked_reason=(
+                    "HEALTH_COMPONENTS_UNAVAILABLE,PRACTICE_LEDGER_UNAVAILABLE"
+                    if ledger_state == "unavailable"
+                    else "HEALTH_COMPONENTS_UNAVAILABLE"
+                ),
+                ledger_state=ledger_state,
+                ledger_revision=ledger_revision,
+                additional_time_policy=ADDITIONAL_TIME_POLICY,
             )
 
         result = compose(
@@ -298,18 +301,27 @@ class PracticeScoreService:
 
         return dict(
             as_of=today.isoformat(),
-            daily_units=(rows[-1]["dailyUnits"] if ledger_state == "loaded" else 0.0),
-            cumulative_units=(rows[-1]["cumulativeUnits"] if ledger_state == "loaded" else 0.0),
-            practice_score=result["practice_score"] or 0.0,
+            daily_units=(rows[-1]["dailyUnits"] if rows else (None if ledger_state == "unavailable" else 0.0)),
+            cumulative_units=(
+                rows[-1]["cumulativeUnits"] if rows else (None if ledger_state == "unavailable" else 0.0)
+            ),
+            practice_score=result["practice_score"],
             confirmed_rest_run=(rows[-1]["confirmedRestRun"] if ledger_state == "loaded" else 0),
             unknown_run=(rows[-1]["unknownRun"] if ledger_state == "loaded" else 0),
-            freshness=(rows[-1]["freshness"] if ledger_state == "loaded" else "current_or_recent"),
+            freshness=(
+                rows[-1]["freshness"]
+                if rows
+                else ("unavailable" if ledger_state == "unavailable" else "current_or_recent")
+            ),
             policy_version=p["version"],
             lifestyle_score=result["lifestyle_score"],
             composite_score=result["display_score"],
             composite_blocked_reason=(
                 ",".join(result["composite_blocked_reason"]) if result["composite_blocked_reason"] else None
             ),
+            ledger_state=ledger_state,
+            ledger_revision=ledger_revision,
+            additional_time_policy=ADDITIONAL_TIME_POLICY,
         )
 
 

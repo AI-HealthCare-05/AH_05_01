@@ -1,5 +1,8 @@
 package com.tmtn.app.ui.cardhome
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,13 +20,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.network.model.ExerciseMissionOption
 import com.tmtn.app.ui.common.ModelMissionBadge
+import com.tmtn.app.ui.common.hasLocationPermission
 import com.tmtn.app.ui.common.hasRequiredSensor
+import com.tmtn.app.ui.common.isGpsProviderEnabled
 import com.tmtn.app.ui.common.isModelRecognitionExecType
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.onboarding.TmtnTextButton
@@ -134,6 +142,26 @@ fun ExerciseMissionDetailScreen(state: CardHomeState, scope: CoroutineScope) {
     val context = LocalContext.current
     val sensorAvailable = hasRequiredSensor(context, option.exec_type)
 
+    // ⚠️ 2026-09-17 추가(QA F07/F12, 홍주님 회신) - 계단은 기압 센서가 없으면 자동
+    // 측정이 원천적으로 불가능해서, 다른 센서형(제자리걸음 등)처럼 "직접 확인"으로
+    // 슬쩍 넘기지 않고 아예 시작을 막고 다른 운동을 고르도록 안내하기로 함(기존
+    // "직접 확인" 대체는 그대로 유지 - 계단만 예외). 세션 자체를 안 만드니 오늘의
+    // 틈새운동 선택 가능 횟수(remaining)도 소모되지 않는다.
+    val isStairsUnsupported = option.exec_type == "SENSOR_FLOORS_CLIMBED" && !sensorAvailable
+
+    // ⚠️ 2026-09-17 추가(QA F07/F12) - "다시 확인" 버튼을 누르면(설정 화면을 다녀온 뒤)
+    // 위치 권한·위치 서비스 상태를 다시 읽도록 재계산 트리거만 증가시킨다.
+    var locationRecheckTrigger by remember { mutableIntStateOf(0) }
+    val isGpsMission = option.exec_type == "SENSOR_RUNNING_DISTANCE"
+    val locationPermissionGranted = remember(locationRecheckTrigger) {
+        if (isGpsMission) hasLocationPermission(context) else true
+    }
+    val gpsProviderEnabled = remember(locationRecheckTrigger) {
+        if (isGpsMission) isGpsProviderEnabled(context) else true
+    }
+    val isGpsBlocked = isGpsMission && (!locationPermissionGranted || !gpsProviderEnabled)
+    val canStart = !isStairsUnsupported && !isGpsBlocked
+
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "틈새 운동", onBack = { state.step.value = CardHomeStep.EXTRA_LIST })
         Column(
@@ -169,9 +197,10 @@ fun ExerciseMissionDetailScreen(state: CardHomeState, scope: CoroutineScope) {
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
                 )
             }
-            // ⚠️ 이 기기에 필요한 센서가 없는 경우 - 완전히 막지 않고 "직접 확인" 방식으로
-            // 안내함(지현님 팀 점검 결과: "센서 미지원 기기의 대체 안내 필요").
-            if (isModel && !sensorAvailable) {
+            // ⚠️ 이 기기에 필요한 센서가 없는 경우(계단 제외) - 완전히 막지 않고 "직접 확인"
+            // 방식으로 안내함(지현님 팀 점검 결과: "센서 미지원 기기의 대체 안내 필요").
+            // 계단은 위 isStairsUnsupported 분기(아래)에서 별도로 막는다.
+            if (isModel && !sensorAvailable && !isStairsUnsupported) {
                 Column(
                     modifier = Modifier.fillMaxWidth().background(colors.errorContainer, RoundedCornerShape(16.dp)).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -180,7 +209,58 @@ fun ExerciseMissionDetailScreen(state: CardHomeState, scope: CoroutineScope) {
                     Text("운동을 마친 뒤 직접 완료를 눌러 확인해 주세요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
                 }
             }
-            Text(option.guide_text, style = TmtnType.body, color = colors.onSurfaceVariant)
+
+            // ⚠️ 2026-09-17 추가(QA F07/F12) - 계단: 기압 센서가 없으면 시작 자체를 막고
+            // 다른 운동을 고르도록 안내(홍주님 지정 문구).
+            if (isStairsUnsupported) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().background(colors.errorContainer, RoundedCornerShape(16.dp)).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        "이 휴대폰에서는 계단 운동을 자동 측정할 수 없어요. 다른 틈새운동을 골라볼까요?",
+                        style = TmtnType.label, color = colors.error,
+                    )
+                }
+            }
+
+            // ⚠️ 2026-09-17 추가(QA F07/F12) - 달리기(거리): 위치 권한 거부/위치 서비스
+            // 꺼짐을 원인별로 구분해 안내하고, 설정 화면으로 보내 고친 뒤 "다시 확인"으로
+            // 재시도할 수 있게 함.
+            if (isGpsBlocked) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().background(colors.errorContainer, RoundedCornerShape(16.dp)).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "이동 거리를 기록하려면 위치 기능을 켜주세요.",
+                        style = TmtnType.label, color = colors.error,
+                    )
+                    Text(
+                        if (!locationPermissionGranted) "위치 권한이 꺼져 있어요. 권한 설정에서 허용해 주세요."
+                        else "휴대폰의 위치(GPS) 기능이 꺼져 있어요. 설정에서 켜주세요.",
+                        style = TmtnType.caption, color = colors.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TmtnTextButton(
+                            text = if (!locationPermissionGranted) "권한 설정으로 이동" else "위치 설정으로 이동",
+                            onClick = {
+                                val intent = if (!locationPermissionGranted) {
+                                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                                } else {
+                                    Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                }
+                                context.startActivity(intent)
+                            },
+                        )
+                        TmtnTextButton(text = "다시 확인", onClick = { locationRecheckTrigger++ })
+                    }
+                }
+            }
+
+            if (!isStairsUnsupported && !isGpsBlocked) {
+                Text(option.guide_text, style = TmtnType.body, color = colors.onSurfaceVariant)
+            }
 
             // ⚠️ 2026-09-16 버그 수정(QA 영상) - startExerciseMission() 실패(서버 409 등)를
             // 그냥 무시하고 있어서, 사용자 눈엔 버튼을 눌러도 "다음 화면으로 안 넘어가는"
@@ -189,19 +269,33 @@ fun ExerciseMissionDetailScreen(state: CardHomeState, scope: CoroutineScope) {
                 Text(message, style = TmtnType.caption, color = colors.error)
             }
 
-            TmtnPrimaryButton(
-                text = if (isModel && sensorAvailable) "이 운동 시작하기" else "이 운동 실천하기",
-                onClick = {
-                    scope.launch {
+            if (isStairsUnsupported) {
+                // ⚠️ 세션을 만들지 않고 목록으로 돌려보낸다 - 오늘 남은 추가 보상
+                // 횟수(remaining)가 소모되지 않는다.
+                TmtnPrimaryButton(
+                    text = "다른 운동 고르기",
+                    onClick = {
                         state.errorMessage.value = null
-                        val started = state.startExerciseMission()
-                        if (!started) {
-                            state.errorMessage.value =
-                                "지금은 시작할 수 없어요. 이미 진행 중인 틈새 운동이 있거나, 오늘 보상을 다 받았을 수 있어요."
+                        state.selectedExerciseOption.value = null
+                        state.step.value = CardHomeStep.EXTRA_LIST
+                    },
+                )
+            } else {
+                TmtnPrimaryButton(
+                    text = if (isModel && sensorAvailable) "이 운동 시작하기" else "이 운동 실천하기",
+                    enabled = canStart,
+                    onClick = {
+                        scope.launch {
+                            state.errorMessage.value = null
+                            val started = state.startExerciseMission()
+                            if (!started) {
+                                state.errorMessage.value =
+                                    "지금은 시작할 수 없어요. 이미 진행 중인 틈새 운동이 있거나, 오늘 보상을 다 받았을 수 있어요."
+                            }
                         }
-                    }
-                },
-            )
+                    },
+                )
+            }
         }
     }
 }
@@ -362,28 +456,34 @@ fun ExerciseMissionRunningScreen(
                     )
             }
 
+            // ⚠️ 2026-09-17 추가(QA F13) - "완료" 버튼과 "다시 저장하기"(실패 후 재시도)가
+            // 같은 완료 요청을 보내야 해서 하나의 람다로 공유한다.
+            val saveState = state.exerciseSaveState.value
+            val submitCompletion: () -> Unit = {
+                scope.launch {
+                    // ⚠️ 실제 센서형은 manual_check=false로 서버가 검증하게 함(목표
+                    // 미달성이면 409로 정직하게 거절됨).
+                    // ⚠️ 2026-09-16 버그 수정(QA F05) - "시간형은 서버가 자체 계산하므로
+                    // 안 보내도 됨"이라는 예전 전제가 틀렸음. 서버는 "시작~완료 경과
+                    // 시각"으로 대신 계산하고 있었고, 이러면 센서가 전혀 못 재도(0초여도)
+                    // 시간만 지나면 목표 달성으로 잘못 판정됨(원인분석 문서 재현 사례).
+                    // 이제 서버가 시간형은 클라이언트 확정값만 신뢰하도록 고쳤으니, 화면이
+                    // 실제로 보여주고 있던 currentSeconds를 반드시 실어 보내야 함.
+                    when {
+                        isStepInPlace || isRunningDistance || isStairs ->
+                            state.completeExerciseMission(manualCheck = false, accumulatedCount = currentCount)
+                        isWalkingDuration || isRunningDuration ->
+                            state.completeExerciseMission(manualCheck = false, accumulatedDurationSeconds = currentSeconds)
+                        else -> state.completeExerciseMission(manualCheck = true)
+                    }
+                }
+            }
+
             TmtnPrimaryButton(
                 text = if (isRealSensor) "완료" else "완료 확인",
-                enabled = !isRealSensor || targetReached,
-                onClick = {
-                    scope.launch {
-                        // ⚠️ 실제 센서형은 manual_check=false로 서버가 검증하게 함(목표
-                        // 미달성이면 409로 정직하게 거절됨).
-                        // ⚠️ 2026-09-16 버그 수정(QA F05) - "시간형은 서버가 자체 계산하므로
-                        // 안 보내도 됨"이라는 예전 전제가 틀렸음. 서버는 "시작~완료 경과
-                        // 시각"으로 대신 계산하고 있었고, 이러면 센서가 전혀 못 재도(0초여도)
-                        // 시간만 지나면 목표 달성으로 잘못 판정됨(원인분석 문서 재현 사례).
-                        // 이제 서버가 시간형은 클라이언트 확정값만 신뢰하도록 고쳤으니, 화면이
-                        // 실제로 보여주고 있던 currentSeconds를 반드시 실어 보내야 함.
-                        when {
-                            isStepInPlace || isRunningDistance || isStairs ->
-                                state.completeExerciseMission(manualCheck = false, accumulatedCount = currentCount)
-                            isWalkingDuration || isRunningDuration ->
-                                state.completeExerciseMission(manualCheck = false, accumulatedDurationSeconds = currentSeconds)
-                            else -> state.completeExerciseMission(manualCheck = true)
-                        }
-                    }
-                },
+                enabled = (!isRealSensor || targetReached) && saveState != ExerciseSaveState.SAVING,
+                loading = saveState == ExerciseSaveState.SAVING,
+                onClick = submitCompletion,
             )
             // ⚠️ 2026-09-16 추가(QA F09) - 완료/취소 실패 메시지를 진행 화면에서도
             // 보여줌(예전엔 상세 화면에만 있었음) - cancelExerciseMission()이 실패
@@ -391,8 +491,15 @@ fun ExerciseMissionRunningScreen(
             state.errorMessage.value?.let { message ->
                 Text(message, style = TmtnType.caption, color = colors.error)
             }
+            // ⚠️ 2026-09-17 추가(QA F13, 홍주님 지정 흐름) - 저장이 실패했을 때만 보임.
+            // 운동 기록(활성 세션)은 그대로 유지된 채로 같은 완료 요청을 다시 보낸다 -
+            // 서버가 이미 저장했었다면 중복 지급 없이 그 결과를 그대로 돌려받는다.
+            if (saveState == ExerciseSaveState.FAILED) {
+                TmtnPrimaryButton(text = "다시 저장하기", onClick = submitCompletion)
+            }
             TmtnTextButton(
                 text = "그만두기",
+                enabled = saveState != ExerciseSaveState.SAVING,
                 onClick = { scope.launch { state.errorMessage.value = null; state.cancelExerciseMission() } },
             )
         }
