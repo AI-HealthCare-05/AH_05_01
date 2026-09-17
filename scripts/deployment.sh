@@ -7,7 +7,7 @@ COLOR_RED=$(tput setaf 1)
 COLOR_NC=$(tput sgr0)
 
 cd "$(dirname "$0")/.."
-source ./envs/.prod.env
+source ./.env.prod
 
 # ---------- 도커 이미지 빌드 및 푸시 함수 ----------
 build_and_push () {
@@ -106,7 +106,7 @@ read -p "선택(ex. 1): " is_https
 echo ""
 
 # ---------- EC2 내에 배포 준비 파일 복사  ----------
-scp -i ~/.ssh/${ssh_key_file} envs/.prod.env ubuntu@${ec2_ip}:~/project/.env
+scp -i ~/.ssh/${ssh_key_file} .env.prod ubuntu@${ec2_ip}:~/project/.env
 scp -i ~/.ssh/${ssh_key_file} infra/docker/docker-compose.prod.yml ubuntu@${ec2_ip}:~/project/docker-compose.yml
 if [[ "$is_https" == "1" ]] ; then
   # ---------- prod_http.conf 파일의 server_name 자동 수정 ----------

@@ -7,7 +7,7 @@ COLOR_RED=$(tput setaf 1)
 COLOR_NC=$(tput sgr0)
 
 cd "$(dirname "$0")/.."
-source ./envs/.prod.env
+source ./.env.prod
 
 echo "${COLOR_BLUE}Start CERT Domain with Certbot.."
 
