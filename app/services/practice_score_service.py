@@ -213,6 +213,8 @@ class PracticeScoreService:
         try:
             has_any = await self._has_any_completion(user, start, today)
             by_day = await self._daily_events(user, start, today) if has_any else {}
+            # 쉼도 유지 점수의 입력이다. 조회 실패를 무기록으로 대신 계산하지 않는다.
+            notes = await self.record_repo.get_notes_in_range(user.id, start, today)
         except Exception:  # noqa: BLE001 - DB 조회 자체 실패는 ledger_state=unavailable로
             has_any = None
 
@@ -230,14 +232,14 @@ class PracticeScoreService:
             # ⚠️ 2026-09-16 추가 - 강호님 확정: "사용자가 명시적으로 쉬어가기를 선택한
             # 날만 쉼으로 표시. 기록이 없는 날을 자동으로 쉼 처리하지 않음." 기존
             # DailyRecordNote.is_rest_day를 그대로 재사용 - 새 테이블 없음.
-            notes = await self.record_repo.get_notes_in_range(user.id, start, today)
             days = _practice_days(start, today, by_day, notes)
             rows = trajectory(days)
             latest = rows[-1]
             practice_score = latest["practiceScore"]
             # 같은 총 단위여도 날짜/활동이 달라지면 유지 보너스가 다를 수 있다.
             revision_input = [
-                (d.isoformat(), sorted(events, key=lambda e: e["sessionId"])) for d, events in sorted(by_day.items())
+                (d.isoformat(), row["status"], sorted(row["events"], key=lambda e: e["sessionId"]))
+                for d, row in zip(_date_range(start, today), days, strict=True)
             ]
             ledger_revision = hashlib.sha256(
                 json.dumps(

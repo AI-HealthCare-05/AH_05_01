@@ -98,13 +98,17 @@ async def test_additional_only_day_preserves_previous_achievement():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("failure", ["exists", "records"])
+@pytest.mark.parametrize("failure", ["exists", "records", "rest_notes"])
 @pytest.mark.parametrize("bridge_down", [False, True])
 async def test_unavailable_never_becomes_zero(failure, bridge_down):
     s = service()
-    s._daily_events = AsyncMock(side_effect=RuntimeError("database unavailable"))
+    s._daily_events = AsyncMock(return_value={})
     if failure == "exists":
         s._has_any_completion.side_effect = RuntimeError("database unavailable")
+    elif failure == "records":
+        s._daily_events.side_effect = RuntimeError("database unavailable")
+    else:
+        s.record_repo.get_notes_in_range.side_effect = RuntimeError("database unavailable")
     if bridge_down:
         s.peer_service.fetch_bridge_result.side_effect = RuntimeError("bridge unavailable")
     with patch.object(module, "service_today", return_value=TODAY):
@@ -162,3 +166,23 @@ def test_activity_precedes_rest_and_missing_is_unknown():
     days = module._practice_days(start, TODAY, {TODAY: [mission("done")]}, notes)
     assert [day["status"] for day in days] == ["confirmed_rest", "unknown", "active"]
     assert days[-1]["events"] == [mission("done")]
+
+
+@pytest.mark.asyncio
+async def test_rest_update_changes_revision_and_preserves_achievement():
+    s = service()
+    first = TODAY - timedelta(days=8)
+    s._daily_events = AsyncMock(return_value={first: [mission("prior")]})
+    with patch.object(module, "service_today", return_value=TODAY):
+        unknown = await s.get_practice_score(user(days=8))
+        s.record_repo.get_notes_in_range.return_value = {
+            first + timedelta(days=n): SimpleNamespace(is_rest_day=True) for n in range(1, 9)
+        }
+        resting = await s.get_practice_score(user(days=8))
+        repeat = await s.get_practice_score(user(days=8))
+    assert unknown["cumulative_units"] == resting["cumulative_units"] == 1
+    assert resting["confirmed_rest_run"] == 8
+    assert 0 < resting["practice_score"] < unknown["practice_score"]
+    assert unknown["ledger_revision"] != resting["ledger_revision"]
+    assert repeat["ledger_revision"] == resting["ledger_revision"]
+    assert repeat["practice_score"] == resting["practice_score"]
