@@ -106,6 +106,21 @@ services:
     depends_on:
       - nginx
 
+  # 7. Tuntun Peer Bridge (또래 백분위 vNext + 허리둘레 보조 모델, ML팀 별도 릴리즈)
+  # ⚠️ 2026-09-17 추가 - 원래 EC2에는 compose로 관리되던 서비스였는데 레포의 compose
+  # 파일에 누락돼 있어서, 이 파일로 배포 스크립트가 원격 docker-compose.yml을 덮어쓰는
+  # 순간 fastapi 네트워크에 붙어있던 이 컨테이너가 orphan이 되어 버렸음(원인 재현 확인).
+  # fastapi와 네트워크 네임스페이스를 공유해야 localhost:8766(또래점수)/8768(허리둘레)로
+  # 붙을 수 있으므로 network_mode: service:fastapi 필수.
+  tuntun-peer-bridge:
+    container_name: tuntun-peer-bridge
+    image: ${DOCKER_USER}/${DOCKER_REPOSITORY}:tuntun-peer-bridge-${TUNTUN_PEER_BRIDGE_VERSION}
+    network_mode: "service:fastapi"
+    restart: always
+    mem_limit: 1G
+    depends_on:
+      - fastapi
+
 volumes:
   mysql_data:
     name: mysql_data
