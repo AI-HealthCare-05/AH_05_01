@@ -43,6 +43,7 @@ def service():
     )
     s.peer_service.fetch_bridge_result = AsyncMock(return_value=({"components": health()}, "input"))
     s._has_any_completion = AsyncMock(return_value=True)
+    s.record_repo.get_notes_in_range = AsyncMock(return_value={})
     return s
 
 
@@ -153,3 +154,11 @@ async def test_revision_distinguishes_same_total_on_different_days():
         b = await s.get_practice_score(user())
     assert a["cumulative_units"] == b["cumulative_units"]
     assert a["ledger_revision"] != b["ledger_revision"]
+
+
+def test_activity_precedes_rest_and_missing_is_unknown():
+    start = TODAY - timedelta(days=2)
+    notes = {start: SimpleNamespace(is_rest_day=True), TODAY: SimpleNamespace(is_rest_day=True)}
+    days = module._practice_days(start, TODAY, {TODAY: [mission("done")]}, notes)
+    assert [day["status"] for day in days] == ["confirmed_rest", "unknown", "active"]
+    assert days[-1]["events"] == [mission("done")]
