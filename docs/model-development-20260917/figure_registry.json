@@ -1,0 +1,58 @@
+[
+  {
+    "file": "figures/01_waist_actual_errors.png",
+    "caption": "n=16,403 · seed42 · 표본 삭제/오차 절단/추세 평활화 없음. 지표·점·도수 모두 비가중.",
+    "source": "01_waist_actual_errors",
+    "evidence": "development",
+    "smoothing": false,
+    "fabricated_points": false
+  },
+  {
+    "file": "figures/02_muscle_actual_errors.png",
+    "caption": "n=4,466 · seed42 · 표본 삭제/오차 절단/추세 평활화 없음. 지표는 wt_bia 가중, 점·도수는 비가중.",
+    "source": "02_muscle_actual_errors",
+    "evidence": "development",
+    "smoothing": false,
+    "fabricated_points": false
+  },
+  {
+    "file": "figures/03_disease_roc.png",
+    "caption": "seed42 고정 절차 · 비가중 · 2023 평가 곡선 아님 · 보간·평활화·가상 좌표 없음.",
+    "source": "D1/D2 연구의 D0 대조군",
+    "evidence": "development",
+    "smoothing": false,
+    "fabricated_points": false
+  },
+  {
+    "file": "figures/04_n9_regression.png",
+    "caption": "허리 n=16,403 비가중 / 근육 n=4,466 wt_bia 가중 · 축 확대를 명시하며 CI로 해석하지 않음.",
+    "source": "실험별 metrics/experiment_log",
+    "evidence": "development",
+    "smoothing": false,
+    "fabricated_points": false
+  },
+  {
+    "file": "figures/05_waist_tradeoff.png",
+    "caption": "2019–2021 개발 탐색 · 같은 대상자의 차이 및 원본 95% CI · 다중비교 미보정 · 운영 미채택.",
+    "source": "n6_linear_20260915/paired_subgroups.csv",
+    "evidence": "development",
+    "smoothing": false,
+    "fabricated_points": false
+  },
+  {
+    "file": "figures/08_n9_disease.png",
+    "caption": "2019–2021 · 당뇨 n=15,720 / 고혈압 n=16,325 · 비가중 · 점=3개 seed · 확대 축, CI 아님.",
+    "source": "N9 질환 primary 집계",
+    "evidence": "development",
+    "smoothing": false,
+    "fabricated_points": false
+  },
+  {
+    "file": "figures/09_d1_d2_changes.png",
+    "caption": "2019–2021 개발 OOF · 3-seed 평균 차이와 원본 paired 95% CI · 집단·보정 보호 조건 별도.",
+    "source": "D1/D2 paired_brier 집계",
+    "evidence": "development",
+    "smoothing": false,
+    "fabricated_points": false
+  }
+]

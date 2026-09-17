@@ -50,6 +50,22 @@ _STRENGTH_INTENSITY_MAP = {"LIGHT": "light", "MODERATE": "moderate", "HARD": "ha
 SIGNUP_CONFIRMATION_WINDOW_SECONDS = 3600
 
 
+def _practice_days(start: date, end: date, by_day: dict, notes: dict) -> list[dict]:
+    """유효 운동을 우선하고 확인된 쉼과 무기록을 구분한다."""
+    days = []
+    for day in _date_range(start, end):
+        events = by_day.get(day, [])
+        note = notes.get(day)
+        if events:
+            status = "active"
+        elif note is not None and note.is_rest_day:
+            status = "confirmed_rest"
+        else:
+            status = "unknown"
+        days.append(dict(status=status, events=events))
+    return days
+
+
 def _calculate_initial_habit_from_snapshot(habit, input_revision: str) -> dict:
     """⚠️ 2026-09-16 추가 - 강호님 "초기습관_산식과_모델표시_확정_v1" 반영.
     strength_days=habit.strength_weekly_count 그대로 씀 - 앱의 "주 N회"가 실제로는
@@ -57,8 +73,13 @@ def _calculate_initial_habit_from_snapshot(habit, input_revision: str) -> dict:
     이 실제 온보딩 설문 문항과 일치하는지는 별도 확인 필요."""
 
     if habit is None:
-        return dict(score=None, contributions=None, formula_version="pending-selection",
-                    input_definition=None, policy_status="pending")
+        return dict(
+            score=None,
+            contributions=None,
+            formula_version="pending-selection",
+            input_definition=None,
+            policy_status="pending",
+        )
 
     strength_days = habit.strength_weekly_count
     intensity = _STRENGTH_INTENSITY_MAP.get(str(habit.strength_intensity)) if strength_days else None
@@ -73,8 +94,10 @@ def _calculate_initial_habit_from_snapshot(habit, input_revision: str) -> dict:
         input_definition=INITIAL_HABIT_DEFINITION,
     )
     return dict(
-        score=result["score"], contributions=result["contributions"],
-        formula_version=result["formula_version"], input_definition=result["input_definition"],
+        score=result["score"],
+        contributions=result["contributions"],
+        formula_version=result["formula_version"],
+        input_definition=result["input_definition"],
         policy_status="pending" if result["score"] is None else "approved",
     )
 
@@ -148,15 +171,15 @@ class PracticeScoreService:
         earliest_habit = await self.exercise_repo.get_earliest(user.id)
 
         signup_confirmed = (
-            earliest_health is not None and earliest_habit is not None
+            earliest_health is not None
+            and earliest_habit is not None
             and abs((earliest_health.created_at - earliest_habit.recorded_at).total_seconds())
             <= SIGNUP_CONFIRMATION_WINDOW_SECONDS
         )
 
         if not signup_confirmed:
             input_revision = (
-                f"{earliest_health.id if earliest_health else 'none'}:"
-                f"{earliest_habit.id if earliest_habit else 'none'}"
+                f"{earliest_health.id if earliest_health else 'none'}:{earliest_habit.id if earliest_habit else 'none'}"
             )
             return await InitialHabitSnapshot.create(
                 user_id=user.id,
@@ -190,6 +213,8 @@ class PracticeScoreService:
         try:
             has_any = await self._has_any_completion(user, start, today)
             by_day = await self._daily_events(user, start, today) if has_any else {}
+            # 쉼도 유지 점수의 입력이다. 조회 실패를 무기록으로 대신 계산하지 않는다.
+            notes = await self.record_repo.get_notes_in_range(user.id, start, today)
         except Exception:  # noqa: BLE001 - DB 조회 자체 실패는 ledger_state=unavailable로
             has_any = None
 
@@ -207,24 +232,14 @@ class PracticeScoreService:
             # ⚠️ 2026-09-16 추가 - 강호님 확정: "사용자가 명시적으로 쉬어가기를 선택한
             # 날만 쉼으로 표시. 기록이 없는 날을 자동으로 쉼 처리하지 않음." 기존
             # DailyRecordNote.is_rest_day를 그대로 재사용 - 새 테이블 없음.
-            notes = await self.record_repo.get_notes_in_range(user.id, start, today)
-            days = []
-            for d in _date_range(start, today):
-                events = by_day.get(d, [])
-                note = notes.get(d)
-                if events:
-                    day_status = "active"  # 유효 운동이 있으면 쉼보다 우선
-                elif note is not None and note.is_rest_day:
-                    day_status = "confirmed_rest"
-                else:
-                    day_status = "unknown"  # 무기록은 쉼이 아니라 unknown으로 보존
-                days.append(dict(status=day_status, events=events))
+            days = _practice_days(start, today, by_day, notes)
             rows = trajectory(days)
             latest = rows[-1]
             practice_score = latest["practiceScore"]
             # 같은 총 단위여도 날짜/활동이 달라지면 유지 보너스가 다를 수 있다.
             revision_input = [
-                (d.isoformat(), sorted(events, key=lambda e: e["sessionId"])) for d, events in sorted(by_day.items())
+                (d.isoformat(), row["status"], sorted(row["events"], key=lambda e: e["sessionId"]))
+                for d, row in zip(_date_range(start, today), days, strict=True)
             ]
             ledger_revision = hashlib.sha256(
                 json.dumps(
