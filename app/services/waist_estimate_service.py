@@ -67,7 +67,9 @@ class WaistEstimateService:
             # ⚠️ 신체정보나 운동습관 중 하나라도 아직 없으면 계산 자체가 불가능 - 이것도
             # "실패"가 아니라 "아직 입력이 덜 끝남"이므로 INPUT_MISSING으로 남김(0이나
             # 성공으로 위장하지 않음).
-            await self._save(user, snapshot_id, status="INPUT_MISSING", value=None, failure_reason_code="INPUT_INCOMPLETE")
+            await self._save(
+                user, snapshot_id, status="INPUT_MISSING", value=None, failure_reason_code="INPUT_INCOMPLETE"
+            )
             return
 
         input_values = health.input_values or {}
@@ -95,9 +97,11 @@ class WaistEstimateService:
             detail = response.json().get("detail", "OUT_OF_RANGE")
             reason = "PREGNANCY_UNSUPPORTED" if "PREGNANCY" in detail else "OUT_OF_RANGE"
             await self._save(
-                user, snapshot_id,
+                user,
+                snapshot_id,
                 status="OUT_OF_RANGE" if reason == "OUT_OF_RANGE" else "FAILED",
-                value=None, failure_reason_code=reason,
+                value=None,
+                failure_reason_code=reason,
             )
             return
         if response.status_code != 200:
@@ -105,7 +109,9 @@ class WaistEstimateService:
             return
 
         cm = response.json()["waistCmEstimate"]
-        await self._save(user, snapshot_id, status="COMPUTED", value=Decimal(str(round(cm, 1))), failure_reason_code=None)
+        await self._save(
+            user, snapshot_id, status="COMPUTED", value=Decimal(str(round(cm, 1))), failure_reason_code=None
+        )
 
     async def _save(self, user: User, snapshot_id, *, status: str, value, failure_reason_code):
         await self.prediction_repo.create(
@@ -122,16 +128,10 @@ class WaistEstimateService:
             run_id=uuid.uuid4().hex,
         )
         if status == "COMPUTED":
-            # ⚠️ 2026-09-10 반영: 팀 결정으로 이 서브모델에 한해 자동 승인. is_active를
-            # 매번 다시 True로 세팅해도 값은 변하지 않으니(멱등) 매 계산마다 호출해도
-            # 안전함 - 대신 "관리자가 껐다가 다시 자동으로 켜지는" 상황을 피하려면
-            # 나중에 관리자가 수동으로 비활성화(is_active=False)했을 가능성도 고려해야
-            # 하는데, 지금은 그 구분 없이 계산될 때마다 항상 켜짐(팀이 필요하면 나중에
-            # "수동 비활성화 여부"를 별도로 추적하도록 개선).
-            await self.prediction_repo.upsert_approval(
+            # 최초 승인만 만들고 관리자가 비활성화한 기존 상태는 보존한다.
+            await self.prediction_repo.ensure_initial_approval(
                 submodel_type=SUBMODEL_TYPE,
                 model_version=MODEL_VERSION,
-                is_active=True,
                 approved_by_user_id=SYSTEM_APPROVER,
             )
 

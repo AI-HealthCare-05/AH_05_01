@@ -110,7 +110,7 @@ class UiDetailTest {
         capture("03-consent")
     }
 
-    @Test fun signupAndProfileUseEqualIntensityChoicesAndAllFrequencyOptions() {
+    @Test fun signupWeekdaysAndProfileCountsKeepEqualIntensityChoices() {
         val signup = onboarding()
         val profile = profile()
         var editing by mutableStateOf(false)
@@ -119,7 +119,8 @@ class UiDetailTest {
             else A08ExerciseScreen(signup, rememberCoroutineScope(), { false })
         } }
         fun verify() {
-            compose.onNodeWithTag("strength-count-5").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
+            if (editing) compose.onNodeWithTag("strength-count-5").performScrollTo().performClick().assertIsSelected()
+            else for (day in 0..4) compose.onNodeWithTag("strength-weekday-$day").performScrollTo().performClick().assertIsOn()
             compose.onNodeWithTag("strength-intensity-MODERATE").performScrollTo().assertIsDisplayed()
             val bounds = listOf("LIGHT", "MODERATE", "HARD").map {
                 compose.onNodeWithTag("strength-intensity-$it").fetchSemanticsNode().boundsInRoot
@@ -133,7 +134,7 @@ class UiDetailTest {
         verify()
         capture("05-profile-exercise")
         compose.onNodeWithText("숨이 조금 차요").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("빠르게 걷기 · 자전거").assertIsDisplayed()
+        compose.onNodeWithText("대화는 가능해요 · 빠르게 걷기").performScrollTo().assertIsDisplayed()
         capture("06-aerobic")
     }
 

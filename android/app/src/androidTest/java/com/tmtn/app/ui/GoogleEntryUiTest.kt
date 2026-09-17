@@ -51,7 +51,7 @@ class GoogleEntryUiTest {
         compose.setContent { Stage(large = true) { AuthChoiceScreen({ google++ }, {}, {}, {}, googleConfigured = true) } }
         compose.onNodeWithText("Google로 계속하기").assertIsDisplayed().performClick()
         compose.onNodeWithText("이미 계정이 있어요").assertIsDisplayed()
-        compose.onNodeWithText("오늘 할 수 있는 작은 행동부터.\n틈튼이가 옆에서 함께할게요.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("작은 실천, 틈튼이와 함께해요.").performScrollTo().assertIsDisplayed()
         compose.runOnIdle { assertEquals(1, google) }
         capture("auth-choice-large")
     }

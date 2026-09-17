@@ -143,6 +143,7 @@ private fun HomeStateScreenShell(
         mascotCard()
         TmtnIndexSummaryCard(state, onOpenTuntunScore)
         RecentSummaryListCard(state)
+        HomeWaistPanel(state.waist)
     }
 }
 

@@ -163,7 +163,7 @@ class AppFlowPolishTest {
         val state = com.tmtn.app.ui.onboarding.OnboardingState()
         compose.setContent { Stage { com.tmtn.app.ui.onboarding.A08ExerciseScreen(state, rememberCoroutineScope(), { true }) } }
         compose.onNodeWithText("다음으로").assertIsDisplayed().assertIsEnabled()
-        compose.onNodeWithTag("strength-count-2").performScrollTo().performClick()
+        compose.onNodeWithTag("strength-weekday-2").performScrollTo().performClick()
         compose.onNodeWithText("다음으로").assertIsDisplayed().assertIsNotEnabled()
         compose.onNodeWithTag("strength-intensity-MODERATE").performScrollTo().performClick()
         compose.onNodeWithText("다음으로").assertIsDisplayed().assertIsEnabled()
@@ -171,7 +171,7 @@ class AppFlowPolishTest {
         compose.onNodeWithText("고강도").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("다음으로").assertIsDisplayed()
         compose.onNode(hasScrollAction()).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, -10000f) }
-        compose.onNodeWithText("평소 운동량을\n알려 주세요.").assertIsDisplayed()
+        compose.onNodeWithText("평소 일주일,\n운동하는 날을 골라 주세요.").assertIsDisplayed()
         capture("exercise-form")
     }
 
@@ -179,7 +179,7 @@ class AppFlowPolishTest {
         val previousLargeControls = AccessibilitySettingsHolder.largeControlsEnabled.value
         AccessibilitySettingsHolder.largeControlsEnabled.value = true
         try {
-            val state = com.tmtn.app.ui.onboarding.OnboardingState().apply { strengthWeeklyCount.value = 2 }
+            val state = com.tmtn.app.ui.onboarding.OnboardingState().apply { toggleStrengthWeekday(0); toggleStrengthWeekday(2) }
             var densityScale = 1f
             compose.setContent {
                 val density = androidx.compose.ui.platform.LocalDensity.current
@@ -189,8 +189,8 @@ class AppFlowPolishTest {
                 }
             }
             compose.onNodeWithText("다음으로").assertIsDisplayed().assertIsNotEnabled()
-            compose.onNodeWithTag("strength-count-2").performScrollTo().assertIsDisplayed()
-            assertTrue(compose.onNodeWithTag("strength-count-2").fetchSemanticsNode().boundsInRoot.height >= 60f * densityScale - 1f)
+            compose.onNodeWithTag("strength-weekday-2").performScrollTo().assertIsDisplayed()
+            assertTrue(compose.onNodeWithTag("strength-weekday-2").fetchSemanticsNode().boundsInRoot.height >= 60f * densityScale - 1f)
             compose.onNodeWithTag("strength-intensity-MODERATE").performScrollTo().performClick()
             for (label in listOf("저강도", "중강도", "고강도")) {
                 compose.onNodeWithText(label).performScrollTo().assertIsDisplayed()

@@ -30,7 +30,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 
-/** Figma A16 · 운동 정보 1314:2613. Scrollable fields and a persistent next action. */
+/** A16 strength section: Figma 1428:3474. Aerobic fields and the combined save flow stay intact. */
 @Composable
 fun A08ExerciseScreen(state: OnboardingState, scope: CoroutineScope, hasSensorPermissions: () -> Boolean) {
     val colors = LocalTmtnColors.current
@@ -52,12 +52,16 @@ fun A08ExerciseScreen(state: OnboardingState, scope: CoroutineScope, hasSensorPe
         ) {
 
 
-            Text("평소 운동량을\n알려 주세요.", style = TmtnType.headline, color = colors.onSurface)
-            Text("대략적인 일주일이면 돼요.\n운동량은 틈튼지수 계산에 참고해요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            Text("평소 일주일,\n운동하는 날을 골라 주세요.", style = TmtnType.inputHeadline, color = colors.onSurface)
+            Text("같은 날 여러 번 운동해도 1일로 세어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
             com.tmtn.app.ui.common.TmtnExerciseFields(
                 weeklyCount, { weeklyCount = it }, intensity, { intensity = it },
                 lowMin, { lowMin = it }, modMin, { modMin = it }, highMin, { highMin = it },
+                strengthContent = {
+                    StrengthWeekdayFields(state.strengthWeekdays.value, weeklyCount, state::toggleStrengthWeekday,
+                        state::clearStrengthWeekdays, intensity, { intensity = it })
+                },
             )
 
         }
@@ -65,7 +69,8 @@ fun A08ExerciseScreen(state: OnboardingState, scope: CoroutineScope, hasSensorPe
             TmtnPrimaryButton(
                 text = if (state.isLoading.value) "정보 저장 중…" else "다음으로",
                 onClick = { scope.launch { state.submitExerciseHabits(hasSensorPermissions()) } },
-                enabled = !state.isLoading.value && (weeklyCount == 0 || intensity != null),
+                enabled = weeklyCount == 0 || intensity != null,
+                loading = state.isLoading.value,
                 disabledReason = if (weeklyCount > 0 && intensity == null) "근력운동의 강도를 골라 주세요." else null,
             )
         }

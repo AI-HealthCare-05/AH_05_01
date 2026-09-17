@@ -1,8 +1,9 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, EmailStr, Field
 
 from app.core.validators import validate_password
+from app.models.accounts import ConsentPurpose
 
 
 class EmailVerificationRequestRequest(BaseModel):
@@ -30,6 +31,11 @@ class LoginResponse(BaseModel):
 
 
 class TokenRefreshResponse(LoginResponse): ...
+
+
+class GoogleSignupConsent(BaseModel):
+    purpose: ConsentPurpose
+    document_version: Literal["v1"]
 
 
 class GoogleLoginRequest(BaseModel):
@@ -66,6 +72,7 @@ class GoogleLoginRequest(BaseModel):
     #: 부릅니다(RegistrationProgress). 구글만 예외로 두면 "약관 동의 전에 만들어진 계정"이
     #: 생기는데, 건강정보 이용 동의는 민감정보라 그 순서가 뒤집히면 안 됩니다.
     signup_confirmed: bool = False
+    consents: list[GoogleSignupConsent] = Field(default_factory=list, max_length=8)
 
 
 class SocialLoginResponse(LoginResponse):

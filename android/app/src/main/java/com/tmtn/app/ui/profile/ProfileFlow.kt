@@ -31,7 +31,6 @@ private fun previousScreenFor(screen: ProfileScreenKey): ProfileScreenKey? = whe
     ProfileScreenKey.HEALTH -> ProfileScreenKey.HOME
     ProfileScreenKey.EXERCISE -> ProfileScreenKey.HOME
     ProfileScreenKey.CONSENT -> ProfileScreenKey.HOME
-    ProfileScreenKey.ACCESSIBILITY -> ProfileScreenKey.HOME
     ProfileScreenKey.SOUND -> ProfileScreenKey.HOME
     ProfileScreenKey.EMAIL_CHANGE -> ProfileScreenKey.ACCOUNT
     ProfileScreenKey.PASSWORD_CHANGE -> ProfileScreenKey.ACCOUNT
@@ -148,7 +147,6 @@ fun ProfileFlow(
             ProfileScreenKey.STORY -> com.tmtn.app.ui.onboarding.WelcomeStory(backFromEditor, backFromEditor, replay = true)
             ProfileScreenKey.EXERCISE -> ExerciseEditScreen(state, scope, onBack = backFromEditor)
             ProfileScreenKey.CONSENT -> ConsentScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.HOME })
-            ProfileScreenKey.ACCESSIBILITY -> AccessibilityScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.HOME })
             ProfileScreenKey.SOUND -> SoundSettingsScreen(onBack = { state.screen.value = ProfileScreenKey.HOME })
             ProfileScreenKey.EMAIL_CHANGE -> EmailChangeScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.ACCOUNT })
             ProfileScreenKey.PASSWORD_CHANGE -> PasswordChangeScreen(state, scope, onBack = { state.screen.value = ProfileScreenKey.ACCOUNT })

@@ -7,9 +7,9 @@ class PracticeScoreResponse(BaseModel):
     여러 사유가 있을 수 있어 쉼표로 이어붙임(예: "INITIAL_FORMULA_POLICY_PENDING")."""
 
     as_of: str
-    daily_units: float
-    cumulative_units: float
-    practice_score: float
+    daily_units: float | None
+    cumulative_units: float | None
+    practice_score: float | None
     confirmed_rest_run: int
     unknown_run: int
     freshness: str
@@ -17,3 +17,6 @@ class PracticeScoreResponse(BaseModel):
     lifestyle_score: float | None
     composite_score: float | None
     composite_blocked_reason: str | None
+    ledger_state: str
+    ledger_revision: str | None
+    additional_time_policy: str

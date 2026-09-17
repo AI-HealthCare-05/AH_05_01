@@ -40,8 +40,9 @@ fun AuthChoiceScreen(
             Image(painterResource(R.drawable.beaver_wave), contentDescription = null,
                 modifier = Modifier.fillMaxWidth().height(180.dp))
             Spacer(Modifier.height(24.dp))
-            Text("오늘 할 수 있는 작은 행동부터.\n틈튼이가 옆에서 함께할게요.",
-                style = TmtnType.body, color = colors.onSurfaceVariant)
+            Text("작은 실천, 틈튼이와 함께해요.",
+                style = TmtnType.body, color = colors.onSurfaceVariant,
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 12.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {

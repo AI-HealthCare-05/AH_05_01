@@ -43,6 +43,11 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material3.Icon
 
 /** Figma B01·B01b · 홈 (오늘 카드 미선택/선택됨은 draw_state로 구분) */
 @Composable
@@ -73,7 +78,7 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScor
             )
         }
         Text(if (state.todayChallengeState.value == "COMPLETED") "오늘의 카드, 잘 마쳤어요." else if (isSelected) "오늘 고른 작은 행동." else "오늘도 한 틈씩.",
-            style = TmtnType.headline, color = colors.onSurface)
+            style = TmtnType.editorialHeadline, color = colors.onSurface)
         Text(state.displayDateLabel().format(java.time.format.DateTimeFormatter.ofPattern("M월 d일 EEEE", java.util.Locale.KOREAN)), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
         // ⚠️ 2026-09-07 반영: 상태전이 정책 신규 홈 화면(B18~B26, HomeStateScreens.kt)에는
@@ -85,8 +90,8 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScor
 
         MascotCard(state, isSelected, scope)
         ExtraExerciseHomeEntry(state)
-        HomeDamLink(state, onOpenDam)
         TmtnIndexSummaryCard(state, onOpenTuntunScore)
+        HomeWaistPanel(state.waist)
     }
 }
 
@@ -98,14 +103,22 @@ internal fun ExtraExerciseHomeEntry(state: CardHomeState) {
     androidx.compose.runtime.LaunchedEffect(completed) {
         if (completed) state.loadExerciseMissionsToday()
     }
-    Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(20.dp)).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+        .background(colors.surface).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("틈새 운동", style = TmtnType.label, color = colors.onSurface)
+        if (!completed) Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp), tint = colors.onSurfaceVariant)
+        }
         if (completed) {
             val today = state.exerciseMissionsToday.value
             Text(if (today != null) "오늘 ${today.used} / ${today.limit}회 · 추가로 받은 재료" else "조금 더 움직이고 싶은 날, 재료를 하나 더.",
                 style = TmtnType.body, color = colors.onSurfaceVariant)
-            com.tmtn.app.ui.onboarding.TmtnTonalButton("틈새 운동 둘러보기", { state.openExerciseMissionList() })
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                .tmtnClickable { state.openExerciseMissionList() }.heightIn(min = 48.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("틈새 운동 둘러보기", style = TmtnType.actionLabel, color = colors.onSurface, modifier = Modifier.weight(1f))
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(20.dp), tint = colors.onSurface)
+            }
         } else {
             Text("오늘의 카드를 마치면 열려요.", style = TmtnType.body, color = colors.onSurfaceVariant)
         }

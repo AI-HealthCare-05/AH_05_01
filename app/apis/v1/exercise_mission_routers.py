@@ -84,9 +84,7 @@ async def complete_exercise_mission_session(
     )
 
 
-@exercise_mission_router.post(
-    "/exercise-mission-sessions/{session_id}/cancel", status_code=status.HTTP_204_NO_CONTENT
-)
+@exercise_mission_router.post("/exercise-mission-sessions/{session_id}/cancel", status_code=status.HTTP_204_NO_CONTENT)
 async def cancel_exercise_mission_session(
     session_id: UUID,
     user: Annotated[User, Depends(get_request_user)],

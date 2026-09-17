@@ -23,10 +23,12 @@ fun TmtnExerciseFields(
     lowMinutes: Int, onLowMinutes: (Int) -> Unit,
     moderateMinutes: Int, onModerateMinutes: (Int) -> Unit,
     highMinutes: Int, onHighMinutes: (Int) -> Unit,
+    strengthContent: (@Composable () -> Unit)? = null,
 ) {
     val colors = LocalTmtnColors.current
     val textScale = LocalDensity.current.fontScale * LocalTmtnTextScale.current
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        if (strengthContent != null) strengthContent() else {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("근력운동", style = TmtnType.title, color = colors.onSurface, modifier = Modifier.semantics { heading() })
             Text("팔굽혀펴기 · 스쿼트 · 기구 운동 등", style = TmtnType.caption, color = colors.onSurfaceVariant)
@@ -65,6 +67,7 @@ fun TmtnExerciseFields(
                     }
                 }
             }
+        }
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("유산소 운동", style = TmtnType.title, color = colors.onSurface, modifier = Modifier.semantics { heading() })

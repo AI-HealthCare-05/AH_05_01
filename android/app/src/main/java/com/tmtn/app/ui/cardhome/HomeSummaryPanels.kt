@@ -34,33 +34,30 @@ import com.tmtn.app.ui.common.tmtnSurface
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 
 /** Figma home keeps the selected mission first; the newspaper is a short reading link. */
 @Composable
 internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () -> Unit = {}) {
     val colors = LocalTmtnColors.current
-    Row(Modifier.fillMaxWidth().tmtnClickable(onClick = onOpenTuntunScore).padding(vertical = 18.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(colors.surface)
+        .tmtnClickable(onClick = onOpenTuntunScore).padding(18.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("나의 일주일이 한 장의 소식으로", style = TmtnType.caption, color = colors.onSurfaceVariant)
             Text("틈튼일보", style = TmtnType.title, color = colors.onSurface)
-            Text("이번 주 내 이야기를 펼쳐봐요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                Text("이번 호 펼치기", style = TmtnType.label, color = colors.onSurface)
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp), tint = colors.onSurface)
+            }
         }
-        Image(painterResource(R.drawable.beaver_newspaper), null, Modifier.size(80.dp).clip(CircleShape))
-    }
-}
-
-@Composable
-internal fun HomeDamLink(state: CardHomeState, onOpenDam: () -> Unit) {
-    val colors = LocalTmtnColors.current
-    Column(Modifier.fillMaxWidth().tmtnClickable(onClick = onOpenDam).padding(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(if (state.companionLoaded.value && state.companionStage.value >= 5) "내 댐 · 단단하게 이어졌어요" else "내 댐 · 빈틈 메우는 중",
-            style = TmtnType.label, color = colors.onSurface)
-        if (state.companionLoaded.value) {
-            Text("${state.companionStage.value}단계 · ${com.tmtn.app.ui.common.damRepairLabel(state.companionStage.value)}",
-                style = TmtnType.body, color = colors.onSurfaceVariant)
-            com.tmtn.app.ui.common.DamArtwork(state.companionStage.value)
-        } else Text("함께 메워 온 댐을 살펴봐요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+        Image(painterResource(R.drawable.beaver_newspaper), null, Modifier.size(88.dp), contentScale = ContentScale.Fit)
     }
 }
 
@@ -113,7 +110,6 @@ internal fun RecentSummaryListCard(state: CardHomeState) {
               }
             }
         }
-        HomeDamSummary(state.companionStage.value)
     }
 }
 
@@ -139,38 +135,6 @@ private fun HomeRecordDate(date: LocalDate, status: String?, isToday: Boolean, m
             }), contentAlignment = Alignment.Center) {
             Text(date.dayOfMonth.toString(), style = TmtnType.body, fontWeight = FontWeight.SemiBold,
                 color = if (status == "COMPLETED") colors.background else colors.onSurface)
-        }
-    }
-}
-
-@Composable
-private fun HomeDamSummary(stage: Int) {
-    val colors = LocalTmtnColors.current
-    BoxWithConstraints(Modifier.fillMaxWidth().tmtnSurface(TmtnSurfaceRole.Summary, background = colors.woodContainer)
-        .padding(TmtnLayout.ScreenInset)) {
-        val largeText = LocalTmtnTextScale.current * LocalDensity.current.fontScale > 1.35f
-        val inlineArtwork = !largeText && maxWidth >= 280.dp
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(buildAnnotatedString {
-                        append("댐 ")
-                        withStyle(SpanStyle(color = colors.secondary, fontSize = TmtnType.display.fontSize, fontWeight = FontWeight.Bold)) {
-                            append("${stage}단계")
-                        }
-                    }, style = TmtnType.title.copy(lineHeight = TmtnType.display.lineHeight), color = colors.onSurface)
-                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.clearAndSetSemantics {}) {
-                        repeat(5) { index ->
-                            Box(Modifier.width(14.dp).height(4.dp).background(
-                                if (index < stage) colors.wood else colors.outlineVariant, RoundedCornerShape(2.dp)))
-                        }
-                    }
-                }
-                if (inlineArtwork) Box(Modifier.width(136.dp)) { com.tmtn.app.ui.common.DamArtwork(stage) }
-            }
-            if (!inlineArtwork) com.tmtn.app.ui.common.DamArtwork(stage)
-
         }
     }
 }

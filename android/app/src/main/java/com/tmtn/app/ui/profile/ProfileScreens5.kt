@@ -108,6 +108,8 @@ fun EmailChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> 
 @Composable
 fun PasswordChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val googleOnly = state.userInfo.value?.requires_google_reauth == true
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -118,7 +120,8 @@ fun PasswordChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () 
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            TmtnTextField(value = currentPassword, onValueChange = { currentPassword = it }, label = "지금 비밀번호", isPassword = true)
+            if (googleOnly) Text("가입한 Google 계정을 확인한 뒤 비밀번호를 설정해요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            else TmtnTextField(value = currentPassword, onValueChange = { currentPassword = it }, label = "지금 비밀번호", isPassword = true)
             TmtnTextField(value = newPassword, onValueChange = { newPassword = it }, label = "새 비밀번호", isPassword = true)
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -143,9 +146,12 @@ fun PasswordChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () 
             }
 
             TmtnPrimaryButton(
-                text = "비밀번호 바꾸기",
-                onClick = { scope.launch { state.changePassword(currentPassword, newPassword) } },
-                enabled = !state.isLoading.value && currentPassword.isNotBlank() && com.tmtn.app.ui.onboarding.isValidPassword(newPassword) && newPassword != currentPassword && newPassword == confirmPassword,
+                text = if (googleOnly) "Google 확인 후 비밀번호 설정" else "비밀번호 바꾸기",
+                onClick = { scope.launch {
+                    if (googleOnly) state.reauthenticateWithGoogle(context) { state.changePassword(null, newPassword, it) }
+                    else state.changePassword(currentPassword, newPassword)
+                } },
+                enabled = !state.isLoading.value && !state.googleReauthInProgress.value && (googleOnly || currentPassword.isNotBlank()) && com.tmtn.app.ui.onboarding.isValidPassword(newPassword) && newPassword != currentPassword && newPassword == confirmPassword,
             )
         }
     }
@@ -155,8 +161,11 @@ fun PasswordChangeScreen(state: ProfileState, scope: CoroutineScope, onBack: () 
 @Composable
 fun AccountDeleteReauthScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val googleOnly = state.userInfo.value?.requires_google_reauth == true
     var password by remember { mutableStateOf("") }
     var confirmed by remember { mutableStateOf(false) }
+    val canContinue = confirmed && (googleOnly || password.isNotBlank()) && !state.isLoading.value && !state.googleReauthInProgress.value
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "계정 삭제", onBack = onBack)
@@ -170,9 +179,9 @@ fun AccountDeleteReauthScreen(state: ProfileState, scope: CoroutineScope, onBack
                 Text("이 단계를 지나면 되돌릴 수 없습니다", style = TmtnType.bodyLarge, color = colors.error)
             }
             Text("본인 확인이 필요합니다", style = TmtnType.headline, color = colors.onSurface)
-            Text("계정을 지우기 전에 비밀번호를 한 번 더 확인합니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
+            Text(if (googleOnly) "계정을 지우기 전에 가입한 Google 계정을 확인합니다." else "계정을 지우기 전에 비밀번호를 한 번 더 확인합니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
 
-            TmtnTextField(value = password, onValueChange = { password = it }, label = "비밀번호", isPassword = true)
+            if (!googleOnly) TmtnTextField(value = password, onValueChange = { password = it }, label = "비밀번호", isPassword = true)
 
             Row(
                 modifier = Modifier.fillMaxWidth().clickable { confirmed = !confirmed },
@@ -196,17 +205,20 @@ fun AccountDeleteReauthScreen(state: ProfileState, scope: CoroutineScope, onBack
                     .fillMaxWidth()
                     .height(48.dp)
                     .background(
-                        if (confirmed && password.isNotBlank()) colors.error else colors.disabledContainer,
+                        if (canContinue) colors.error else colors.disabledContainer,
                         RoundedCornerShape(14.dp),
                     )
-                    .clickable(enabled = confirmed && password.isNotBlank()) {
-                        scope.launch { state.deleteAccount(password) }
+                    .clickable(enabled = canContinue) {
+                        scope.launch {
+                            if (googleOnly) state.reauthenticateWithGoogle(context) { state.deleteAccount(null, it) }
+                            else state.deleteAccount(password)
+                        }
                     },
                 horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "확인하고 계속", style = TmtnType.label,
-                    color = if (confirmed && password.isNotBlank()) Color.White else colors.onDisabled,
+                    if (googleOnly) "Google 확인 후 계정 삭제" else "확인하고 계속", style = TmtnType.label,
+                    color = if (canContinue) Color.White else colors.onDisabled,
                 )
             }
             TmtnTextButton(text = "그만두기", onClick = onBack)

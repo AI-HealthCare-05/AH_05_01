@@ -162,7 +162,9 @@ class ExerciseMissionService:
         sessions_today = await self.repo.get_sessions_for_date(user.id, today)
         used = sum(1 for s in sessions_today if s.reward_slot is not None)
         if used >= DAILY_LIMIT:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="오늘 받을 수 있는 틈새 운동 보상을 다 받았어요.")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="오늘 받을 수 있는 틈새 운동 보상을 다 받았어요."
+            )
         if any(s.state == ExerciseMissionSessionState.ACTIVE for s in sessions_today):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 진행 중인 틈새 운동이 있어요.")
 
@@ -172,7 +174,9 @@ class ExerciseMissionService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="선택할 수 없는 운동이에요.")
 
         if await self.repo.has_incomplete_session_today(user.id, today, entry.id):
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="오늘 이미 완료한 운동이에요. 다른 운동을 골라주세요.")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="오늘 이미 완료한 운동이에요. 다른 운동을 골라주세요."
+            )
 
         template = entry.template_version
         snapshot = {
@@ -188,7 +192,10 @@ class ExerciseMissionService:
         if template.exec_type in ("TIMER", "SENSOR_WALKING_DURATION", "SENSOR_RUNNING_DURATION"):
             target_duration = duration_seconds_from_target(template.target_value, template.unit)
         elif template.exec_type in (
-            "SENSOR_STEPS", "SENSOR_FLOORS_CLIMBED", "SENSOR_STEPS_IN_PLACE", "SENSOR_RUNNING_DISTANCE",
+            "SENSOR_STEPS",
+            "SENSOR_FLOORS_CLIMBED",
+            "SENSOR_STEPS_IN_PLACE",
+            "SENSOR_RUNNING_DISTANCE",
         ):
             target_count = template.target_value
 
@@ -238,22 +245,28 @@ class ExerciseMissionService:
             if accumulated_count is not None:
                 extra["accumulated_count"] = accumulated_count
             ok = await self.repo.try_transition(
-                session, from_states=[ExerciseMissionSessionState.ACTIVE],
-                to_state=ExerciseMissionSessionState.PAUSED, extra_fields=extra,
+                session,
+                from_states=[ExerciseMissionSessionState.ACTIVE],
+                to_state=ExerciseMissionSessionState.PAUSED,
+                extra_fields=extra,
             )
         elif action == "resume":
             if session.state != ExerciseMissionSessionState.PAUSED:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="일시정지 상태가 아니에요.")
             extra = {"started_at": now}
             ok = await self.repo.try_transition(
-                session, from_states=[ExerciseMissionSessionState.PAUSED],
-                to_state=ExerciseMissionSessionState.ACTIVE, extra_fields=extra,
+                session,
+                from_states=[ExerciseMissionSessionState.PAUSED],
+                to_state=ExerciseMissionSessionState.ACTIVE,
+                extra_fields=extra,
             )
         else:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="알 수 없는 action이에요.")
 
         if not ok:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="다른 요청이 먼저 처리됐어요. 다시 시도해 주세요.")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="다른 요청이 먼저 처리됐어요. 다시 시도해 주세요."
+            )
 
         session = await self.repo.get_owned_session(user.id, session_id)
         return self._to_session_response(session, session.template_snapshot)
@@ -308,7 +321,9 @@ class ExerciseMissionService:
                 sessions_today = await self.repo.get_sessions_for_date(user.id, today)
                 used = sum(1 for s in sessions_today if s.reward_slot is not None)
                 if used >= DAILY_LIMIT:
-                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="오늘 받을 수 있는 틈새 운동 보상을 다 받았어요.")
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT, detail="오늘 받을 수 있는 틈새 운동 보상을 다 받았어요."
+                    )
                 next_slot = used + 1
 
                 extra = {
@@ -320,10 +335,13 @@ class ExerciseMissionService:
                 transitioned = await self.repo.try_transition(
                     session,
                     from_states=[ExerciseMissionSessionState.ACTIVE, ExerciseMissionSessionState.PAUSED],
-                    to_state=ExerciseMissionSessionState.COMPLETED, extra_fields=extra,
+                    to_state=ExerciseMissionSessionState.COMPLETED,
+                    extra_fields=extra,
                 )
                 if not transitioned:
-                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 완료되었거나 완료할 수 없는 상태예요.")
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT, detail="이미 완료되었거나 완료할 수 없는 상태예요."
+                    )
                 await self.companion_repo.increment_element(user.id, five_element)
         except HTTPException:
             raise
@@ -335,7 +353,9 @@ class ExerciseMissionService:
             existing = await self.repo.get_session_by_idempotency_key(idempotency_key, user.id)
             if existing is not None:
                 return await self._build_complete_response(user, existing)
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="중복 요청이거나 이미 오늘 보상을 다 받았어요.") from exc
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="중복 요청이거나 이미 오늘 보상을 다 받았어요."
+            ) from exc
 
         default_logger.info(
             "exercise_mission.complete success: user_id=%s session_id=%s reward_slot=%s",

@@ -10,9 +10,7 @@ from app.services.practice_score_service import PracticeScoreService
 practice_score_router = APIRouter(tags=["practice-score"])
 
 
-@practice_score_router.get(
-    "/practice-score", response_model=PracticeScoreResponse, status_code=status.HTTP_200_OK
-)
+@practice_score_router.get("/practice-score", response_model=PracticeScoreResponse, status_code=status.HTTP_200_OK)
 async def get_practice_score(
     user: Annotated[User, Depends(get_request_user)],
     service: Annotated[PracticeScoreService, Depends(PracticeScoreService)],

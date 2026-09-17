@@ -24,7 +24,7 @@ internal fun computeSensorDisplay(
         }
         "SENSOR_RUNNING_DISTANCE" -> {
             val meters = if (distanceM.isFinite()) distanceM.coerceAtLeast(0f) else 0f
-            SensorDisplay("%.2f km".format(Locale.KOREA, meters / 1000f), "목표 %.2f km".format(Locale.KOREA, target / 1000f),
+            SensorDisplay(com.tmtn.app.ui.common.formatDistanceMeters(meters), "목표 ${com.tmtn.app.ui.common.formatDistanceMeters(target.toFloat())}",
                 progress(meters, target.toFloat()), isRunningDetectedNow)
         }
         "SENSOR_FLOORS_CLIMBED" -> {

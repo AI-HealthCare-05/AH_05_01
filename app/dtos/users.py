@@ -50,6 +50,7 @@ class UserInfoResponse(BaseSerializerModel):
     birth_month: int | None = None
     gender: Gender | None = None
     is_pregnant: bool | None = None
+    requires_google_reauth: bool = False
     created_at: datetime
     # ⚠️ 2026-09-07 추가: 안드로이드가 걷기/조깅 케이던스 임계값(신장 구간표)을 계산할 때
     # 씀. User 모델엔 없고 health_input_snapshots(온보딩 입력, append-only)에서 최신값을
@@ -60,8 +61,9 @@ class UserInfoResponse(BaseSerializerModel):
 class PasswordChangeRequest(BaseModel):
     """F16: 비밀번호 변경. 현재 비밀번호 확인 후 새 비밀번호로 교체."""
 
-    current_password: str
+    current_password: str | None = None
     new_password: Annotated[str, Field(min_length=8)]
+    google_id_token: Annotated[str | None, Field(None, min_length=1, max_length=4096)]
 
 
 class EmailChangeRequest(BaseModel):
@@ -75,4 +77,5 @@ class EmailChangeRequest(BaseModel):
 class AccountDeleteRequest(BaseModel):
     """F17: 계정 삭제 재인증. 비밀번호 재확인 후 삭제 진행."""
 
-    password: str
+    password: str | None = None
+    google_id_token: Annotated[str | None, Field(None, min_length=1, max_length=4096)]

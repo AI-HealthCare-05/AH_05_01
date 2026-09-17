@@ -1,8 +1,8 @@
 # TMTN 공동 개발 환경·버전 기준
 
-기준일: 2026-08-21
+기준일: 2026-09-16
 
-상태: 팀 공통 기준선 v1
+상태: 통합 브랜치의 실제 잠금·빌드 설정 기준. 이번 동기화는 도구 버전을 변경하지 않습니다.
 
 이 문서는 “누구 컴퓨터에서는 되고 다른 사람 컴퓨터에서는 안 되는” 상황을 막기 위한 단일 버전 기준입니다. 팀원은 임의로 major/minor 버전을 올리지 않고, 버전 변경은 별도 PR에서 함께 검증합니다.
 
@@ -55,7 +55,7 @@ docker compose config --quiet
 
 ## Android 기준선
 
-Android 프로젝트를 만들 때 아래 값을 최초 기준으로 사용합니다. alpha·beta·RC 라이브러리는 ADR과 팀 승인 없이 사용하지 않습니다.
+현재 Android 앱의 빌드 설정은 다음과 같습니다. 초기 기획 버전과 실제 통합 소스의 값이 달라 빌드 파일에 맞춰 문서를 정정했습니다. alpha·beta·RC 라이브러리를 새로 도입하려면 별도 ADR과 팀 승인이 필요합니다.
 
 ### Android 도구chain
 
@@ -63,15 +63,15 @@ Android 프로젝트를 만들 때 아래 값을 최초 기준으로 사용합�
 |---|---:|---|
 | Android Studio | `Quail 2 | 2026.1.2` stable | AGP 9.1 지원 공식 stable IDE |
 | JDK | `17` | AGP 9.1의 기본·요구 JDK |
-| Android Gradle Plugin | `9.1.1` | stable, API 36 지원 |
-| Gradle Wrapper | `9.3.1` | AGP 9.1.1 기본 호환 버전 |
-| Kotlin | `2.4.10` | Kotlin 2.4 최신 bugfix stable |
-| SDK Build Tools | `36.0.0` | AGP·Android 16 기준 |
-| `compileSdk` | `36` | Android 16 API 사용 |
-| `targetSdk` | `36` | 2026-08-31 Google Play 신규 앱 기준 충족 |
-| `minSdk` | `28` | Health Connect 실제 사용 가능 최소 Android 9 |
+| Android Gradle Plugin | `8.7.3` | `libs.versions.toml` |
+| Gradle Wrapper | `9.5.0` | wrapper 설정, JDK 17에서 디버그 빌드 확인 |
+| Kotlin | `2.0.21` | Kotlin·Compose 플러그인 |
+| SDK Build Tools | AGP 기본 선택 | 별도 `buildToolsVersion` 지정 없음 |
+| `compileSdk` | `35` | 현재 앱 빌드 설정 |
+| `targetSdk` | `35` | 현재 앱 설정, 스토어 제출 적합성을 뜻하지 않음 |
+| `minSdk` | `29` | 현재 앱 최소 버전 |
 | Java/Kotlin bytecode target | `17` | JDK·AGP 기준 통일 |
-| Compose BOM | `2026.08.00` | Compose stable 라이브러리 묶음 |
+| Compose BOM | `2024.12.01` | 현재 버전 카탈로그 |
 
 ### Android 핵심 라이브러리 기준
 
@@ -149,6 +149,21 @@ AI 개발자:
 ```bash
 uv sync --frozen --group app --group ai
 ```
+
+AI 모델 환경은 pandas 2.3.3, numpy, PyYAML을 직접 의존성으로 선언합니다.
+pytest도 dev group에 직접 선언하며 정확한 설치 버전은 `uv.lock`을 따릅니다.
+scikit-learn은 레거시 D0 호환성을 위해 `>=1.8.0,<1.10`으로 제한하고 현재 lock의 1.8.0을 유지합니다.
+환경 smoke test는 현재 API를 사용하고 실제 D0 레거시 코드 검증과 분리합니다.
+1.10 이상 이전은 별도 코드 버전과 합성 테스트 및 필요한 수치 검증을 거친 PR에서 상한을 조정합니다.
+기존 별도 실험의 `requirements.txt`를 공식 uv 환경에 추가 설치하지 않습니다.
+환경 변경 후에는 실제 데이터 없이 다음 smoke test를 먼저 실행합니다.
+
+```bash
+uv run --frozen --group app --group ai python -m pytest tests/ai_environment -q
+```
+
+이는 패키지/API 호환성 검사이며 D0 모델의 수치 재현이나 공개 승인이 아닙니다.
+자세한 범위와 로컬 합성 검증 증거는 [AI 의존성 검증 기록](AI_MODEL_DEPENDENCY_VALIDATION_2026_08_27.md)을 참조합니다.
 
 `uv.lock`을 바꾸지 않는 일반 설치에는 반드시 `--frozen`을 사용합니다. 패키지를 추가할 때만 `uv add <package> --group <group>`을 사용하고 변경된 `pyproject.toml`과 `uv.lock`을 함께 PR에 올립니다.
 

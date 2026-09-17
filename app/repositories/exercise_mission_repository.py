@@ -53,7 +53,12 @@ class ExerciseMissionRepository:
         )
 
     async def try_transition(
-        self, session: ExerciseMissionSession, *, from_states: list[str], to_state: str, extra_fields: dict | None = None
+        self,
+        session: ExerciseMissionSession,
+        *,
+        from_states: list[str],
+        to_state: str,
+        extra_fields: dict | None = None,
     ) -> bool:
         """ChallengeRepository.try_transition과 동일한 낙관적 잠금 방식.
         UPDATE ... WHERE id=? AND version=? AND state IN (...) — affected rows 0이면 실패."""
@@ -68,9 +73,9 @@ class ExerciseMissionRepository:
         return updated_count > 0
 
     async def get_session_by_idempotency_key(self, idempotency_key: str, user_id) -> ExerciseMissionSession | None:
-        return await self._session_model.get_or_none(
-            idempotency_key=idempotency_key, user_id=user_id
-        ).prefetch_related("catalog_entry__template_version")
+        return await self._session_model.get_or_none(idempotency_key=idempotency_key, user_id=user_id).prefetch_related(
+            "catalog_entry__template_version"
+        )
 
     async def count_awarded_today(self, user_id, service_date: date) -> int:
         """오늘 지급 확정된(reward_slot이 null이 아닌) 세션 수 - used 계산용."""
@@ -94,5 +99,8 @@ class ExerciseMissionRepository:
         """GET /exercise-mission-records — 하루·주간 집계용. 지급 확정된 것만."""
 
         return await self._session_model.filter(
-            user_id=user_id, service_date__gte=from_date, service_date__lte=to_date, reward_slot__not_isnull=True,
+            user_id=user_id,
+            service_date__gte=from_date,
+            service_date__lte=to_date,
+            reward_slot__not_isnull=True,
         ).order_by("service_date")

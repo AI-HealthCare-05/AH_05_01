@@ -59,7 +59,6 @@ import com.tmtn.app.ui.profile.ProfileFlow
 import com.tmtn.app.ui.profile.ProfileScreenKey
 import com.tmtn.app.ui.record.RecordFlow
 import com.tmtn.app.ui.reference.ReferenceFlow
-import com.tmtn.app.ui.theme.AccessibilitySettingsHolder
 import com.tmtn.app.ui.theme.TMTNv1Theme
 import com.tmtn.app.ui.launch.TmtnLaunchOverlay
 import androidx.core.view.WindowCompat
@@ -144,31 +143,9 @@ class MainActivity : ComponentActivity() {
                     var screen by remember {
                         mutableStateOf(if (TokenHolder.accessToken != null && com.tmtn.app.ui.onboarding.OnboardingCheckpoint.pendingStep() == null) AppScreen.MAIN else AppScreen.ONBOARDING)
                     }
-                    // ⚠️ 2026-09-04 QA(P0-6) 반영: 접근성 설정(글자 크기·고대비)이 서버엔 저장돼도
-                    // 화면에 반영되는 코드가 없었음. 불러와서 AccessibilitySettingsHolder에 채워두면
-                    // TMTNv1Theme이 이걸 구독해서 전역에 반영함.
-                    //
-                    // ⚠️ 2026-09-08 QA 반영(회원가입 중 "다시 로그인해주세요"로 튕기던 버그):
-                    // 예전엔 LaunchedEffect(Unit)으로 앱 시작 시 무조건 호출하면서 "로그인 전이면
-                    // 401 나고 기본값으로 남으니 문제 없다"고 적어뒀는데, 그 401을 SessionInterceptor가
-                    // 세션 만료로 처리해서 온보딩 화면 위에 세션 만료 화면이 덮여버렸음. 계정 삭제 후
-                    // 재가입할 때(로그인 안 된 상태로 앱을 켤 때) 정확히 이 경로를 탐.
-                    // 이제 로그인된 뒤에만 호출함. 키를 screen으로 둬서 로그인을 마치고 MAIN으로
-                    // 들어오는 순간에도 불려짐 - 예전에는 앱 시작 때 딱 한 번이라, 그 세션에서
-                    // 로그인한 사용자에게는 접근성 설정이 아예 반영되지 않는 문제도 같이 있었음.
+                    // Restore notification schedules only after sign-in.
                     LaunchedEffect(screen) {
                         if (screen != AppScreen.MAIN || TokenHolder.accessToken == null) return@LaunchedEffect
-                        runCatching { ApiClient.profileApi.getAccessibility() }
-                            .getOrNull()?.let { response ->
-                                if (response.isSuccessful) {
-                                    response.body()?.let {
-                                        AccessibilitySettingsHolder.reducedMotion.value = it.reduced_motion
-                                        AccessibilitySettingsHolder.apply(
-                                            it.large_controls, it.senior_mode, it.preferred_text_scale_hint,
-                                        )
-                                    }
-                                }
-                            }
                         // ⚠️ 2026-09-08 요구사항(8·10·11번) 반영: 로그인 상태로 앱을 열 때마다
                         // 서버에 저장된 알림 슬롯을 불러와서 기기의 로컬 알림 예약도 그 값과
                         // 맞춰둠 - 다른 기기에서 설정을 바꿨거나, 이 기기가 한동안 안 켜져서
@@ -309,7 +286,11 @@ class MainActivity : ComponentActivity() {
                                     }
                                     MainTab.RECORD -> referencePages.SaveableStateProvider("record") { RecordFlow(
                                         state = recordState,
-                                        onGoPickCard = { currentTab = MainTab.HOME },
+                                        onGoPickCard = {
+                                            cardHomeState.cardEntryRequested.value = true
+                                            isImmersive = false
+                                            currentTab = MainTab.HOME
+                                        },
                                         onOpenJournal = {
                                             referenceState.journal.requestedEdition = 0
                                             referenceState.step.value = com.tmtn.app.ui.reference.ReferenceStep.SUMMARY
@@ -318,7 +299,11 @@ class MainActivity : ComponentActivity() {
                                     ) }
                                     MainTab.REFERENCE -> referencePages.SaveableStateProvider("reference") { ReferenceFlow(
                                         state = referenceState,
-                                        onGoPickCard = { currentTab = MainTab.HOME },
+                                        onGoPickCard = {
+                                            cardHomeState.cardEntryRequested.value = true
+                                            isImmersive = false
+                                            currentTab = MainTab.HOME
+                                        },
                                         onOpenMyInfo = { currentTab = MainTab.MY },
                                         onOpenHealthInfo = {
                                             profileTargetScreen = ProfileScreenKey.HEALTH

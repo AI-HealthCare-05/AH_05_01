@@ -1,6 +1,8 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException
+from starlette.concurrency import run_in_threadpool
 from tortoise.transactions import in_transaction
 
+from app.core.oauth.google import verify_google_id_token
 from app.core.utils.common import normalize_phone_number
 from app.core.utils.security import hash_password, verify_password
 from app.core.validators.user_validators import validate_password
@@ -62,8 +64,7 @@ class UserManageService:
         실질적으로 안 쓰이고 있어서(JWT만으로 인증) 이번엔 별도 구현 안 함 — 필요하면
         sessions 테이블을 실제로 검증하는 걸로 나중에 확장할 것."""
 
-        if not verify_password(data.current_password, user.hashed_password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="지금 비밀번호가 올바르지 않습니다.")
+        await self._reauthenticate(user, data.current_password, data.google_id_token)
         validate_password(data.new_password)  # 규칙 안 맞으면 ValueError -> 422로 자동 변환됨
         user.hashed_password = hash_password(data.new_password)
         await user.save(update_fields=["hashed_password"])
@@ -83,9 +84,18 @@ class UserManageService:
         걸려 있어서(2026-08-31 확인), user.delete() 한 번으로 기록·재료·댐·동의 등
         관련 데이터가 DB 레벨에서 자동으로 함께 지워짐."""
 
-        if not verify_password(data.password, user.hashed_password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="비밀번호가 올바르지 않습니다.")
+        await self._reauthenticate(user, data.password, data.google_id_token)
         await user.delete()
+
+    @staticmethod
+    async def _reauthenticate(user: User, password: str | None, google_id_token: str | None) -> None:
+        if google_id_token:
+            identity = await run_in_threadpool(verify_google_id_token, google_id_token, max_age_seconds=300)
+            if not user.google_sub or identity.subject != user.google_sub:
+                raise HTTPException(status_code=403, detail="가입한 Google 계정을 선택해 주세요.")
+            return
+        if not password or not user.hashed_password or not verify_password(password, user.hashed_password):
+            raise HTTPException(status_code=400, detail="비밀번호 또는 Google 계정으로 본인 확인해 주세요.")
 
     async def delete_records_only(self, user: User) -> None:
         """F13: 계정(이메일·비밀번호)은 그대로 두고, 기록·입력값·재료·댐만 지움.

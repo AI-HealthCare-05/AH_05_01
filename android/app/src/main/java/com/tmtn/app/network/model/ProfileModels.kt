@@ -30,8 +30,9 @@ data class NotificationSettingUpdateRequest(
 
 // ===== F16: 비밀번호 변경 =====
 data class PasswordChangeRequest(
-    val current_password: String,
-    val new_password: String
+    val current_password: String?,
+    val new_password: String,
+    val google_id_token: String? = null,
 )
 
 // ===== F15: 이메일 변경 =====
@@ -42,7 +43,8 @@ data class EmailChangeRequest(
 
 // ===== F17: 계정 삭제 =====
 data class AccountDeleteRequest(
-    val password: String
+    val password: String?,
+    val google_id_token: String? = null,
 )
 
 // ===== F21: 문의 남기기 =====

@@ -30,7 +30,7 @@ class ExerciseMissionSessionState(StrEnum):
 
 
 class ExerciseMissionCatalog(models.Model):
-    """"오늘 틈새 운동으로 고를 수 있는 것" 목록. template_version 1개당 카탈로그 항목 1개
+    """ "오늘 틈새 운동으로 고를 수 있는 것" 목록. template_version 1개당 카탈로그 항목 1개
     (같은 템플릿을 여러 번 등록하지 않음 - unique)."""
 
     id = fields.UUIDField(primary_key=True, default=uuid.uuid4)

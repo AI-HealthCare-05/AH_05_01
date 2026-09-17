@@ -153,6 +153,11 @@ fun CardHomeFlow(
     }
 
     LaunchedEffect(Unit) {
+        if (state.cardEntryRequested.value) {
+            state.cardEntryRequested.value = false
+            state.openCardFromJournal()
+            return@LaunchedEffect
+        }
         // ⚠️ 2026-09-07 반영(위 state 파라미터 주석과 짝): state가 이제 MainActivity에서
         // 넘어와 탭을 오가도 살아있으므로, 이 LaunchedEffect(Unit) 자체는 (다른 탭 갔다가
         // 돌아올 때마다) 매번 다시 실행되더라도 "최초 진입"과 "탭에서 돌아옴"을 구분해야

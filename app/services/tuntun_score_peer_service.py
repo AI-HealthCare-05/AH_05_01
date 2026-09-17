@@ -104,7 +104,8 @@ class TuntunScorePeerService:
             "strengthFrequencyUnit": "days" if habit and habit.strength_weekly_count is not None else None,
             "strengthIntensity": (
                 {"LIGHT": "light", "MODERATE": "moderate", "HARD": "hard"}.get(str(habit.strength_intensity))
-                if habit and habit.strength_intensity else None
+                if habit and habit.strength_intensity
+                else None
             ),
             "aerobicLowMinutes": habit.aerobic_low_minutes if habit else None,
             "aerobicModerateMinutes": habit.aerobic_moderate_minutes if habit else None,

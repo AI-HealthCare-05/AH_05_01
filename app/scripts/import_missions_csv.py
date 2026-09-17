@@ -55,10 +55,22 @@ FIVE_ELEMENT_MAP = {
 # ⚠️ 버전 비교 대상 필드. is_active/created_at 등 "메타" 필드는 내용 비교에서 제외 -
 # 승인 상태가 바뀐 것만으로 새 버전을 만들면 안 되므로.
 _COMPARE_FIELDS = (
-    "five_element", "domain", "title", "guide_text", "exec_type",
-    "target_value", "target_value_min", "target_value_max", "target_value_step", "unit",
-    "senior_safe", "line_text_template", "fortune_text", "location_candidates",
-    "time_of_day", "safety_tag",
+    "five_element",
+    "domain",
+    "title",
+    "guide_text",
+    "exec_type",
+    "target_value",
+    "target_value_min",
+    "target_value_max",
+    "target_value_step",
+    "unit",
+    "senior_safe",
+    "line_text_template",
+    "fortune_text",
+    "location_candidates",
+    "time_of_day",
+    "safety_tag",
 )
 
 
@@ -128,8 +140,11 @@ async def import_csv(csv_path: str) -> None:
 
             if latest is None:
                 await MissionTemplateVersion.create(
-                    template_key=mission_id, version=1, review_status=review_status,
-                    is_active=False, **new_fields,
+                    template_key=mission_id,
+                    version=1,
+                    review_status=review_status,
+                    is_active=False,
+                    **new_fields,
                 )
                 created += 1
                 continue
@@ -140,8 +155,11 @@ async def import_csv(csv_path: str) -> None:
 
             # ⚠️ v1(latest) 보존 - update() 안 하고 새 row를 만듦. 승인된 A안 그대로.
             await MissionTemplateVersion.create(
-                template_key=mission_id, version=latest.version + 1, review_status=review_status,
-                is_active=False, **new_fields,
+                template_key=mission_id,
+                version=latest.version + 1,
+                review_status=review_status,
+                is_active=False,
+                **new_fields,
             )
             updated += 1
 
