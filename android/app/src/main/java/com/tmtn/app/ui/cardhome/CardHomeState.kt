@@ -136,21 +136,9 @@ class CardHomeState(
     // 항상 똑같은 예시 패턴만 보여줬음. 기록 탭의 주간 리포트 API(최근 7일 실제 상태)를 그대로 씀.
     var recentWeek = mutableStateOf<List<CalendarDayItem>>(emptyList())
 
-    // ⚠️ 테스트 전용 - "다음 날로" 눌렀을 때 서버가 지금 인식하는 시뮬레이션 날짜 표시용.
-    var debugSimulatedToday = mutableStateOf<String?>(null)
-
-    // ⚠️ 2026-09-08 QA(N11) 반영: 화면 상단 날짜 캡션이 전부 LocalDate.now()(기기의 진짜
-    // 오늘)를 그대로 썼음 - 시뮬레이션으로 날짜를 밀어도 상단은 계속 원래 날짜로 남아서,
-    // 서버는 미래를 보고 있는데 화면은 다른 날을 보여주는 모순이 있었음(디버그 기능
-    // 전용이지만 QA 중 계속 혼란을 줌). 시뮬레이션 값이 있으면 그걸 파싱해서 쓰고, 없으면
-    // (null 또는 "-") 기존처럼 기기 오늘을 씀.
     fun displayDateLabel(): java.time.LocalDate {
         cardServiceDate.value?.let { date ->
             runCatching { java.time.LocalDate.parse(date) }.getOrNull()?.let { return it }
-        }
-        val simulated = debugSimulatedToday.value
-        if (simulated != null && simulated != "-") {
-            runCatching { java.time.LocalDate.parse(simulated) }.getOrNull()?.let { return it }
         }
         return java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul"))
     }
@@ -385,26 +373,6 @@ class CardHomeState(
         restDaysUsedThisWeek.value = body.rest_days_used_this_week
         restDaysRemainingThisWeek.value = body.rest_days_remaining_this_week
         currentStreak.value = body.current_streak
-    }
-
-    // ⚠️ 테스트 전용 - 하루 미션 1개 제한 때문에 미션 10개를 이어서 테스트하려면 실제로
-    // 10일이 걸림. 서버가 인식하는 "오늘"을 하루 앞당겨서, 오늘 카드를 다시 뽑아 바로
-    // 다음 미션으로 이어갈 수 있게 함. 서버(PROD면 404)·클라이언트(디버그 빌드에서만
-    // 버튼 노출) 이중으로 막아둬서 실제 서비스에는 영향 없음.
-    suspend fun advanceDebugDay() {
-        runCatching {
-            val response = ApiClient.debugApi.advanceDay()
-            if (response.isSuccessful) response.body() else null
-        }.getOrNull()?.let { body -> debugSimulatedToday.value = body["simulated_today"]?.toString() }
-        loadToday()
-    }
-
-    suspend fun resetDebugDay() {
-        runCatching {
-            val response = ApiClient.debugApi.resetDay()
-            if (response.isSuccessful) response.body() else null
-        }.getOrNull()?.let { body -> debugSimulatedToday.value = body["simulated_today"]?.toString() }
-        loadToday()
     }
 
     // B01b: "미션 이어하기" - 이미 확정된 오늘 챌린지의 카드 내용을 다시 불러와서 B06으로.
