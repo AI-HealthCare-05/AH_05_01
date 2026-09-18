@@ -99,5 +99,9 @@ data class NotificationSettingResponse(
     val weekdays: List<String>,
     val quiet_hours: Map<String, String>?,
     val enabled: Boolean,
-    val updated_at: String
+    val updated_at: String,
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 P01~03) - 원본 기상/점심/취침 재조회용.
+    val wake_time: String? = null,
+    val lunch_time: String? = null,
+    val sleep_time: String? = null,
 )

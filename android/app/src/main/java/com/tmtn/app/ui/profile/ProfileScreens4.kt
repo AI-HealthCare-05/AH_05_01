@@ -144,10 +144,23 @@ private fun shiftTime(time: String, hours: Int): String = runCatching { LocalTim
 fun WakeSleepEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
     val context = LocalContext.current
-    val slots = state.notificationSetting.value?.slots
-    var wake by rememberSaveable(slots) { mutableStateOf(slots?.getOrNull(0) ?: "07:00") }
-    var lunch by rememberSaveable(slots) { mutableStateOf(slots?.getOrNull(1)?.let { shiftTime(it, -1) } ?: "12:00") }
-    var sleep by rememberSaveable(slots) { mutableStateOf(slots?.getOrNull(2)?.let { shiftTime(it, 2) } ?: "23:00") }
+    // ⚠️ 2026-09-18 버그 수정(UI/UX 핸드오프 P01~03) - 예전엔 계산된 알림 슬롯(slots)을
+    // 거꾸로 계산(shiftTime)해서 원본 기상/점심/취침 시각을 "추측"했음. 사용자가 F02
+    // 화면에서 개별 슬롯을 직접 수정한 적이 있으면 이 역산이 완전히 틀린 값을 보여줌
+    // (계약: "원본 생활시간 재조회는 계약 보완이 필요하다"). 이제 서버가 그대로 보존하는
+    // 원본 값(wake_time/lunch_time/sleep_time)을 직접 쓰고, 그 값이 아직 없는(마이그레이션
+    // 이전 가입) 계정만 슬롯 역산으로 대체함.
+    val setting = state.notificationSetting.value
+    val slots = setting?.slots
+    var wake by rememberSaveable(setting) {
+        mutableStateOf(setting?.wake_time ?: slots?.getOrNull(0) ?: "07:00")
+    }
+    var lunch by rememberSaveable(setting) {
+        mutableStateOf(setting?.lunch_time ?: slots?.getOrNull(1)?.let { shiftTime(it, -1) } ?: "12:00")
+    }
+    var sleep by rememberSaveable(setting) {
+        mutableStateOf(setting?.sleep_time ?: slots?.getOrNull(2)?.let { shiftTime(it, 2) } ?: "23:00")
+    }
     Column(Modifier.fillMaxSize()) {
         TmtnTopBar("생활시간", onBack)
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {

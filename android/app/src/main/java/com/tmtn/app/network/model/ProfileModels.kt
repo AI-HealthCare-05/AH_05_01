@@ -25,7 +25,12 @@ data class NotificationSettingUpdateRequest(
     val enabled: Boolean? = null,
     val slots: List<String>? = null,
     val weekdays: List<String>? = null,
-    val quiet_hours: Map<String, String>? = null
+    val quiet_hours: Map<String, String>? = null,
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 P01~03) - "생활시간 바꾸기" 재수정 시 원본
+    // 시각도 같이 최신화하기 위함.
+    val wake_time: String? = null,
+    val lunch_time: String? = null,
+    val sleep_time: String? = null,
 )
 
 // ===== F16: 비밀번호 변경 =====
