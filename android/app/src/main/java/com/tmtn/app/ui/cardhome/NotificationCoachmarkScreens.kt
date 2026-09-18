@@ -18,30 +18,45 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.tmtn.app.notification.NotificationLog
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.onboarding.TmtnTextButton
 import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 
-private data class MockNotification(val title: String, val time: String)
+private fun formatNotificationTime(timestampMillis: Long): String {
+    val now = java.util.Calendar.getInstance()
+    val when_ = java.util.Calendar.getInstance().apply { timeInMillis = timestampMillis }
+    val dayDiff = now.get(java.util.Calendar.DAY_OF_YEAR) - when_.get(java.util.Calendar.DAY_OF_YEAR)
+    val dayLabel = when {
+        now.get(java.util.Calendar.YEAR) != when_.get(java.util.Calendar.YEAR) ->
+            java.text.SimpleDateFormat("yyyy.M.d", java.util.Locale.KOREAN).format(when_.time)
+        dayDiff == 0 -> "오늘"
+        dayDiff == 1 -> "어제"
+        else -> java.text.SimpleDateFormat("M월 d일", java.util.Locale.KOREAN).format(when_.time)
+    }
+    val clock = java.text.SimpleDateFormat("a h:mm", java.util.Locale.KOREAN).format(when_.time)
+    return "$dayLabel $clock"
+}
 
 /**
  * Figma B13 · 알림함 / B15 · 알림함 비어있음.
- * ⚠️ 알림 목록을 실제로 저장·조회하는 API가 아직 없어서(fcm_device_tokens 테이블만 있고
- * "알림 이력" 조회 API가 없음), 지금은 Figma 예시 알림 3개를 고정으로 보여줌.
- * hasNotifications=false로 두면 B15(빈 상태) 확인 가능.
+ * ⚠️ 2026-09-18 교체 - 서버에 아직 "알림 이력" 조회 API가 없어서(fcm_device_tokens
+ * 테이블만 있음) Figma 예시 3개를 고정으로 보여주던 것을, 이 기기에서 실제로 알림을
+ * 띄운 기록(NotificationLog - MissionReminderReceiver/RestGiveUpReminderReceiver가
+ * showNotification() 시점에 기록)으로 교체. 서버 이력 API가 나중에 생기면 그쪽으로
+ * 교체 가능.
  */
 @Composable
-fun NotificationInboxScreen(onBack: () -> Unit, hasNotifications: Boolean = true) {
+fun NotificationInboxScreen(onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
-    val mockNotifications = listOf(
-        MockNotification("새 카드를 준비해 뒀어", "오늘 오전 7:00"),
-        MockNotification("점심 뒤 8분 걷기, 같이 해볼까", "어제 오후 1:00"),
-        MockNotification("오늘 기록이 하루 늘었어요", "어제 오후 9:12"),
-    )
+    val context = LocalContext.current
+    val entries = remember { NotificationLog.readAll(context) }
+    val hasNotifications = entries.isNotEmpty()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "알림", onBack = onBack)
@@ -65,14 +80,14 @@ fun NotificationInboxScreen(onBack: () -> Unit, hasNotifications: Boolean = true
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Column {
-                    mockNotifications.forEach { notification ->
+                    entries.forEach { entry ->
                         Row(
                             modifier = Modifier.fillMaxWidth().height(72.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column {
-                                Text(notification.title, style = TmtnType.body, color = colors.onSurface)
-                                Text(notification.time, style = TmtnType.caption, color = colors.onSurfaceVariant)
+                                Text(entry.title, style = TmtnType.body, color = colors.onSurface)
+                                Text(formatNotificationTime(entry.timestampMillis), style = TmtnType.caption, color = colors.onSurfaceVariant)
                             }
                         }
                     }

@@ -17,7 +17,6 @@ import org.junit.Test
 class HomeHierarchyTest {
     @get:Rule val compose = createComposeRule()
     private fun fixture() = CardHomeState().apply {
-        debugSimulatedToday.value = "2026-09-03"
         recentWeek.value = listOf(
             CalendarDayItem("2026-08-28", "BEFORE_SIGNUP"), CalendarDayItem("2026-08-29", "COMPLETED"),
             CalendarDayItem("2026-08-30", "REST"), CalendarDayItem("2026-08-31", "COMPLETED"),
