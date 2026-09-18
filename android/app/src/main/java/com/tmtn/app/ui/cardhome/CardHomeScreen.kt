@@ -81,12 +81,8 @@ fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScor
             style = TmtnType.editorialHeadline, color = colors.onSurface)
         Text(state.displayDateLabel().format(java.time.format.DateTimeFormatter.ofPattern("M월 d일 EEEE", java.util.Locale.KOREAN)), style = TmtnType.caption, color = colors.onSurfaceVariant)
 
-        // ⚠️ 2026-09-07 반영: 상태전이 정책 신규 홈 화면(B18~B26, HomeStateScreens.kt)에는
-        // 이 배너가 아예 없어서, 쉼/포기/중단 상태에서 미션을 고르면 배너가 통째로 사라져
-        // "비활성화됐다"는 QA로 이어졌음(팀원 계정이 예전 테스트로 쉼/포기 상태에 남아있던
-        // 채로 다시 미션을 고르면 그 특수 화면으로 넘어가면서 배너가 사라졌던 것). 공용
-        // 함수(DebugDayBanner)로 뽑아서 모든 홈 화면이 같이 쓰게 함.
-        if (showDebugTools) DebugDayBanner(state, scope)
+        // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 M04) - HomeStateScreens.kt와 같은 배너.
+        ActiveExerciseBanner(state)
 
         MascotCard(state, isSelected, scope)
         ExtraExerciseHomeEntry(state)
@@ -213,35 +209,6 @@ private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: Corouti
         } else if (!isGivenUp) {
             com.tmtn.app.ui.onboarding.TmtnTextButton("오늘은 쉬어가기",
                 onClick = { scope.launch { state.openRestDaySheet() } })
-        }
-    }
-}
-
-// ⚠️ 2026-09-07 반영: 테스트 전용 - 미션 10개를 이어서 테스트하려면 실제로 10일이 걸리니,
-// 서버가 인식하는 "오늘"을 하루씩 앞당겨서 바로 다음 미션을 받을 수 있게 함. 디버그
-// 빌드에서만 보임(release APK에는 안 보임 + 서버도 PROD면 404로 막아둠 - 이중 안전장치).
-// 예전엔 CardHomeScreen(B01/B01b) 안에만 있어서, 상태전이 정책 신규 홈 화면(B18~B26)으로
-// 넘어가면 배너가 통째로 사라졌음 - 공용 함수로 뽑아서 모든 홈 화면이 같이 씀.
-@Composable
-internal fun DebugDayBanner(state: CardHomeState, scope: CoroutineScope) {
-    if (!com.tmtn.app.BuildConfig.DEBUG) return
-    val colors = LocalTmtnColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth().background(colors.errorContainer, RoundedCornerShape(8.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("테스트: 시뮬레이션 오늘 = ${state.debugSimulatedToday.value ?: "-"}", style = TmtnType.caption, color = colors.error)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                "초기화", style = TmtnType.caption, color = colors.error,
-                modifier = Modifier.clickable { scope.launch { state.resetDebugDay() } },
-            )
-            Text(
-                "다음 날 ›", style = TmtnType.label, color = colors.error,
-                modifier = Modifier.clickable { scope.launch { state.advanceDebugDay() } },
-            )
         }
     }
 }

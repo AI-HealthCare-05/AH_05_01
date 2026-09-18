@@ -2,9 +2,11 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import EmailStr
+from tortoise.transactions import in_transaction
 
 from app.core import config
 from app.core.logger import default_logger
+from app.models.companion import CompanionFirstRepair
 from app.models.users import User
 
 # v2: birthday -> birth_year/birth_month, name/gender/phone_number 전부 온보딩 후반부에 채워짐
@@ -24,9 +26,18 @@ class UserRepository:
 
     async def create_user_minimal(self, email: str | EmailStr, hashed_password: str) -> User:
         """v2: 이메일 인증 완료 직후 생성되는 계정. 이 시점엔 이메일+비밀번호뿐이고
-        나머지(이름/성별/생년월일 등)는 온보딩 후속 단계(PATCH /users/me)에서 채워짐."""
+        나머지(이름/성별/생년월일 등)는 온보딩 후속 단계(PATCH /users/me)에서 채워짐.
 
-        return await self._model.create(email=email, hashed_password=hashed_password)
+        ⚠️ 2026-09-18 수정(UI/UX 핸드오프 FR01~08 "첫 복구") - PR #21 소스 기준 이식.
+        가입 직후 CompanionFirstRepair 행을 같이 만들어서 "새 가입자에게만 첫 복구 권리를
+        준다"는 걸 보장. 기존 가입 사용자는 이 마이그레이션 시점에 이 행이 없으므로
+        자동으로 UNAVAILABLE 처리됨(companion_repository.welcome_gift_count 참고).
+        """
+
+        async with in_transaction():
+            user = await self._model.create(email=email, hashed_password=hashed_password)
+            await CompanionFirstRepair.create(user_id=user.id)
+            return user
 
     async def get_user_by_email(self, email: str) -> User | None:
         return await self._model.get_or_none(email=email)
@@ -86,15 +97,21 @@ class UserRepository:
         비밀번호는 아예 없습니다(hashed_password=None). 이름은 구글 프로필에서 받아오되,
         users.name이 20자 제한이라 넘치면 잘라서 넣습니다 - 여기서 500이 나면 로그인
         자체가 실패하는데, 이름은 온보딩에서 어차피 다시 확인받는 값이라 잘라도 무방합니다.
+
+        ⚠️ 2026-09-18 수정(UI/UX 핸드오프 FR01~08) - create_user_minimal()과 같은 이유로
+        CompanionFirstRepair를 같이 생성.
         """
 
         safe_name = name.strip()[:20] if name and name.strip() else None
-        return await self._model.create(
-            email=email,
-            hashed_password=None,
-            google_sub=google_sub,
-            name=safe_name,
-        )
+        async with in_transaction():
+            user = await self._model.create(
+                email=email,
+                hashed_password=None,
+                google_sub=google_sub,
+                name=safe_name,
+            )
+            await CompanionFirstRepair.create(user_id=user.id)
+            return user
 
     async def link_google_sub(self, user_id: int, google_sub: str) -> None:
         """이미 있는 계정(이메일 가입)에 구글 계정을 연결."""

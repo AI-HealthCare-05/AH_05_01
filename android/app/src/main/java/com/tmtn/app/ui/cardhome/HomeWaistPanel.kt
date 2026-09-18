@@ -39,7 +39,10 @@ internal fun HomeWaistCard(result: WaistEstimateUi, expanded: Boolean, onToggle:
             if (result is WaistEstimateUi.Available) {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(result.displayValue, style = TmtnType.editorialHeadline, color = colors.wood)
-                    Text("cm · 추정값", style = TmtnType.caption, color = colors.onSurfaceVariant, modifier = Modifier.padding(bottom = 3.dp))
+                    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 NH01~11) - cm이 원본·기준값, inch는
+                    // 괄호 안 환산 표시만.
+                    Text("cm (약 ${result.displayValueInches} in) · 추정값", style = TmtnType.caption,
+                        color = colors.onSurfaceVariant, modifier = Modifier.padding(bottom = 3.dp))
                 }
                 Text("입력한 신체 정보로 추정한 값이에요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
             } else {

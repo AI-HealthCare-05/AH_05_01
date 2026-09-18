@@ -4,6 +4,7 @@ import com.tmtn.app.network.model.CardRevealResponse
 import com.tmtn.app.network.model.CardWindowResponse
 import com.tmtn.app.network.model.ChallengeProgressResponse
 import com.tmtn.app.network.model.CompanionResponse
+import com.tmtn.app.network.model.FirstRepairResponse
 import com.tmtn.app.network.model.CompleteChallengeRequestBody
 import com.tmtn.app.network.model.CompleteChallengeResponse
 import com.tmtn.app.network.model.MemoUpdateRequest
@@ -33,6 +34,16 @@ interface CardHomeApi {
 
     @GET("companion")
     suspend fun getCompanionStatus(): Response<CompanionResponse>
+
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08 "첫 복구") - PR #21 소스 기준 이식.
+    @GET("companion/first-repair")
+    suspend fun getFirstRepair(): Response<FirstRepairResponse>
+
+    @POST("companion/first-repair/gift")
+    suspend fun receiveFirstGift(): Response<FirstRepairResponse>
+
+    @POST("companion/first-repair/complete")
+    suspend fun completeFirstRepair(): Response<FirstRepairResponse>
 
     @GET("companion/materials/{element}/history")
     suspend fun getMaterialHistory(

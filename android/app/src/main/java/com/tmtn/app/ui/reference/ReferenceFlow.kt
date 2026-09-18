@@ -78,6 +78,7 @@ fun ReferenceFlow(
                 requestedEdition = state.journal.requestedEdition,
                 onEditionOpened = { state.journal.requestedEdition = null },
                 exercises = state.journal.exercises,
+                practiceScore = state.journal.practiceScore,
             )
             ReferenceStep.INELIGIBLE -> ReferenceIneligibleScreen(state, onOpenMyInfo, waist.ui.value)
             ReferenceStep.DETAIL -> ReferenceDetailScreen(state, waist = waist.ui.value,

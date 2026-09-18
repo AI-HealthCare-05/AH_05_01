@@ -217,6 +217,11 @@ private fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (Stri
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 DM07 "재료 사전") - 새 마스코트 그림.
+            Image(
+                painterResource(com.tmtn.app.R.drawable.beaver_material_guide_v1), null,
+                Modifier.size(96.dp).align(androidx.compose.ui.Alignment.CenterHorizontally),
+            )
             Text("행동의 종류에 따라 다른 재료가 쌓입니다.", style = TmtnType.body, color = colors.onSurfaceVariant)
 
             Column(

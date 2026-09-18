@@ -114,6 +114,27 @@ private fun HomeStateMascotCard(
 }
 
 /** 홈 화면 하나(헤더 + 마스코트 카드 + 틈튼지수 요약 + 최근 7일/댐) 공통 뼈대. */
+// ⚠️ 2026-09-18 추가(UI/UX 핸드오프 M04 "홈을 보면서 계속 측정") - 틈새 운동을 하다
+// 홈 탭으로 이동해도 측정 자체는 백그라운드에서 계속되는데(CurrentExerciseSessionHolder
+// 유지), 정작 홈 화면엔 그걸 알 방법이 없어서 "종료됐다"고 오해하기 쉬웠음. 배너를
+// 눌러야만 같은 세션으로 복귀하고, 다른 탭에서는 종료·새 운동을 암묵적으로 시작하지
+// 않는다(계약 그대로).
+@Composable
+internal fun ActiveExerciseBanner(state: CardHomeState) {
+    val session = state.activeExerciseSession.value ?: return
+    val colors = LocalTmtnColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .background(colors.secondaryContainer, RoundedCornerShape(8.dp))
+            .clickable { state.step.value = CardHomeStep.EXTRA_RUNNING }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("틈새 운동 측정 중 · 돌아가기", style = TmtnType.label, color = colors.onSurface)
+    }
+}
+
 @Composable
 private fun HomeStateScreenShell(
     state: CardHomeState,
@@ -138,7 +159,7 @@ private fun HomeStateScreenShell(
     ) {
         HomeTopBar(onNotificationsClick)
         DateCaption(dateLabel)
-        DebugDayBanner(state, scope)
+        ActiveExerciseBanner(state)
         topBanner?.invoke()
         mascotCard()
         TmtnIndexSummaryCard(state, onOpenTuntunScore)

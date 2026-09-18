@@ -35,6 +35,12 @@ class JournalState {
         private set
     var exercises by mutableStateOf<JournalLoad<List<ExerciseMissionRecordItem>>?>(null)
         private set
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 E03 "초기 습관의 반영 안내") - 가입 설문
+    // 초기 습관이 지수 계산에 반영됐는지 보여주기 위함. 계산 성공 여부(composite_score)와
+    // 종합 산식 버전(policy_version)을 그대로 노출 - 이 화면에서 산식·배점을 새로
+    // 정하지 않는다.
+    var practiceScore by mutableStateOf<JournalLoad<PracticeScoreResponse>>(JournalLoad.Loading)
+        private set
     var refreshing by mutableStateOf(false)
         private set
 
@@ -56,6 +62,9 @@ class JournalState {
                         is JournalLoad.Ready -> JournalLoad.Ready(result.value.cards)
                         else -> JournalLoad.Failed
                     }
+                }
+                launch {
+                    practiceScore = read { ApiClient.practiceScoreApi.getPracticeScore() }
                 }
                 launch {
                     today = try {

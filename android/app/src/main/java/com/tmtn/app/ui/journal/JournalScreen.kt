@@ -71,6 +71,8 @@ fun JournalScreen(
     requestedEdition: Int? = null,
     onEditionOpened: () -> Unit = {},
     exercises: JournalLoad<List<ExerciseMissionRecordItem>>? = null,
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 E03) - 초기 습관 반영 안내용.
+    practiceScore: JournalLoad<PracticeScoreResponse>? = null,
 ) {
     var edition by rememberSaveable { mutableIntStateOf(0) }
     val editionStates = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
@@ -134,7 +136,7 @@ fun JournalScreen(
                 .testTag("journal-results-heading")) {
                 SectionTitle(if (edition == 0) "04" else "03", "내 신체·운동 정보")
             }
-            PersonalRecord(score, waist, cards, peerPositions, onEditInformation, onRetryWaist)
+            PersonalRecord(score, waist, cards, peerPositions, onEditInformation, onRetryWaist, practiceScore)
             NextCard(today, onGoPickCard)
             Text("작은 실천을 모아, 매일 한 장.\n틈튼이가 전하는 생활 소식", style = TmtnType.caption,
                 color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -418,7 +420,8 @@ private fun DailyArticle(today: JournalLoad<JournalToday>) {
 
 @Composable
 private fun PersonalRecord(score: TuntunScorePeerV2Response?, waist: WaistEstimateUi, cards: List<CardHistoryItem>,
-    peers: List<ScorePeerPositionUi>, onEdit: () -> Unit, onRetryWaist: () -> Unit) {
+    peers: List<ScorePeerPositionUi>, onEdit: () -> Unit, onRetryWaist: () -> Unit,
+    practiceScore: JournalLoad<PracticeScoreResponse>? = null) {
     var domain by rememberSaveable { mutableIntStateOf(3) }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -441,6 +444,20 @@ private fun PersonalRecord(score: TuntunScorePeerV2Response?, waist: WaistEstima
                 Text(peerText, style = TmtnType.sectionHeading, color = Ink)
             } else {
                 Text("아직 비교 결과가 없어요.", style = TmtnType.caption, color = Muted)
+            }
+            // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 E03 "초기 습관의 반영 안내") - "생활습관"
+            // 탭(domain==3)에서만 노출. 이 화면은 산식·배점을 새로 정하지 않고, 이미
+            // 계산된 결과(계산 성공 여부·종합 산식 버전)만 있는 그대로 보여줌.
+            if (domain == 3) {
+                val ready = (practiceScore as? JournalLoad.Ready)?.value
+                when {
+                    ready?.composite_score != null ->
+                        Text("가입 때 알려준 평소 운동 습관도 이 지수 계산에 함께 반영되고 있어요. (산식 버전 ${ready.policy_version})",
+                            style = TmtnType.caption, color = Muted)
+                    ready?.composite_blocked_reason != null ->
+                        Text("초기 습관 반영은 아직 준비 중이에요.", style = TmtnType.caption, color = Muted)
+                    else -> Unit
+                }
             }
             // Domain titles are editorial navigation, never fabricated personalized XAI claims.
             val title = listOf("오늘의 나를 알고,\n편한 속도를 찾아요.", "일상에 움직임을\n남겨두는 방법.", "익숙한 작은 습관,\n한 번 더 돌아봐요.", if (cards.isNotEmpty()) "해낸 카드마다,\n내 이야기가 있어요." else "나에게 맞는 실천을\n한 장씩 찾아봐요.")[domain]

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 # CSV 오행-영역 매핑과 정확히 일치 (지난번 CSV 분석에서 확인된 매핑)
@@ -18,6 +20,21 @@ STAGE_DEFINITIONS = [
     {"stage_number": 4, "label": "물길 안정화", "threshold": 70},
     {"stage_number": 5, "label": "튼튼한 댐 완성", "threshold": 120},
 ]
+
+
+# ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08 "첫 복구") - PR #21 소스 기준 이식.
+# first_repair_completed=False(기본값)면 STAGE_DEFINITIONS와 완전히 동일한 리스트를
+# 반환하므로, 이 함수를 그냥 추가하는 것만으로는 기존 호출부(인자 없이 STAGE_DEFINITIONS를
+# 직접 참조하던 곳)에 아무 영향이 없음 - 첫 복구를 마친 계정만 1단계 임계값이 5→1로
+# 내려감(2~5단계는 그대로).
+def stage_definitions(first_repair_completed: bool = False) -> list[dict]:
+    """첫 복구를 마친 계정만 1개로 1단계. 기존 계정과 2~5단계 기준은 유지한다."""
+    return [
+        {**stage, "threshold": 1, "label": "첫 빈틈 받치기"}
+        if first_repair_completed and stage["stage_number"] == 1
+        else stage
+        for stage in STAGE_DEFINITIONS
+    ]
 
 
 class MaterialItem(BaseModel):
@@ -43,6 +60,18 @@ class CompanionResponse(BaseModel):
     materials_needed_for_next: int  # 다음 단계까지 남은 개수, 최대 단계면 0
     materials: list[MaterialItem]
     stages: list[StageItem]
+
+
+# ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08) - "첫 선물은 완료한 운동 카드와 별개이며
+# 서버가 중복 지급을 막는다."
+FirstRepairStatus = Literal["ELIGIBLE", "GIFT_RECEIVED", "COMPLETED", "UNAVAILABLE"]
+
+
+class FirstRepairResponse(BaseModel):
+    status: FirstRepairStatus
+    gift_element: str = "WOOD"
+    gift_count: int
+    companion: CompanionResponse
 
 
 class CardHistoryItem(BaseModel):

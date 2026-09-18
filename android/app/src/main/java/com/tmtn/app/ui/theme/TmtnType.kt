@@ -36,6 +36,13 @@ object TmtnType {
     val caption: TextStyle @Composable get() = scaled(14.sp, 20.sp, FontWeight.Medium)
     val navigationLabel: TextStyle @Composable get() = scaled(12.sp, 20.sp, FontWeight.Medium)
 
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08 "첫 복구") - 새 시각 언어를 발명하지
+    // 않고 기존 스타일을 그대로 재사용(별칭). eyebrow=작은 라벨이라 caption과, headline은
+    // editorialHeadline과, body는 그대로 body와 크기가 같음.
+    val firstRepairEyebrow: TextStyle @Composable get() = caption
+    val firstRepairHeadline: TextStyle @Composable get() = editorialHeadline
+    val firstRepairBody: TextStyle @Composable get() = body
+
     @Composable
     private fun scaled(baseSize: androidx.compose.ui.unit.TextUnit, baseLineHeight: androidx.compose.ui.unit.TextUnit, weight: FontWeight): TextStyle {
         val scale = LocalTmtnTextScale.current

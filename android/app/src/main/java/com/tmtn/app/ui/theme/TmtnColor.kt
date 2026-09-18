@@ -8,12 +8,17 @@ val ColorBrandForest = Color(0xFF3F5D4B)
 // ⚠️ 2026-08-31 팀장님이 준 새 Figma 자료("TMTN_Final_App_UI", 107개 화면 PNG)의
 // 실제 픽셀에서 직접 뽑은 색상값. 예전 tokens.css 기준(진한 초록 계열) 팔레트를 완전히
 // 교체함 — 초록은 이제 어디에도 안 쓰임. A/B/D/G 여러 화면에서 교차 확인해서 일관됨.
+// ⚠️ 2026-09-18 재변경(UI/UX 핸드오프 NH01~11) - 위 결정을 다시 뒤집음. 최신 APK 실측
+// 기준 브랜드 색이 #3F5D4B(ColorBrandForest, 포레스트 그린)로 확인돼서 ColorPrimary를
+// 여기로 되돌림. "초록은 어디에도 안 쓰임"이라는 위 주석은 더 이상 사실이 아님.
 
 // 색 · 기본
 // ⚠️ 2026-09-04 희주조교님 피드백(P2 ⑧) 반영: 순수 검정에 가까운 #16181C가 "너무
 // 새까맣다"는 의견이라 #2C2C2C로 올림. 순백(#FFFFFF) 배경 대비 14.0:1로 WCAG AA
 // 기준(4.5:1)을 여유 있게 넘음. 하드코딩된 색이 없어서 이 토큰 두 줄만 바꾸면 전체 반영됨.
-val ColorPrimary = Color(0xFF16181C)
+// ⚠️ 2026-09-18 - 위 #2C2C2C 조정은 검정 계열 안에서의 미세 조정이었는데, 이제 브랜드
+// 색 자체가 바뀌어서 이 주석의 전제(ColorPrimary가 검정 계열)가 더 이상 안 맞음.
+val ColorPrimary = ColorBrandForest
 val ColorOnSurface = Color(0xFF2C2C2C)
 val ColorOnSurfaceVariant = Color(0xFF666A71)
 val ColorBackground = Color(0xFFFFFFFF)

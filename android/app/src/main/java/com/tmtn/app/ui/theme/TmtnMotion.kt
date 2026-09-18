@@ -39,6 +39,13 @@ object TmtnMotion {
     val EaseOut = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
     // Critically damped spring, response 0.3s (stiffness = (2π / response)²).
     val TouchStiffness = ((2.0 * Math.PI / 0.3) * (2.0 * Math.PI / 0.3)).toFloat()
+
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08 "첫 복구") - 재료가 댐으로 이동하는
+    // 연출(Travel) + 자리잡는 연출(Settle) 시간. reducedMotion이면 SheetReducedMillis로
+    // 즉시(거의) 전환.
+    const val FirstRepairTravelMillis = 500
+    const val FirstRepairSettleMillis = 250
+    const val SheetReducedMillis = 80
 }
 
 @Composable

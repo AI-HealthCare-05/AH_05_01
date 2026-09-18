@@ -66,6 +66,9 @@ internal fun WaistEstimateArticle(result: WaistEstimateUi, onRetry: () -> Unit =
                             Text(result.displayValue, style = TmtnType.display, color = colors.onSurface)
                             Text("cm", style = TmtnType.bodyLarge, color = colors.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
                         }
+                        // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 NH01~11) - cm이 원본·기준값,
+                        // inch는 환산 표시만(별도 캡션 줄로, 본문 크기에 안 섞이게).
+                        Text("약 ${result.displayValueInches} in", style = TmtnType.caption, color = colors.onSurfaceVariant)
                     }
                     if (!large) TmtnMascot(R.drawable.beaver_standing, null, Modifier.size(88.dp), greet = false)
                 }

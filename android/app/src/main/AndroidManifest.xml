@@ -20,6 +20,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".TmtnApplication"
         android:usesCleartextTraffic="true"
@@ -53,6 +56,20 @@
             android:name=".sensor.MissionSensorService"
             android:foregroundServiceType="health|location"
             android:exported="false" />
+
+        <receiver
+            android:name=".notification.MissionReminderReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".notification.RestGiveUpReminderReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".notification.BootCompletedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

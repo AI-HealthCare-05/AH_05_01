@@ -14,18 +14,21 @@ import androidx.compose.ui.unit.IntSize
 import com.tmtn.app.R
 import kotlin.math.roundToInt
 
-/** Figma 1314:4848 / 1314:4987: exact source image and its six crop windows.
- * The same standing dam is repaired; stage zero must not become a newly built dam.
- * Presentation crop only. The downloaded Figma source bytes remain unchanged.
+/** ⚠️ 2026-09-18 교체(UI/UX 핸드오프 DM01~09) - 새 시트(dam_water_repair_sheet,
+ * 1536×1024, 3열×2행 각 512×512)로 교체. 각 셀의 실제 콘텐츠 바운딩 박스를 픽셀
+ * 단위로 측정해서(0~2단계 Y194~446, 3~5단계 Y82~328) 여유를 두고 통일된 crop
+ * 영역(높이 300)을 잡음 - 두 행의 높이가 같아야 Crossfade 전환 시 크기가 안 흔들림.
+ * stage·재료 수 자체는 그대로 서버 값을 쓰고(계약: "새 임계값이 아니다"), 이 파일은
+ * 순수하게 그림 표시만 바뀜.
  */
 @Composable
 fun DamArtwork(stage: Int, modifier: Modifier = Modifier, description: String? = null) {
-    val art = ImageBitmap.imageResource(R.drawable.figma_dam_repair_sheet)
+    val art = ImageBitmap.imageResource(R.drawable.dam_water_repair_sheet)
     val scene = stage.coerceIn(0, 5)
     val cellWidth = art.width / 3
-    val cropTop = if (scene < 3) 160 else 560
-    val cropHeight = (cellWidth * 190f / 350f).roundToInt()
-    Canvas(modifier.fillMaxWidth().aspectRatio(350f / 190f).then(
+    val cropTop = if (scene < 3) 170 else 60
+    val cropHeight = 300
+    Canvas(modifier.fillMaxWidth().aspectRatio(cellWidth.toFloat() / cropHeight).then(
         if (description != null) Modifier.semantics { contentDescription = description } else Modifier
     )) {
         drawImage(art, srcOffset = IntOffset(scene % 3 * cellWidth, cropTop),

@@ -31,6 +31,22 @@ class CompanionState(models.Model):
         table = "companion_states"
 
 
+# ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08 "첫 복구") - PR #21(codex/first-repair-...)
+# 소스 기준 이식. "새 가입자에게만 발급하는 첫 복구 권리"를 운동 완료 횟수와 별도로
+# 보관한다. user_repository.create_user_minimal()/create_user_from_google()이 가입
+# 직후 이 행을 생성하므로, 기존 사용자는 이 레코드 자체가 없어(get_or_none이 None) 아래
+# CompanionRepository.welcome_gift_count()가 항상 0을 반환 - 기존 계산에 영향 없음.
+class CompanionFirstRepair(models.Model):
+    """새 가입자에게만 발급하는 첫 복구 권리. 운동 완료 횟수와 별도로 보관한다."""
+
+    user = fields.OneToOneField("models.User", related_name="first_repair", pk=True)
+    gift_received_at = fields.DatetimeField(null=True)
+    completed_at = fields.DatetimeField(null=True)
+
+    class Meta:
+        table = "companion_first_repairs"
+
+
 class CompanionStageLog(models.Model):
     """G07(단계 상승 축하) 화면의 "3단계에서 쌓은 것" 요약을 만들려면 "언제 그 단계에
     도달했는지" 기준점이 있어야 해서 새로 추가한 테이블. 단계에 새로 도달할 때마다
