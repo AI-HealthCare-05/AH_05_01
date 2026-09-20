@@ -42,22 +42,50 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 
-/** Figma home keeps the selected mission first; the newspaper is a short reading link. */
+/** 확정 시안 C: Pretendard 제호, 한 장의 신문, 원본 비버를 사용한다. */
 @Composable
 internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () -> Unit = {}) {
-    val colors = LocalTmtnColors.current
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(colors.surface)
-        .tmtnClickable(onClick = onOpenTuntunScore).padding(18.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("나의 일주일이 한 장의 소식으로", style = TmtnType.caption, color = colors.onSurfaceVariant)
-            Text("틈튼일보", style = TmtnType.title, color = colors.onSurface)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-                Text("이번 호 펼치기", style = TmtnType.label, color = colors.onSurface)
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp), tint = colors.onSurface)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(TmtnHomeColor.Newspaper)
+        .border(1.dp, TmtnHomeColor.Border, RoundedCornerShape(20.dp))
+        .tmtnClickable(onClick = onOpenTuntunScore).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("틈튼일보", style = TmtnType.editorialHeadline, color = TmtnHomeColor.Forest,
+            modifier = Modifier.fillMaxWidth().semantics { heading() }, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        androidx.compose.material3.HorizontalDivider(color = TmtnHomeColor.Forest)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HomeNewspaperBeaver()
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("내가 쌓은 한 주", style = TmtnType.missionName, color = ColorOnSurface)
+                Text("실천 기록과 지난주 비교", style = TmtnType.caption, color = ColorOnSurfaceVariant)
+                Text("이번 호 읽기", style = TmtnType.label, color = TmtnHomeColor.Forest,
+                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
             }
         }
-        Image(painterResource(R.drawable.beaver_newspaper), null, Modifier.size(88.dp), contentScale = ContentScale.Fit)
+    }
+}
+
+/** 원본 beaver_card의 색/몸체를 그대로 사용하고 손에 든 카드 위에 작은 신문만 얹는다. */
+@Composable
+private fun HomeNewspaperBeaver() {
+    Box(Modifier.size(84.dp)) {
+        Image(painterResource(R.drawable.beaver_card), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val unit = size.width / 84f
+            val x = 26f * unit
+            val y = 47.5f * unit
+            val w = 19f * unit
+            val h = 11.5f * unit
+            drawRect(TmtnHomeColor.Paper, androidx.compose.ui.geometry.Offset(x, y), androidx.compose.ui.geometry.Size(w, h))
+            drawLine(TmtnHomeColor.Forest, androidx.compose.ui.geometry.Offset(x + 2*unit, y + 2*unit),
+                androidx.compose.ui.geometry.Offset(x + w - 2*unit, y + 2*unit), unit)
+            for (row in 0..3) {
+                val lineY = y + (4f + row * 1.6f) * unit
+                drawLine(TmtnHomeColor.PaperMuted, androidx.compose.ui.geometry.Offset(x + 2*unit, lineY),
+                    androidx.compose.ui.geometry.Offset(x + 8*unit, lineY), .45f * unit)
+                drawLine(TmtnHomeColor.PaperMuted, androidx.compose.ui.geometry.Offset(x + 10*unit, lineY),
+                    androidx.compose.ui.geometry.Offset(x + 17*unit, lineY), .45f * unit)
+            }
+        }
     }
 }
 
@@ -138,3 +166,5 @@ private fun HomeRecordDate(date: LocalDate, status: String?, isToday: Boolean, m
         }
     }
 }
+
+

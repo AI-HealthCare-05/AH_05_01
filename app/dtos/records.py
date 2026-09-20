@@ -31,7 +31,7 @@ class WeeklyReportResponse(BaseModel):
 
     start_date: date
     end_date: date
-    days: list[CalendarDayItem]  # 최근 7일
+    days: list[CalendarDayItem]  # 월요일~일요일, 미래는 FUTURE
     completed_count: int
     total_days: int  # 항상 7
     best_time_slot: str | None  # "아침" / "점심 뒤" / "저녁" / "밤" 중 가장 완료가 많았던 시간대, 데이터 없으면 None

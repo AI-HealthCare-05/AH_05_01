@@ -1,0 +1,16 @@
+{
+  "inputFile": "waist_cm_inputs_5.csv",
+  "syntheticInput": true,
+  "pregnancy_status": "nonpregnant",
+  "output": "predicted_waist_cm",
+  "unit": "cm",
+  "predictionCm": [
+    79.1776712222443,
+    124.63591872069098,
+    80.1455020427952,
+    81.3831515849371,
+    95.13892491489963
+  ],
+  "atolCm": 1e-09,
+  "rtol": 1e-09
+}

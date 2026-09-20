@@ -11,6 +11,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.IntRect
 import com.tmtn.app.R
 import kotlin.math.roundToInt
 
@@ -24,17 +25,23 @@ import kotlin.math.roundToInt
 @Composable
 fun DamArtwork(stage: Int, modifier: Modifier = Modifier, description: String? = null) {
     val art = ImageBitmap.imageResource(R.drawable.dam_water_repair_sheet)
-    val scene = stage.coerceIn(0, 5)
-    val cellWidth = art.width / 3
-    val cropTop = if (scene < 3) 170 else 60
-    val cropHeight = 300
-    Canvas(modifier.fillMaxWidth().aspectRatio(cellWidth.toFloat() / cropHeight).then(
+    val source = damArtworkSourceRect(stage, art.width, art.height)
+    Canvas(modifier.fillMaxWidth().aspectRatio(source.width.toFloat() / source.height).then(
         if (description != null) Modifier.semantics { contentDescription = description } else Modifier
     )) {
-        drawImage(art, srcOffset = IntOffset(scene % 3 * cellWidth, cropTop),
-            srcSize = IntSize(cellWidth, cropHeight),
+        drawImage(art, srcOffset = source.topLeft,
+            srcSize = IntSize(source.width, source.height),
             dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()))
     }
+}
+
+/** 3~5단계는 시트의 두 번째 행이다. 셀 안의 여백만 빼면 첫 행을 다시 읽게 된다. */
+internal fun damArtworkSourceRect(stage: Int, width: Int, height: Int): IntRect {
+    val scene = stage.coerceIn(0, 5)
+    val cellWidth = width / 3
+    val left = scene % 3 * cellWidth
+    val top = scene / 3 * (height / 2) + if (scene < 3) 170 else 60
+    return IntRect(left, top, left + cellWidth, top + 300)
 }
 
 fun damRepairLabel(stage: Int): String = when (stage) {

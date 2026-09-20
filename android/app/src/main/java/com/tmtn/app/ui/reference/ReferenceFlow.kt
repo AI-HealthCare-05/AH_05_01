@@ -40,13 +40,21 @@ fun ReferenceFlow(
 ) {
     val scope = rememberCoroutineScope()
     val waist = state.waist
+    DisposableEffect(state) { onDispose { state.journal.invalidatePersonal() } }
     LaunchedEffect(Unit) { waist.load() }
     LaunchedEffect(Unit) { state.journal.refresh() }
+    com.tmtn.app.ui.common.OnAppForeground { scope.launch { state.journal.refreshCompanion() } }
+    LaunchedEffect(state.journal.personal) {
+        val result = (state.journal.personal as? com.tmtn.app.ui.journal.JournalLoad.Ready)?.value
+        if (result?.status == "ready") state.journal.refreshHistory()
+        if (result?.reason == "consent_required") state.journal.refreshHistory()
+    }
     LaunchedEffect(Unit) {
         // Returning from an editor keeps the reading stack; the inputs page reloads its own values.
         if (state.step.value in setOf(ReferenceStep.LOADING, ReferenceStep.SUMMARY, ReferenceStep.INELIGIBLE)) state.loadScore()
     }
     LaunchedEffect(state.step.value) {
+        if (state.step.value == ReferenceStep.SUMMARY) state.journal.refreshPersonal()
         if (state.step.value in setOf(ReferenceStep.DETAIL, ReferenceStep.FACTORS)) state.editorial.load()
     }
     var focusedArea by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
@@ -70,15 +78,23 @@ fun ReferenceFlow(
                 refreshing = state.journal.refreshing || state.isLoading.value,
                 onRefresh = {
                     scope.launch { state.journal.refresh() }
+                    scope.launch { state.journal.refreshPersonal() }
                     scope.launch { state.loadScore() }
                     scope.launch { waist.load() }
                 },
-                onGoPickCard = onGoPickCard, onEditInformation = { state.openInputs() },
+                onGoPickCard = onGoPickCard, onEditInformation = { state.journal.invalidatePersonal(); state.openInputs() },
                 onRetryWaist = { scope.launch { waist.load() } },
                 requestedEdition = state.journal.requestedEdition,
                 onEditionOpened = { state.journal.requestedEdition = null },
                 exercises = state.journal.exercises,
                 practiceScore = state.journal.practiceScore,
+                editorial = state.journal.editorial,
+                personal = state.journal.personal,
+                history = state.journal.history,
+                onRetryHistory = { scope.launch { state.journal.refreshHistory() } },
+                onRetryPersonal = { scope.launch { state.journal.refreshPersonal() } },
+                companion = state.journal.companion,
+                onRetryCompanion = { scope.launch { state.journal.refreshCompanion() } },
             )
             ReferenceStep.INELIGIBLE -> ReferenceIneligibleScreen(state, onOpenMyInfo, waist.ui.value)
             ReferenceStep.DETAIL -> ReferenceDetailScreen(state, waist = waist.ui.value,

@@ -116,6 +116,12 @@ class ReferenceState(private val peerScoreEnabled: Boolean = com.tmtn.app.BuildC
         step.value = rootStep
     }
 
+    /** 홈·기록의 일보 바로가기는 이전 상세 페이지나 일간면 대신 주간면을 연다. */
+    fun openWeeklyJournal() {
+        journal.requestedEdition = 0
+        replaceRoot(ReferenceStep.SUMMARY)
+    }
+
     // E01 "자세히 >" -> E02
     fun openDetail() = push(ReferenceStep.DETAIL)
 

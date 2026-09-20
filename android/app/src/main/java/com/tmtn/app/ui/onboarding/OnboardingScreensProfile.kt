@@ -95,7 +95,7 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
             })
             Text("별명은 앱 화면에 표시되는 이름이에요. 비워 두면 이름을 표시해요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
 
-            SectionHeader(title = "생년월 · 필수", hint = "태어난 연도와 월만")
+            SectionHeader(title = "태어난 연·월 · 필수", hint = "태어난 연도와 월만")
             ResponsiveFieldPair(first = { fieldModifier ->
                 TmtnTextField(yearText, { yearText = it.filter(Char::isDigit).take(4) }, "태어난 연도", fieldModifier,
                     keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)

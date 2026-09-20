@@ -1,0 +1,18 @@
+{
+  "diabetes": {
+    "brier_seed_range": 0.0001564417642264948,
+    "calibrator": "platt",
+    "candidate": "random_forest_classifier(max_depth=8,min_samples_leaf=5,max_features=sqrt,class_weight=None)",
+    "family": "random_forest_classifier",
+    "mean_brier_calibrated": 0.10240302670177621,
+    "selection_status": "D0_ONLY_MVP_BASELINE_SELECTED_PRODUCTION_REFIT_REQUIRED"
+  },
+  "hypertension": {
+    "brier_seed_range": 0.00017689440404308754,
+    "calibrator": "platt",
+    "candidate": "random_forest_classifier(max_depth=8,min_samples_leaf=50,max_features=sqrt,class_weight=None)",
+    "family": "random_forest_classifier",
+    "mean_brier_calibrated": 0.12025650660185488,
+    "selection_status": "D0_ONLY_MVP_BASELINE_SELECTED_PRODUCTION_REFIT_REQUIRED"
+  }
+}

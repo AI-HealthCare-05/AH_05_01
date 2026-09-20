@@ -34,7 +34,10 @@ import kotlinx.coroutines.launch
 
 /** Figma B07 · 오늘 완료 (하단 내비 있음 - CardHomeFlow에서 이 단계는 isImmersive=false) */
 @Composable
-fun CompletedScreen(state: CardHomeState) {
+fun CompletedScreen(state: CardHomeState, loadSummary: suspend () -> Unit = {
+    state.checkTodayMemo()
+    state.refreshHomeExerciseProgress()
+}) {
     val colors = LocalTmtnColors.current
     val card = state.revealedCard.value
     // ⚠️ 이 화면은 COMPLETED(완료)뿐 아니라 SKIPPED(중단으로 끝낸 미션)도 같이 씀 —
@@ -43,12 +46,9 @@ fun CompletedScreen(state: CardHomeState) {
 
     // 완료 화면에 들어올 때마다 오늘 회고를 이미 남겼는지 확인 - 남겼으면 "한 줄 남기기"를 숨김.
     // SKIPPED(중단)는 애초에 회고 대상이 아니라서 확인 자체를 안 함.
-    LaunchedEffect(isSkipped) {
-        if (!isSkipped) state.checkTodayMemo()
-        // ⚠️ 2026-09-11 추가 - 틈새 운동 섹션에 쓸 오늘 현황(used/remaining)을 같이 불러옴.
-        // SKIPPED(포기)는 카드 자체가 미완료라 서버가 어차피 card_completed=false를 주므로
-        // 굳이 숨기지 않고 그대로 불러도 안전함(화면에서 섹션 노출만 isSkipped로 막음).
-        if (!isSkipped) state.loadExerciseMissionsToday()
+    LaunchedEffect(card?.challenge_id, isSkipped) {
+        // 카드 다시보기에서는 완료 현황만 조회한다. 진행 중인 운동으로 자동 이동하지 않는다.
+        if (!isSkipped) loadSummary()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -87,10 +87,7 @@ fun CompletedScreen(state: CardHomeState) {
                 }
                 } // Column(surface 대체 박스) 닫기
             } else {
-                // ⚠️ 2026-09-12 반영: V19 C08 - 완료 카드도 RevealScreen과 같은
-                // TarotCardFrame(NoteCard)을 재사용. card.state == "COMPLETED"라서
-                // NoteCard 내부에서 "실천 완료 · 받았어요" 문구로 자동 전환됨.
-                NoteCard(card, state.displayDateLabel())
+                TmtnMissionCard(card, state.displayDateLabel())
             }
             TmtnOutlinedButton(text = "오늘 카드 다시 보기", onClick = { state.step.value = CardHomeStep.REVEALED })
             // 아직 오늘 회고를 안 남겼을 때만 노출 (회고를 남기면 checkTodayMemo/submitRetrospect가
@@ -106,7 +103,7 @@ fun CompletedScreen(state: CardHomeState) {
             // 추가로 노출. SKIPPED(포기)면 애초에 카드가 미완료라 서버가 시작을 막으니
             // 화면에서도 굳이 안 보여줌.
             if (!isSkipped) {
-                val today = state.exerciseMissionsToday.value
+                val today = state.homeExerciseProgress.value?.takeIf { it.serviceDate == state.cardServiceDate.value }
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -114,7 +111,7 @@ fun CompletedScreen(state: CardHomeState) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("틈새 운동", style = TmtnType.title, color = colors.onSurface)
                         if (today != null) {
-                            Text("${today.used} / ${today.limit}회", style = TmtnType.body, color = colors.onSurfaceVariant)
+                            Text("${today.completed} / ${today.completed + today.remaining}회", style = TmtnType.body, color = colors.onSurfaceVariant)
                         }
                     }
                     Text("조금 더 움직이고 싶은 날, 재료를 하나 더.", style = TmtnType.caption, color = colors.onSurfaceVariant)

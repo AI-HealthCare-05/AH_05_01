@@ -277,7 +277,10 @@ class MainActivity : ComponentActivity() {
                                             onResumeSensorTracking = { resumeMissionService() },
                                             onForceSyncSensor = { forceSyncSensorNow() },
                                             onOpenSettings = { openAppSettings() },
-                                            onOpenTuntunScore = { currentTab = MainTab.REFERENCE },
+                                            onOpenTuntunScore = {
+                                                referenceState.openWeeklyJournal()
+                                                currentTab = MainTab.REFERENCE
+                                            },
                                             onOpenDam = { currentTab = MainTab.DAM },
                                             onImmersiveChange = { isImmersive = it },
                                             startAtDeckPick = deckPickOnEntry,
@@ -292,8 +295,7 @@ class MainActivity : ComponentActivity() {
                                             currentTab = MainTab.HOME
                                         },
                                         onOpenJournal = {
-                                            referenceState.journal.requestedEdition = 0
-                                            referenceState.step.value = com.tmtn.app.ui.reference.ReferenceStep.SUMMARY
+                                            referenceState.openWeeklyJournal()
                                             currentTab = MainTab.REFERENCE
                                         },
                                     ) }

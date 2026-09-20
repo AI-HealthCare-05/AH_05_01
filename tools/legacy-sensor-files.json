@@ -1,0 +1,99 @@
+[
+  {
+    "path": "android/app/src/main/java/com/tmtn/app/ui/cardhome/BeaverWalkAnimation.kt",
+    "text": true,
+    "action": "delete",
+    "allowed_sha256": [
+      "f60611784b9c5e5a93b5bf694d7cc74848a6240482b8d0e8f793ea50b7ed2d9a"
+    ]
+  },
+  {
+    "path": "android/app/src/main/java/com/tmtn/app/ui/cardhome/BeaverWalkPose.kt",
+    "text": true,
+    "action": "delete",
+    "allowed_sha256": [
+      "5f29bf16b237e382e996b9c40b4184ff82ef53d39b6e0386c51176b51e1006ad"
+    ]
+  },
+  {
+    "path": "android/app/src/main/java/com/tmtn/app/ui/cardhome/BeaverWalkingRig.kt",
+    "text": true,
+    "action": "delete",
+    "allowed_sha256": [
+      "09486e628f10ea9cb31cdb6659e48a02051c5c00650c38a61bb182409ea75814"
+    ]
+  },
+  {
+    "path": "android/app/src/main/java/com/tmtn/app/ui/common/TarotCardFrame.kt",
+    "text": true,
+    "action": "delete",
+    "allowed_sha256": [
+      "99feaafaf91f51c68876027f9e4859a1b0c8fa2b2c0d303f29807e90c6f75bc5"
+    ]
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_walk_cels.png",
+    "text": false,
+    "action": "delete",
+    "allowed_sha256": [
+      "d7adcab24feb615d04121ff32fc8387ad7e3b5e56469f604f730e72f37ccdd65"
+    ]
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_walk_cycle.png",
+    "text": false,
+    "action": "delete",
+    "allowed_sha256": [
+      "98cc84b057a131b44f8523823834e4952c994d2b570c468f14a113065825598e",
+      "a5fe05c44ed6a77a9e7baa9f55248dbd34d57f62b243c4f263bc98e286309d36"
+    ]
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_walk_rig.png",
+    "text": false,
+    "action": "delete",
+    "allowed_sha256": [
+      "5fc6af736ab8de966ec46179f8bf9f4978c67a460fd9e6ad0718671f029484f1"
+    ]
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/beaver_walking.png",
+    "text": false,
+    "action": "delete",
+    "allowed_sha256": [
+      "6234f20c36b1fb298dcf1bb70f0067efadff45cdf25b961b090e451bd6f87e64"
+    ]
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/tarot_card_back.png",
+    "text": false,
+    "action": "delete",
+    "allowed_sha256": [
+      "c00b9f5bc6801508cf8d5e42ea4b24f4bedf0c1a0dae715359dc3ae44401c4fe"
+    ]
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/tarot_card_front.png",
+    "text": false,
+    "action": "delete",
+    "allowed_sha256": [
+      "476558855f3194c44bab256ba1bbd9c7976182074a3e78e6f69b2ff34cf3e8b3"
+    ]
+  },
+  {
+    "path": "android/app/src/main/res/font/noto_sans_kr_vf.ttf",
+    "text": false,
+    "action": "delete",
+    "allowed_sha256": [
+      "018174e8cdd366aff67c8d366c7dc806a7babbe7f2819fc23b00d59f7b8353d0"
+    ]
+  },
+  {
+    "path": "android/app/src/test/java/com/tmtn/app/ui/cardhome/BeaverWalkPoseTest.kt",
+    "text": true,
+    "action": "delete",
+    "allowed_sha256": [
+      "d175f753c169c21b95e147f8cd2ef36e5aec3e0225ce110419657348838e93bb"
+    ]
+  }
+]

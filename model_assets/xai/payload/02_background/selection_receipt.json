@@ -1,0 +1,170 @@
+{
+  "backgroundVersion": "waist-development-proportional300-seed20260911-v0.1",
+  "rows": 300,
+  "columns": [
+    "age_years",
+    "sex_code",
+    "height_cm",
+    "weight_kg",
+    "leisure_aerobic_moderate_equivalent_min_week",
+    "strength_days_week"
+  ],
+  "sourceRows": 16403,
+  "sourceYears": [
+    2019,
+    2020,
+    2021
+  ],
+  "sourceFile": "development_v0_2/waist/development_2019_2021.csv",
+  "sourceSha256": "f6677ef29ab58d848b9341cf5f22c05cf9f75738b5be8edc67dd1592cebf03ba",
+  "selection": "proportional stratified without replacement; largest remainder quotas; sorted strata; Python random.Random.sample then shuffle",
+  "stratification": [
+    "source_year",
+    "sex_code",
+    "age_band_19_39_40_64_65_plus"
+  ],
+  "seed": 20260911,
+  "samplingWeightsUsed": false,
+  "labelsUsedForSelection": false,
+  "upstreamEligibility": "frozen waist task cohort: waist_target_eligible, observed target, complete six inputs",
+  "isFinalTestData": false,
+  "years2022_2023_2024Read": false,
+  "identifiersExported": false,
+  "labelsExported": false,
+  "synthetic": false,
+  "sourceRowPositionsExported": false,
+  "sourceOrderPreservedInOutput": false,
+  "exportSha256": "62407693c4570a4e0bd15a6a8122cdcad59c4a180a127996b7520bcc97df0fb9",
+  "jointRowsPreserved": true,
+  "featureValuesModified": false,
+  "missingImputation": false,
+  "duplicateFeatureRows": 0,
+  "strata": [
+    {
+      "year": 2019,
+      "sexCode": 1,
+      "ageBand": "19-39",
+      "sourceN": 779,
+      "selectedN": 14
+    },
+    {
+      "year": 2019,
+      "sexCode": 1,
+      "ageBand": "40-64",
+      "sourceN": 1173,
+      "selectedN": 21
+    },
+    {
+      "year": 2019,
+      "sexCode": 1,
+      "ageBand": "65+",
+      "sourceN": 659,
+      "selectedN": 12
+    },
+    {
+      "year": 2019,
+      "sexCode": 2,
+      "ageBand": "19-39",
+      "sourceN": 797,
+      "selectedN": 15
+    },
+    {
+      "year": 2019,
+      "sexCode": 2,
+      "ageBand": "40-64",
+      "sourceN": 1605,
+      "selectedN": 29
+    },
+    {
+      "year": 2019,
+      "sexCode": 2,
+      "ageBand": "65+",
+      "sourceN": 855,
+      "selectedN": 16
+    },
+    {
+      "year": 2020,
+      "sexCode": 1,
+      "ageBand": "19-39",
+      "sourceN": 715,
+      "selectedN": 13
+    },
+    {
+      "year": 2020,
+      "sexCode": 1,
+      "ageBand": "40-64",
+      "sourceN": 1096,
+      "selectedN": 20
+    },
+    {
+      "year": 2020,
+      "sexCode": 1,
+      "ageBand": "65+",
+      "sourceN": 600,
+      "selectedN": 11
+    },
+    {
+      "year": 2020,
+      "sexCode": 2,
+      "ageBand": "19-39",
+      "sourceN": 776,
+      "selectedN": 14
+    },
+    {
+      "year": 2020,
+      "sexCode": 2,
+      "ageBand": "40-64",
+      "sourceN": 1403,
+      "selectedN": 26
+    },
+    {
+      "year": 2020,
+      "sexCode": 2,
+      "ageBand": "65+",
+      "sourceN": 731,
+      "selectedN": 13
+    },
+    {
+      "year": 2021,
+      "sexCode": 1,
+      "ageBand": "19-39",
+      "sourceN": 583,
+      "selectedN": 11
+    },
+    {
+      "year": 2021,
+      "sexCode": 1,
+      "ageBand": "40-64",
+      "sourceN": 1045,
+      "selectedN": 19
+    },
+    {
+      "year": 2021,
+      "sexCode": 1,
+      "ageBand": "65+",
+      "sourceN": 681,
+      "selectedN": 13
+    },
+    {
+      "year": 2021,
+      "sexCode": 2,
+      "ageBand": "19-39",
+      "sourceN": 673,
+      "selectedN": 12
+    },
+    {
+      "year": 2021,
+      "sexCode": 2,
+      "ageBand": "40-64",
+      "sourceN": 1359,
+      "selectedN": 25
+    },
+    {
+      "year": 2021,
+      "sexCode": 2,
+      "ageBand": "65+",
+      "sourceN": 873,
+      "selectedN": 16
+    }
+  ]
+}

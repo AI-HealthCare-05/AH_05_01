@@ -55,6 +55,7 @@ private val Orange = Color(0xFFFF7A1A)
 private val Hairline = Color(0xFFDEDAD1)
 
 /** Native, read-only edition. No HTML bridge, model call, invented rank or new persistence. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JournalScreen(
     weekly: JournalLoad<WeeklyReportResponse>,
@@ -73,7 +74,17 @@ fun JournalScreen(
     exercises: JournalLoad<List<ExerciseMissionRecordItem>>? = null,
     // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 E03) - 초기 습관 반영 안내용.
     practiceScore: JournalLoad<PracticeScoreResponse>? = null,
+    editorial: JournalLoad<JournalEditorialResponse>? = null,
+    personal: JournalLoad<PersonalXaiResponse>? = null,
+    onRetryPersonal: () -> Unit = {},
+    history: JournalLoad<WeeklyXaiHistoryResponse>? = null,
+    onRetryHistory: () -> Unit = {},
+    companion: JournalLoad<CompanionResponse> = JournalLoad.Loading,
+    onRetryCompanion: () -> Unit = {},
 ) {
+    var personalOpen by rememberSaveable { mutableStateOf(false) }
+    var personalDomainTab by rememberSaveable { mutableIntStateOf(0) }
+    val practice = JournalPracticeContext(today, collection, exercises)
     var edition by rememberSaveable { mutableIntStateOf(0) }
     val editionStates = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
     val weeklyScroll = rememberScrollState()
@@ -83,6 +94,7 @@ fun JournalScreen(
     var resultsY by remember { mutableIntStateOf(0) }
     LaunchedEffect(requestedEdition) {
         if (requestedEdition != null) {
+            personalOpen = false
             edition = requestedEdition.coerceIn(0, 1)
             (if (edition == 0) weeklyScroll else dailyScroll).scrollTo(0)
             onEditionOpened()
@@ -96,6 +108,10 @@ fun JournalScreen(
             verticalAlignment = Alignment.CenterVertically) {
             Text("틈튼일보", style = TmtnType.label, color = Ink, modifier = Modifier.weight(1f))
 
+        }
+        TextButton(onClick = { personalOpen = true }, modifier = Modifier.fillMaxWidth().background(Color.White)
+            .heightIn(min = 48.dp).testTag("journal-open-personal")) {
+            Text("내 활동 비교 · 계산 이야기", style = TmtnType.label, color = Forest)
         }
         JournalTabs(listOf("주간면", "일간면"), edition, { edition = it }, Modifier.background(Color.White))
         editionStates.SaveableStateProvider(edition) {
@@ -114,11 +130,12 @@ fun JournalScreen(
                 Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(20.dp), tint = Forest)
             }
             if (edition == 0) {
-                WeeklyCover(report, cards)
+                WeeklyCover(report, cards, companion, onRetryCompanion)
                 SectionTitle("01", "실천한 발자국")
                 WeeklyFootprints(weekly, collection, cards, onRefresh, exercises)
+                JournalWeeklyHistory(history, onRetryHistory)
                 SectionTitle("02", "생활 읽을거리")
-                LivingArticles()
+                if (editorial == null) LivingArticles() else JournalReadingColumns(editorial, onRefresh)
                 SectionTitle("03", "틈튼이의 작은 수리일지")
                 RepairDiary()
             } else {
@@ -143,6 +160,26 @@ fun JournalScreen(
         }
         }
     }
+    if (personalOpen) ModalBottomSheet(
+        onDismissRequest = { personalOpen = false },
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Paper,
+    ) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Text("내 활동과 계산 이야기", style = TmtnType.title, color = Ink, modifier = Modifier.semantics { heading() })
+            val snapshot = verifiedPersonalSnapshot(personal)
+            if (snapshot != null) {
+                verifiedActivityComparison(snapshot)?.let { JournalActivityComparison(it, practice, { personalOpen = false; onGoPickCard() }) }
+                Text("참고점수 계산 살펴보기", style = TmtnType.label, color = Muted)
+                JournalTabs(listOf("당뇨 참고", "고혈압 참고"), personalDomainTab, { personalDomainTab = it })
+                val selected = snapshot.domains.orEmpty().getOrNull(personalDomainTab)
+                if (selected != null) JournalPersonalExplanation(snapshot, selected, showActivity = false, practice = practice)
+            } else JournalPersonalStatus(personal, onRetryPersonal, onEditInformation, practice, { personalOpen = false; onGoPickCard() })
+            JournalRelatedReading(editorial, snapshot?.domains?.getOrNull(personalDomainTab)?.domain, false)
+            TextButton(onClick = { personalOpen = false; onEditInformation() }) { Text("운동 설문 확인하기", style = TmtnType.label, color = Forest) }
+        }
+    }
 }
 
 @Composable
@@ -162,21 +199,50 @@ private fun Masthead(edition: Int, report: WeeklyReportResponse?, serviceDate: S
 }
 
 @Composable
-private fun WeeklyCover(report: WeeklyReportResponse?, cards: List<CardHistoryItem>) {
+private fun WeeklyCover(report: WeeklyReportResponse?, cards: List<CardHistoryItem>,
+    companion: JournalLoad<CompanionResponse>, onRetryCompanion: () -> Unit) {
     val lead = weeklyLead(report, cards)
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Kicker("이번 주의 1면")
         Text(lead.title, style = TmtnType.editorialHeadline, color = Ink,
             modifier = Modifier.semantics { heading() })
-        Row(Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(20.dp)).padding(12.dp),
-            verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(Modifier.weight(2.2f)) {
-                com.tmtn.app.ui.common.DamArtwork(0, description = "작은 빈틈부터 고쳐 가는 댐")
-            }
-            Image(painterResource(R.drawable.beaver_fixing), "댐의 작은 틈을 고치는 틈튼이",
-                Modifier.weight(1f).aspectRatio(1f), contentScale = ContentScale.Fit)
-        }
+        JournalDamScene(companion, onRetryCompanion)
         Text(lead.body, style = TmtnType.body, color = Ink)
+    }
+}
+
+/** 댐 탭과 같은 현재 단계 그림을 보여준다. 이번 주에 달성한 단계로 해석하지 않게 표시한다. */
+@Composable
+internal fun JournalDamScene(companion: JournalLoad<CompanionResponse>, onRetry: () -> Unit) {
+    Column(Modifier.fillMaxWidth().testTag("journal-dam-scene")
+        .background(Color.White, RoundedCornerShape(20.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Kicker("지금의 내 댐")
+        when (companion) {
+            JournalLoad.Loading -> Text("내 댐을 불러오고 있어요.", style = TmtnType.body, color = Muted)
+            JournalLoad.Failed -> JournalNotice("내 댐을 불러오지 못했어요.", "댐 다시 불러오기", onRetry)
+            is JournalLoad.Ready -> {
+                val current = companion.value
+                val stage = current.current_stage
+                if (stage !in 0..5 || current.total_materials < 0) {
+                    JournalNotice("내 댐을 불러오지 못했어요.", "댐 다시 불러오기", onRetry)
+                } else {
+                    Text("${stage}단계 · ${com.tmtn.app.ui.common.damRepairLabel(stage)}",
+                        style = TmtnType.label, color = Forest, modifier = Modifier.testTag("journal-dam-stage"))
+                    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1.6f)) {
+                        val sceneWidth = maxWidth
+                        com.tmtn.app.ui.common.DamArtwork(stage,
+                            modifier = Modifier.align(Alignment.TopCenter).testTag("journal-dam-art"),
+                            description = "현재 내 댐 ${stage}단계")
+                        Image(painterResource(if (stage == 5) R.drawable.beaver_cheer else R.drawable.beaver_fixing),
+                            if (stage == 5) "완성된 댐 앞에서 응원하는 틈튼이" else "물가에서 댐의 작은 틈을 고치는 틈튼이",
+                            Modifier.align(Alignment.BottomStart).offset(x = sceneWidth * .08f)
+                                .size(sceneWidth * .42f).testTag("journal-dam-beaver"), contentScale = ContentScale.Fit)
+                    }
+                    Text("지금까지 모은 재료 ${current.total_materials}개", style = TmtnType.caption, color = Muted)
+                }
+            }
+        }
     }
 }
 
@@ -213,7 +279,7 @@ private fun WeeklyFootprints(weekly: JournalLoad<WeeklyReportResponse>, collecti
                         val status = report.days.firstOrNull { it.date == date.toString() }?.status
                         val isSelected = selected == date.toString()
                         Column(Modifier.width(cellWidth).clip(RoundedCornerShape(12.dp))
-                            .selectable(isSelected, role = Role.Tab) { selected = if (isSelected) null else date.toString() }
+                            .selectable(isSelected, enabled = status != "FUTURE", role = Role.Tab) { selected = if (isSelected) null else date.toString() }
                             .semantics { contentDescription = "${date.monthValue}월 ${date.dayOfMonth}일, ${statusLabel(status)}" }
                             .padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -221,7 +287,7 @@ private fun WeeklyFootprints(weekly: JournalLoad<WeeklyReportResponse>, collecti
                             Box(Modifier.size(dateSize).border(if (isSelected) 2.dp else 1.dp,
                                 if (isSelected) Orange else if (status == "REST") Ink else Color.Transparent, CircleShape)
                                 .padding(3.dp).background(if (status == "COMPLETED") Ink else Paper, CircleShape), contentAlignment = Alignment.Center) {
-                                Text(date.dayOfMonth.toString(), style = TmtnType.label, color = if (status == "COMPLETED") Color.White else Ink)
+                                Text(date.dayOfMonth.toString(), style = TmtnType.label, color = if (status == "COMPLETED") Color.White else if (status == "FUTURE") Muted else Ink)
                             }
                         }
                     }
@@ -569,5 +635,6 @@ private fun statusLabel(status: String?): String = when (status) {
     "COMPLETED" -> "실천"
     "REST" -> "쉼"
     "INCOMPLETE" -> "미완료"
+    "FUTURE" -> "다가올 날"
     else -> "기록 없음"
 }

@@ -225,6 +225,7 @@ fun SensorMeasuringScreen(
     val isFloorsClimbedDetectedNow by SensorDataHolder.isFloorsClimbedDetectedNow.collectAsState()
     val isStepDetectedNow by SensorDataHolder.isStepDetectedNow.collectAsState()
     val isPaused by SensorDataHolder.isSensorPaused.collectAsState()
+    val gpsSignalAcquired by SensorDataHolder.runningSignalAcquired.collectAsState()
 
     val display = computeSensorDisplay(
         execType = card.exec_type,
@@ -259,48 +260,18 @@ fun SensorMeasuringScreen(
         ) {
             Text(card.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-            ) {
-                Text(
-                    when {
-                        !serviceReady -> "측정을 준비하고 있어요"
-                        isPaused -> "일시정지됨"
-                        display.isActive -> "움직임을 확인했어요"
-                        else -> "움직임이 감지되지 않아요"
-                    },
-                    style = TmtnType.label, color = colors.onSurface,
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surface, RoundedCornerShape(24.dp))
-                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(24.dp))
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(display.value, style = TmtnType.display, color = colors.onSurface)
-                Text(display.target, style = TmtnType.body, color = colors.onSurfaceVariant)
-                Box(modifier = Modifier.fillMaxWidth().height(8.dp).semantics {
-                    contentDescription = "오늘 미션 진행"
-                    progressBarRangeInfo = ProgressBarRangeInfo(display.progress, 0f..1f)
-                }) {
-                    Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(colors.outline, RoundedCornerShape(4.dp)))
-                    Box(
-                        modifier = Modifier.fillMaxWidth(display.progress).height(8.dp)
-                            .background(colors.onSurface, RoundedCornerShape(4.dp)),
-                    )
-                }
-                Text(
-                    if (targetReached) "목표를 채웠어요. 완료 버튼을 눌러주세요." else "${(display.progress * 100).toInt()}%",
-                    style = TmtnType.body, color = colors.onSurfaceVariant,
-                )
+            SensorJourneyPanel(
+                display = display,
+                phase = sensorJourneyPhase(display.progress, display.isActive, isPaused, serviceReady,
+                    waitingForGps = card.exec_type == "SENSOR_RUNNING_DISTANCE" && !gpsSignalAcquired),
+                materialName = MATERIAL_NAMES[card.five_element]?.first ?: "재료",
+                progressDescription = "오늘 미션 진행",
+            )
+            if (!display.isActive && !targetReached && !isPaused && serviceReady) {
+                Text(if (card.exec_type == "SENSOR_RUNNING_DISTANCE" && !gpsSignalAcquired)
+                    "하늘이 트인 곳에서 GPS 신호를 기다려 주세요."
+                    else "휴대폰을 바지 주머니에 넣고 편한 속도로 움직여 보세요. 인식된 움직임만 기록돼요.",
+                    style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
             Column(

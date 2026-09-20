@@ -1,0 +1,12 @@
+// 기존 설치 앱과 데이터가 겹치지 않는 UI 검증 전용 빌드.
+gradle.beforeProject { project ->
+    project.plugins.withId('com.android.application') {
+        project.androidComponents.finalizeDsl { dsl ->
+            dsl.buildTypes.debug.applicationIdSuffix = '.challengeqa'
+            dsl.buildTypes.debug.versionNameSuffix = '-challengeqa'
+            dsl.defaultConfig.manifestPlaceholders['tmtnReviewEnabled'] = 'true'
+            dsl.buildTypes.debug.buildConfigField('String', 'TEST_ACCOUNT_EMAIL', '""')
+            dsl.buildTypes.debug.buildConfigField('String', 'TEST_ACCOUNT_PASSWORD', '""')
+        }
+    }
+}

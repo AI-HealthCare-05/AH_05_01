@@ -27,7 +27,7 @@ class ScoreEditorialTest {
         val inputs = ScoreInputsResponse(null, "여성", 164.0, 58.5, "주 0회", 0, null, 15)
         val body = scoreInputFacts(inputs, "physical")
         assertEquals("58.5 kg", body.first { it.label == "몸무게" }.value)
-        assertEquals("미입력", body.first { it.label == "생년월" }.value)
+        assertEquals("미입력", body.first { it.label == "태어난 연·월" }.value)
         val exercise = scoreInputFacts(inputs, "lifestyle")
         assertEquals("0분 / 주", exercise.first { it.label == "가벼운 유산소" }.value)
         assertEquals("미입력", exercise.first { it.label == "적당한 유산소" }.value)

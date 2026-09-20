@@ -1,0 +1,832 @@
+[
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": 100.0,
+      "availableComponentCount": 4,
+      "availableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension",
+        "lifestyle"
+      ],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": true,
+          "bandLabel": "\ubcf4\ud1b5",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": 65.68627450980392,
+          "source": "model_inference"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": 88.15665139849106,
+          "source": "model_inference"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": 88.20936971353362,
+          "source": "model_inference"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": 100.0,
+          "source": "questionnaire"
+        }
+      ],
+      "diabetesScore": 88.15665139849106,
+      "hypertensionScore": 88.20936971353362,
+      "isMock": false,
+      "isPartialScore": false,
+      "lifestyleAvailableSubcomponentCount": 2,
+      "lifestyleScore": 100.0,
+      "lifestyleScoreSource": "questionnaire",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": null,
+      "physicalScore": 65.68627450980392,
+      "recordedDays": 0,
+      "scoreAvailable": true,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": 100.0,
+      "tuntunIndex": 85.51307390545715,
+      "unavailableComponents": []
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {
+        "age_years": 45,
+        "height_cm": 172,
+        "leisure_aerobic_moderate_equivalent_min_week": 150,
+        "sex_code": 1,
+        "strength_days_week": 2,
+        "weight_kg": 75
+      },
+      "pregnancy_status": "nonpregnant",
+      "recorded_days": 0
+    }
+  },
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": 100.0,
+      "availableComponentCount": 4,
+      "availableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension",
+        "lifestyle"
+      ],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": true,
+          "bandLabel": "\uad00\uc2ec",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": 1.28048780487805,
+          "source": "model_inference"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": 74.23047435642441,
+          "source": "model_inference"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": 83.4281119814072,
+          "source": "model_inference"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": 100.0,
+          "source": "questionnaire"
+        }
+      ],
+      "diabetesScore": 74.23047435642441,
+      "hypertensionScore": 83.4281119814072,
+      "isMock": false,
+      "isPartialScore": false,
+      "lifestyleAvailableSubcomponentCount": 2,
+      "lifestyleScore": 100.0,
+      "lifestyleScoreSource": "questionnaire",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": "65\uc138 \uc774\uc0c1\uc5d0\uc11c\ub294 \ubaa8\ub378\uc758 \uc608\uce21 \ubd88\ud655\uc2e4\uc131\uc774 \uc0c1\ub300\uc801\uc73c\ub85c \ud074 \uc218 \uc788\uc5b4 \ucc38\uace0\uc6a9\uc73c\ub85c \ud65c\uc6a9\ud574 \uc8fc\uc138\uc694.",
+      "physicalScore": 1.28048780487805,
+      "recordedDays": 0,
+      "scoreAvailable": true,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": 100.0,
+      "tuntunIndex": 64.73476853567742,
+      "unavailableComponents": []
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {
+        "age_years": 68,
+        "height_cm": 172,
+        "leisure_aerobic_moderate_equivalent_min_week": 150,
+        "sex_code": 2,
+        "strength_days_week": 2,
+        "weight_kg": 75
+      },
+      "pregnancy_status": "nonpregnant",
+      "recorded_days": 0
+    }
+  },
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": 100.0,
+      "availableComponentCount": 4,
+      "availableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension",
+        "lifestyle"
+      ],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": true,
+          "bandLabel": "\uad00\uc2ec",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": 7.290056671818645,
+          "source": "model_inference"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": 74.45728440169331,
+          "source": "model_inference"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": 81.7866203770147,
+          "source": "model_inference"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": 100.0,
+          "source": "questionnaire"
+        }
+      ],
+      "diabetesScore": 74.45728440169331,
+      "hypertensionScore": 81.7866203770147,
+      "isMock": false,
+      "isPartialScore": false,
+      "lifestyleAvailableSubcomponentCount": 2,
+      "lifestyleScore": 100.0,
+      "lifestyleScoreSource": "questionnaire",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": "65\uc138 \uc774\uc0c1\uc5d0\uc11c\ub294 \ubaa8\ub378\uc758 \uc608\uce21 \ubd88\ud655\uc2e4\uc131\uc774 \uc0c1\ub300\uc801\uc73c\ub85c \ud074 \uc218 \uc788\uc5b4 \ucc38\uace0\uc6a9\uc73c\ub85c \ud65c\uc6a9\ud574 \uc8fc\uc138\uc694.",
+      "physicalScore": 7.290056671818645,
+      "recordedDays": 0,
+      "scoreAvailable": true,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": 100.0,
+      "tuntunIndex": 65.88349036263166,
+      "unavailableComponents": []
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {
+        "age_years": 90,
+        "height_cm": 172,
+        "leisure_aerobic_moderate_equivalent_min_week": 150,
+        "sex_code": 1,
+        "strength_days_week": 2,
+        "weight_kg": 75
+      },
+      "pregnancy_status": "nonpregnant",
+      "recorded_days": 0
+    }
+  },
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": 0.0,
+      "availableComponentCount": 1,
+      "availableComponents": [
+        "lifestyle"
+      ],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uad00\uc2ec",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": 0.0,
+          "source": "questionnaire"
+        }
+      ],
+      "diabetesScore": null,
+      "hypertensionScore": null,
+      "isMock": false,
+      "isPartialScore": true,
+      "lifestyleAvailableSubcomponentCount": 2,
+      "lifestyleScore": 0.0,
+      "lifestyleScoreSource": "questionnaire",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": null,
+      "physicalScore": null,
+      "recordedDays": 0,
+      "scoreAvailable": true,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": 0.0,
+      "tuntunIndex": 0.0,
+      "unavailableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension"
+      ]
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {
+        "leisure_aerobic_moderate_equivalent_min_week": 0,
+        "strength_days_week": 0
+      },
+      "pregnancy_status": "nonpregnant",
+      "recorded_days": 0
+    }
+  },
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": 100.0,
+      "availableComponentCount": 1,
+      "availableComponents": [
+        "lifestyle"
+      ],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": 100.0,
+          "source": "questionnaire"
+        }
+      ],
+      "diabetesScore": null,
+      "hypertensionScore": null,
+      "isMock": false,
+      "isPartialScore": true,
+      "lifestyleAvailableSubcomponentCount": 1,
+      "lifestyleScore": 100.0,
+      "lifestyleScoreSource": "questionnaire",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": null,
+      "physicalScore": null,
+      "recordedDays": 0,
+      "scoreAvailable": true,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": null,
+      "tuntunIndex": 100.0,
+      "unavailableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension"
+      ]
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {
+        "leisure_aerobic_moderate_equivalent_min_week": 150
+      },
+      "pregnancy_status": "nonpregnant",
+      "recorded_days": 0
+    }
+  },
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": null,
+      "availableComponentCount": 0,
+      "availableComponents": [],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": null,
+          "source": "unavailable"
+        }
+      ],
+      "diabetesScore": null,
+      "hypertensionScore": null,
+      "isMock": false,
+      "isPartialScore": true,
+      "lifestyleAvailableSubcomponentCount": 0,
+      "lifestyleScore": null,
+      "lifestyleScoreSource": "unavailable",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": null,
+      "physicalScore": null,
+      "recordedDays": 0,
+      "scoreAvailable": false,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": null,
+      "tuntunIndex": null,
+      "unavailableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension",
+        "lifestyle"
+      ]
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {},
+      "pregnancy_status": "nonpregnant",
+      "recorded_days": 0
+    }
+  },
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": 100.0,
+      "availableComponentCount": 1,
+      "availableComponents": [
+        "lifestyle"
+      ],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": 100.0,
+          "source": "questionnaire"
+        }
+      ],
+      "diabetesScore": null,
+      "hypertensionScore": null,
+      "isMock": false,
+      "isPartialScore": true,
+      "lifestyleAvailableSubcomponentCount": 2,
+      "lifestyleScore": 100.0,
+      "lifestyleScoreSource": "questionnaire",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": null,
+      "physicalScore": null,
+      "recordedDays": 0,
+      "scoreAvailable": true,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": 100.0,
+      "tuntunIndex": 100.0,
+      "unavailableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension"
+      ]
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {
+        "age_years": 45,
+        "height_cm": null,
+        "leisure_aerobic_moderate_equivalent_min_week": 150,
+        "sex_code": 1,
+        "strength_days_week": 2,
+        "weight_kg": 75
+      },
+      "pregnancy_status": "nonpregnant",
+      "recorded_days": 0
+    }
+  },
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": 100.0,
+      "availableComponentCount": 1,
+      "availableComponents": [
+        "lifestyle"
+      ],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": 100.0,
+          "source": "questionnaire"
+        }
+      ],
+      "diabetesScore": null,
+      "hypertensionScore": null,
+      "isMock": false,
+      "isPartialScore": true,
+      "lifestyleAvailableSubcomponentCount": 1,
+      "lifestyleScore": 100.0,
+      "lifestyleScoreSource": "questionnaire",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": null,
+      "physicalScore": null,
+      "recordedDays": 0,
+      "scoreAvailable": true,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": null,
+      "tuntunIndex": 100.0,
+      "unavailableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension"
+      ]
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {
+        "age_years": 45,
+        "height_cm": 172,
+        "leisure_aerobic_moderate_equivalent_min_week": 150,
+        "sex_code": 1,
+        "strength_days_week": null,
+        "weight_kg": 75
+      },
+      "pregnancy_status": "nonpregnant",
+      "recorded_days": 0
+    }
+  },
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": 100.0,
+      "availableComponentCount": 1,
+      "availableComponents": [
+        "lifestyle"
+      ],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": 100.0,
+          "source": "questionnaire"
+        }
+      ],
+      "diabetesScore": null,
+      "hypertensionScore": null,
+      "isMock": false,
+      "isPartialScore": true,
+      "lifestyleAvailableSubcomponentCount": 2,
+      "lifestyleScore": 100.0,
+      "lifestyleScoreSource": "questionnaire",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": null,
+      "physicalScore": null,
+      "recordedDays": 0,
+      "scoreAvailable": true,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": 100.0,
+      "tuntunIndex": 100.0,
+      "unavailableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension"
+      ]
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {
+        "age_years": 45,
+        "height_cm": 172,
+        "leisure_aerobic_moderate_equivalent_min_week": 150,
+        "sex_code": 1,
+        "strength_days_week": 2,
+        "weight_kg": 75
+      },
+      "pregnancy_status": "pregnant",
+      "recorded_days": 0
+    }
+  },
+  {
+    "expected": {
+      "activityWindowEnd": "2026-09-04",
+      "activityWindowStart": "2026-08-29",
+      "aerobicScore": 100.0,
+      "availableComponentCount": 1,
+      "availableComponents": [
+        "lifestyle"
+      ],
+      "calibrationVersion": "d0-platt42_waist-empirical42-v0.1",
+      "componentScores": [
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "physical",
+          "label": "\uc2e0\uccb4",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "diabetes",
+          "label": "\ub2f9\ub1e8",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": false,
+          "bandLabel": null,
+          "guidance": "\uc720\ud6a8\ud55c \uc785\ub825\uc774 \ubd80\uc871\ud558\uac70\ub098 \uc9c0\uc6d0 \ub300\uc0c1\uc774 \uc544\ub2c8\uc5b4\uc11c \uc774\ubc88 \uc885\ud569\uc810\uc218\uc5d0\uc11c \uc81c\uc678\ud588\uc2b5\ub2c8\ub2e4.",
+          "key": "hypertension",
+          "label": "\uace0\ud608\uc555",
+          "score": null,
+          "source": "unavailable"
+        },
+        {
+          "available": true,
+          "bandLabel": "\uc591\ud638",
+          "guidance": "\uc785\ub825\u00b7\uc0dd\ud65c\uc2b5\uad00\uc744 \ud568\uaed8 \uc0b4\ud3b4\ubcf4\ub294 \ucc38\uace0 \uc810\uc218\uc785\ub2c8\ub2e4.",
+          "key": "lifestyle",
+          "label": "\uc0dd\ud65c\uc2b5\uad00",
+          "score": 100.0,
+          "source": "questionnaire"
+        }
+      ],
+      "diabetesScore": null,
+      "hypertensionScore": null,
+      "isMock": false,
+      "isPartialScore": true,
+      "lifestyleAvailableSubcomponentCount": 2,
+      "lifestyleScore": 100.0,
+      "lifestyleScoreSource": "questionnaire",
+      "missionIntegrationStatus": "pending_evidence",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "notice": "\ud2bc\ud2bc\uc9c0\uc218\ub294 \uc785\ub825 \uc815\ubcf4\uc640 \ud1b5\uacc4 \ubaa8\ub378\uc744 \ubc14\ud0d5\uc73c\ub85c \uc0b0\ucd9c\ud55c \uc0dd\ud65c\uc2b5\uad00 \uac1c\uc120 \ucc38\uace0\uc6a9 \ubcf4\uc815 \uc810\uc218\uc774\uba70, \uc758\ub8cc\uc9c4\uc758 \uc9c4\ub2e8\uc774\ub098 \uce58\ub8cc\ub97c \ub300\uc2e0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+      "olderAdultNotice": null,
+      "physicalScore": null,
+      "recordedDays": 0,
+      "scoreAvailable": true,
+      "scoreContractVersion": "v0.2-empirical-cdf-owner-approved",
+      "strengthScore": 100.0,
+      "tuntunIndex": 100.0,
+      "unavailableComponents": [
+        "physical",
+        "diabetes",
+        "hypertension"
+      ]
+    },
+    "request": {
+      "activity_window_end": "2026-09-04",
+      "features": {
+        "age_years": 45,
+        "height_cm": 172,
+        "leisure_aerobic_moderate_equivalent_min_week": 150,
+        "sex_code": 1,
+        "strength_days_week": 2,
+        "weight_kg": 75
+      },
+      "pregnancy_status": "unknown",
+      "recorded_days": 0
+    }
+  }
+]

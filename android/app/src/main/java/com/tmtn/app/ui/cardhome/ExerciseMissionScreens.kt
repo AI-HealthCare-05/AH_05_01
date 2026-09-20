@@ -1,6 +1,7 @@
 package com.tmtn.app.ui.cardhome
 
 import android.content.Intent
+import android.content.Context
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.background
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -31,12 +33,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.tmtn.app.network.model.ExerciseMissionOption
-import com.tmtn.app.ui.common.ModelMissionBadge
+import com.tmtn.app.ui.common.SensorMissionBadge
+import com.tmtn.app.ui.common.isSensorMissionExecType
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.tmtn.app.network.AccountKey
+import com.tmtn.app.sensor.SensorDataHolder
+import com.tmtn.app.R
 import com.tmtn.app.ui.common.hasLocationPermission
 import com.tmtn.app.ui.common.hasRequiredSensor
 import com.tmtn.app.ui.common.isGpsProviderEnabled
 import com.tmtn.app.ui.common.hasPreciseLocationPermission
-import com.tmtn.app.ui.common.isModelRecognitionExecType
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.onboarding.TmtnTextButton
 import com.tmtn.app.ui.onboarding.TmtnTopBar
@@ -45,6 +52,9 @@ import com.tmtn.app.ui.theme.TmtnType
 import com.tmtn.app.ui.theme.tmtnClickable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * ⚠️ 2026-09-12 추가 - 지현님 팀 점검 결과(01_기존미션_타이머형_점검결과.md) 반영:
@@ -59,20 +69,43 @@ import kotlinx.coroutines.launch
 fun ExerciseMissionListScreen(state: CardHomeState, scope: CoroutineScope, loadToday: suspend () -> Unit = { state.loadExerciseMissionsToday() }) {
     val colors = LocalTmtnColors.current
     val today = state.exerciseMissionsToday.value
+    val context = LocalContext.current
+    val preferences = remember(context) { context.getSharedPreferences("daily_exercise_selection", Context.MODE_PRIVATE) }
+    val accountKey = AccountKey.current().orEmpty()
+    var date by remember { mutableStateOf(LocalDate.now(ZoneId.of("Asia/Seoul"))) }
+    var dailyOptions by remember { mutableStateOf(emptyList<ExerciseMissionOption>()) }
 
     LaunchedEffect(Unit) { loadToday() }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val now = LocalDate.now(ZoneId.of("Asia/Seoul"))
+            if (now != date) {
+                date = now
+                loadToday()
+            }
+            delay(30_000)
+        }
+    }
+    LaunchedEffect(today?.options, date, accountKey) {
+        dailyOptions = loadDailyExercises(preferences, today?.options.orEmpty(), date, accountKey)
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "틈새 운동", onBack = { state.step.value = CardHomeStep.COMPLETED })
+        TmtnTopBar(title = "틈새 운동", onBack = { state.step.value = state.extraListOrigin.value })
         Column(
             modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("조금 더 움직여볼까요?", style = TmtnType.title, color = colors.onSurface, modifier = Modifier.semantics { heading() })
+            Text("비버와 한 번 더,\n오늘의 틈새 운동", style = TmtnType.title, color = colors.onSurface, modifier = Modifier.semantics { heading() })
 
             if (today == null) {
-                Text("불러오는 중이에요...", style = TmtnType.body, color = colors.onSurfaceVariant)
+                Text(state.exerciseListError.value ?: "불러오는 중이에요...", style = TmtnType.body, color = colors.onSurfaceVariant)
+                if (state.exerciseListError.value != null) TmtnTextButton("다시 불러오기", { scope.launch { loadToday() } })
                 return@Column
+            }
+            state.exerciseListError.value?.let { message ->
+                Text(message, style = TmtnType.caption, color = colors.error)
+                TmtnTextButton("다시 불러오기", { scope.launch { loadToday() } })
             }
             if (!today.card_completed) {
                 Column(
@@ -86,7 +119,7 @@ fun ExerciseMissionListScreen(state: CardHomeState, scope: CoroutineScope, loadT
             }
 
             Text(
-                "추가 운동은 하루 2회까지 재료를 받을 수 있어요.",
+                "오늘 골라 둔 ${dailyOptions.size}개예요. 날마다 다시 골라 드려요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,
             )
             Column(
@@ -94,10 +127,14 @@ fun ExerciseMissionListScreen(state: CardHomeState, scope: CoroutineScope, loadT
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text("오늘 받을 수 있는 재료 ${today.remaining}개", style = TmtnType.label, color = colors.onSurface)
-                Text("운동 하나를 마치면 해당 재료 1개를 받아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text("운동마다 재료 1개 · 하루 최대 ${today.limit}회", style = TmtnType.caption, color = colors.onSurfaceVariant)
             }
 
-            today.options.forEach { option ->
+            if (today.options.isEmpty()) {
+                Text("지금 고를 수 있는 운동이 없어요. 잠시 후 다시 확인해 주세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+                TmtnTextButton("다시 불러오기", { scope.launch { loadToday() } })
+            }
+            dailyOptions.forEach { option ->
                 ExerciseMissionOptionCard(
                     option = option,
                     enabled = today.remaining > 0 && !option.already_completed_today,
@@ -116,7 +153,7 @@ fun ExerciseMissionListScreen(state: CardHomeState, scope: CoroutineScope, loadT
 @Composable
 internal fun ExerciseMissionOptionCard(option: ExerciseMissionOption, enabled: Boolean, onClick: () -> Unit) {
     val colors = LocalTmtnColors.current
-    val isModel = isModelRecognitionExecType(option.exec_type)
+    val isSensor = isSensorMissionExecType(option.exec_type)
     Column(
         modifier = Modifier.fillMaxWidth()
             .testTag("extra-mission-${option.catalog_entry_id}")
@@ -135,7 +172,8 @@ internal fun ExerciseMissionOptionCard(option: ExerciseMissionOption, enabled: B
             if (option.already_completed_today) "오늘 이미 완료했어요" else "${option.target_value}${option.unit} · ${option.material_name} 1개",
             style = TmtnType.caption, color = colors.onSurfaceVariant,
         )
-        Text(if (isModel) "움직임 인식" else "직접 확인", style = TmtnType.navigationLabel, color = colors.onSurfaceVariant)
+        if (isSensor) SensorMissionBadge()
+        else Text("직접 확인", style = TmtnType.navigationLabel, color = colors.onSurfaceVariant)
     }
 }
 
@@ -152,7 +190,7 @@ fun ExerciseMissionDetailScreen(
     val colors = LocalTmtnColors.current
     val option = state.selectedExerciseOption.value ?: return
     val today = state.exerciseMissionsToday.value
-    val isModel = isModelRecognitionExecType(option.exec_type)
+    val isModel = isSensorMissionExecType(option.exec_type)
     val context = LocalContext.current
     val sensorAvailable = hasRequiredSensor(context, option.exec_type)
 
@@ -190,7 +228,7 @@ fun ExerciseMissionDetailScreen(
             modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (isModel) ModelMissionBadge()
+            if (isModel) SensorMissionBadge()
             Text(option.title, style = TmtnType.sectionHeading, color = colors.onSurface)
             Text("오늘 남은 추가 보상 ${today?.remaining ?: 0} / ${today?.limit ?: 2}회", style = TmtnType.body, color = colors.onSurfaceVariant)
 
@@ -519,6 +557,13 @@ fun ExerciseMissionRunningScreen(
     val liveFloorsClimbed by com.tmtn.app.sensor.SensorDataHolder.floorsClimbed.collectAsState()
     // ⚠️ 2026-09-17 추가(QA Q06) - 권한·GPS는 켜져 있지만 아직 첫 위치 신호을 못 받은 구간을 구분해서 안내.
     val runningSignalAcquired by com.tmtn.app.sensor.SensorDataHolder.runningSignalAcquired.collectAsState()
+    val walkingDetected by SensorDataHolder.isWalkingDetectedNow.collectAsState()
+    val runningDetected by SensorDataHolder.isRunningDetectedNow.collectAsState()
+    val stepsDetected by SensorDataHolder.isStepDetectedNow.collectAsState()
+    val stairsDetected by SensorDataHolder.isFloorsClimbedDetectedNow.collectAsState()
+    val serviceReady by SensorDataHolder.isServiceRunning.collectAsState()
+    val serviceError by SensorDataHolder.serviceError.collectAsState()
+    val isPaused = session.state == "PAUSED"
 
     // 카운트형(제자리걸음/거리/계단)만 완료 요청에 실측값을 실어 보냄 - 시간형(걷기·달리기 시간)은
     // 서버가 세션 시작 시각(started_at)부터 자체 계산하므로 클라이언트가 값을 안 보내도 됨
@@ -539,14 +584,26 @@ fun ExerciseMissionRunningScreen(
         isWalkingDuration || isRunningDuration -> session.target_duration_seconds != null && currentSeconds >= session.target_duration_seconds
         else -> true // CHECK/TIMER, 또는 센서 없어서 "직접 확인"으로 전환된 경우 - 항상 완료 가능
     }
+    val displayCount = if (isPaused) session.accumulated_count else currentCount
+    val displaySeconds = if (isPaused) session.accumulated_duration_seconds else currentSeconds
+    val journeyDisplay = computeSensorDisplay(
+        execType = execType, targetValue = session.target_count ?: 0,
+        durationTargetSeconds = session.target_duration_seconds ?: 0,
+        steps = displayCount, stepsInPlace = displayCount, floors = displayCount,
+        distanceM = displayCount.toFloat(), runningSeconds = displaySeconds, walkingSeconds = displaySeconds,
+        isRunningDetectedNow = runningDetected, isWalkingDetectedNow = walkingDetected,
+        isFloorsClimbedDetectedNow = stairsDetected, isStepDetectedNow = stepsDetected,
+    )
+    val journeyPhase = sensorJourneyPhase(journeyDisplay.progress, journeyDisplay.isActive, isPaused,
+        serviceReady, serviceError, isRunningDistance && !runningSignalAcquired)
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TmtnTopBar(title = "틈새 운동", onBack = { state.errorMessage.value = null; state.step.value = CardHomeStep.EXTRA_DETAIL })
+        TmtnTopBar(title = "틈새 운동", onBack = { state.errorMessage.value = null; state.step.value = CardHomeStep.HOME })
         Column(
             modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (isModelRecognitionExecType(execType)) ModelMissionBadge()
+            if (isSensorMissionExecType(execType)) SensorMissionBadge()
             Text(session.title, style = TmtnType.sectionHeading, color = colors.onSurface)
 
             when {
@@ -571,34 +628,19 @@ fun ExerciseMissionRunningScreen(
                 !isRealSensor && execType != "TIMER" ->
                     // ⚠️ 원래는 센서형인데 이 기기에 필요한 센서가 없어서 "직접 확인"으로 전환됨.
                     Text("이 기기에서는 자동으로 세어지지 않아요. 운동을 마친 뒤 완료를 눌러 주세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
-                isStepInPlace || isRunningDistance || isStairs ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            session.target_count?.let { "$currentCount / $it" } ?: "$currentCount",
-                            style = TmtnType.display, color = colors.onSurface,
-                        )
-                        Text(
-                            if (targetReached) "목표를 채웠어요! 완료를 눌러 주세요."
-                            else if (isStepInPlace) "제자리에서 걸으면 걸음이 세어져요."
-                            else if (isStairs) "계단을 오르면 칸 수가 세어져요."
-                            // QA Q06 - 권한·GPS는 켜져 있는데 아직 첫 신호를 못 받은 구간은
-                            // "이동해도 안 늘어나는 버그"처럼 보이던 문제를 구분해서 안내.
-                            else if (isRunningDistance && !runningSignalAcquired) "GPS 신호를 찾는 중이에요. 하늘이 트인 곳으로 이동해 보세요."
-                            else "이동하는 동안만 거리가 늘어나요.",
-                            style = TmtnType.caption, color = colors.onSurfaceVariant,
-                        )
-                    }
-                isWalkingDuration || isRunningDuration ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            session.target_duration_seconds?.let { "${currentSeconds}초 / ${it}초" } ?: "${currentSeconds}초",
-                            style = TmtnType.display, color = colors.onSurface,
-                        )
-                        Text(
-                            if (targetReached) "목표를 채웠어요! 완료를 눌러 주세요." else "멈추면 자동으로 기다리고, 다시 움직이면 이어서 측정해요.",
-                            style = TmtnType.caption, color = colors.onSurfaceVariant,
-                        )
-                    }
+                isRealSensor -> {
+                    SensorJourneyPanel(journeyDisplay, journeyPhase, session.material_name, "틈새 운동 진행")
+                    Text(
+                        when (journeyPhase) {
+                            SensorJourneyPhase.SIGNAL -> "하늘이 트인 곳에서 잠시 기다려 주세요."
+                            SensorJourneyPhase.WAITING -> "휴대폰을 바지 주머니에 넣고 편한 속도로 움직여 보세요. 인식된 움직임만 기록돼요."
+                            SensorJourneyPhase.PAUSED -> "이어서 하기를 누르면 지금 기록에서 다시 시작해요."
+                            SensorJourneyPhase.COMPLETE -> "완료를 눌러 기록과 재료를 저장해 주세요."
+                            else -> "인식이 잠시 끊겨도 지금까지 쌓인 기록은 유지돼요."
+                        },
+                        style = TmtnType.caption, color = colors.onSurfaceVariant,
+                    )
+                }
                 else ->
                     Text(
                         session.target_count?.let { "${session.accumulated_count} / $it" }
@@ -612,14 +654,12 @@ fun ExerciseMissionRunningScreen(
             // 남긴 오류(MissionSensorService의 SecurityException 처리)가 지금까지 진행
             // 화면 어디에서도 구독되지 않고 있었음 - 측정이 조용히 실패해도 사용자는
             // 이유를 알 수 없었음.
-            val serviceError by com.tmtn.app.sensor.SensorDataHolder.serviceError.collectAsState()
             serviceError?.let { message ->
                 Text(message, style = TmtnType.caption, color = colors.error)
             }
 
             // ⚠️ 2026-09-17 추가(QA 리뷰 #3) - PAUSED 상태에선 완료할 수 없고, 명시적으로
             // "이어하기"를 눌러야 다시 측정이 시작된다(자동 재개 금지 - 리뷰 요구사항).
-            val isPaused = session.state == "PAUSED"
 
             // ⚠️ 2026-09-17 추가(QA 리뷰 #3) - 세션 완료가 확정된 순간(보상 결과가
             // 채워짐) 이 화면이 아직 떠 있다면 로컬 측정도 바로 멈춘다. 화면이 이미
@@ -667,7 +707,7 @@ fun ExerciseMissionRunningScreen(
                 else ->
                     TmtnPrimaryButton(
                         text = if (isRealSensor) "완료" else "완료 확인",
-                        enabled = (!isRealSensor || targetReached) && saveState != ExerciseSaveState.SAVING,
+                        enabled = !blockedByMissingPermission && (!isRealSensor || targetReached) && saveState != ExerciseSaveState.SAVING,
                         loading = saveState == ExerciseSaveState.SAVING,
                         onClick = submitCompletion,
                     )
@@ -729,10 +769,11 @@ fun ExerciseMissionRewardScreen(state: CardHomeState, onOpenDam: () -> Unit = {}
     Column(modifier = Modifier.fillMaxSize()) {
         TmtnTopBar(title = "틈새 운동 완료", onBack = { })
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("댐에 한 조각,\n더해졌어요.", style = TmtnType.headline, color = colors.onSurface)
+            Image(painterResource(R.drawable.beaver_sensor_complete), "목표 달성을 축하하는 틈튼 비버", Modifier.fillMaxWidth().size(144.dp))
             Text("${result.material_name} +1", style = TmtnType.display, color = colors.onSurface)
 
             Column(

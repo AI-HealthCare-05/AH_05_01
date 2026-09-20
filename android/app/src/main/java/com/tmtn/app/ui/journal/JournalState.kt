@@ -10,6 +10,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.Response
 
@@ -19,13 +20,21 @@ sealed interface JournalLoad<out T> {
     data class Ready<T>(val value: T) : JournalLoad<T>
 }
 
-data class JournalToday(val window: CardWindowResponse, val card: CardRevealResponse?)
+data class JournalToday(val window: CardWindowResponse, val card: CardRevealResponse?,
+    val extras: JournalLoad<ExerciseMissionsTodayResponse>? = null)
 
 internal val JournalToday.challengeState: String?
     get() = card?.state ?: window.challenge_state
 
 /** Uses the existing read endpoints only. Health results never enter local preferences. */
-class JournalState {
+class JournalState(
+    private val personalRequest: suspend () -> Response<PersonalXaiResponse> = { ApiClient.tuntunScoreApi.getPersonalXai() },
+    private val personalPause: suspend (Long) -> Unit = { delay(it) },
+    private val companionRequest: suspend () -> Response<CompanionResponse> = { ApiClient.cardHomeApi.getCompanionStatus() },
+) {
+    var companion by mutableStateOf<JournalLoad<CompanionResponse>>(JournalLoad.Loading)
+        private set
+    private var companionGeneration = 0
     var requestedEdition by mutableStateOf<Int?>(null)
     var weekly by mutableStateOf<JournalLoad<WeeklyReportResponse>>(JournalLoad.Loading)
         private set
@@ -35,20 +44,90 @@ class JournalState {
         private set
     var exercises by mutableStateOf<JournalLoad<List<ExerciseMissionRecordItem>>?>(null)
         private set
-    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 E03 "초기 습관의 반영 안내") - 가입 설문
-    // 초기 습관이 지수 계산에 반영됐는지 보여주기 위함. 계산 성공 여부(composite_score)와
-    // 종합 산식 버전(policy_version)을 그대로 노출 - 이 화면에서 산식·배점을 새로
-    // 정하지 않는다.
+    var editorial by mutableStateOf<JournalLoad<JournalEditorialResponse>?>(JournalLoad.Loading)
+        private set
+    var personal by mutableStateOf<JournalLoad<PersonalXaiResponse>?>(null)
+        private set
+    var history by mutableStateOf<JournalLoad<WeeklyXaiHistoryResponse>?>(null)
+        private set
+    private var historyGeneration = 0
+    private var personalGeneration = 0
     var practiceScore by mutableStateOf<JournalLoad<PracticeScoreResponse>>(JournalLoad.Loading)
         private set
     var refreshing by mutableStateOf(false)
         private set
 
+    fun invalidatePersonal() {
+        ++personalGeneration
+        personal = null
+        ++historyGeneration
+        history = null
+    }
+
+    suspend fun refreshHistory() {
+        val generation = ++historyGeneration
+        history = JournalLoad.Loading
+        val result = read { ApiClient.tuntunScoreApi.getWeeklyXaiHistory() }
+        if (generation == historyGeneration) history = result
+    }
+
+    /** 댐은 주간 기록과 별개인 현재 누적 상태다. 이전 응답이나 임의의 0단계로 대체하지 않는다. */
+    suspend fun refreshCompanion() {
+        val generation = ++companionGeneration
+        companion = JournalLoad.Loading
+        val result = read(companionRequest)
+        if (generation != companionGeneration) return
+        companion = if (result is JournalLoad.Ready &&
+            (result.value.current_stage !in 0..5 || result.value.total_materials < 0)) JournalLoad.Failed else result
+    }
+
+    private fun personalFailure(generation: Int, retainCurrentComparison: Boolean) {
+        if (generation != personalGeneration) return
+        val comparison = if (retainCurrentComparison) verifiedActivityData((personal as? JournalLoad.Ready)?.value?.activity_comparison) else null
+        personal = if (comparison == null) JournalLoad.Failed else JournalLoad.Ready(
+            PersonalXaiResponse(status = "unavailable", reason = "calculation_failed", activity_comparison = comparison)
+        )
+    }
+
+    /** Polling never blocks newspaper records. A new refresh invalidates the old response. */
+    suspend fun refreshPersonal() {
+        val generation = ++personalGeneration
+        personal = JournalLoad.Loading
+        try {
+            repeat(40) {
+                val response = personalRequest()
+                if (generation != personalGeneration) return
+                if (response.code() in listOf(404, 501)) { personal = null; return }
+                val body = response.body()?.takeIf { response.isSuccessful }
+                if (body == null) { personalFailure(generation, response.code() >= 500 || response.code() == 429); return }
+                if (body.status != "pending") { personal = JournalLoad.Ready(body); return }
+                // The precomputed survey comparison can be read while SHAP is running.
+                if (body.activity_comparison != null) personal = JournalLoad.Ready(body)
+                personalPause((body.retry_after_seconds ?: 3).coerceIn(2, 10) * 1000L)
+            }
+            personalFailure(generation, true)
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { personalFailure(generation, true) }
+    }
+
     suspend fun refresh() {
         if (refreshing) return
         refreshing = true
+        editorial = JournalLoad.Loading
         try {
             coroutineScope {
+                launch { refreshCompanion() }
+                launch { refreshHistory() }
+                launch { practiceScore = read { ApiClient.practiceScoreApi.getPracticeScore() } }
+                launch {
+                    editorial = try {
+                        val response = ApiClient.tuntunScoreApi.getJournalEditorial()
+                        if (response.code() in listOf(404, 501)) null
+                        else response.body()?.takeIf { response.isSuccessful }?.let { JournalLoad.Ready(it) }
+                            ?: JournalLoad.Failed
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { JournalLoad.Failed }
+                }
                 launch {
                     weekly = read { ApiClient.recordApi.getWeeklyReport() }
                     val report = (weekly as? JournalLoad.Ready)?.value
@@ -64,9 +143,6 @@ class JournalState {
                     }
                 }
                 launch {
-                    practiceScore = read { ApiClient.practiceScoreApi.getPracticeScore() }
-                }
-                launch {
                     today = try {
                         val response = ApiClient.cardHomeApi.getTodayCards()
                         val window = response.body().takeIf { response.isSuccessful }
@@ -75,7 +151,9 @@ class JournalState {
                                 val reveal = ApiClient.cardHomeApi.revealChallenge(id)
                                 reveal.body().takeIf { reveal.isSuccessful }
                             }
-                            JournalLoad.Ready(JournalToday(window, card))
+                            val extras = if ((card?.state ?: window.challenge_state) == "COMPLETED" && !window.is_rest_day)
+                                read { ApiClient.exerciseMissionApi.getToday() } else null
+                            JournalLoad.Ready(JournalToday(window, card, extras))
                         }
                     } catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { JournalLoad.Failed }

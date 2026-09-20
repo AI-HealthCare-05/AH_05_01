@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
@@ -9,7 +10,8 @@ from app.dtos.base import BaseSerializerModel
 class ExerciseHabitsRequest(BaseModel):
     """A08 화면 그대로: 근력운동 주당 횟수+강도, 유산소(저/중/고강도) 주당 분."""
 
-    strength_weekly_count: int = Field(ge=0, le=5, description="0=안 함, 5=주 5회 이상")
+    strength_weekly_count: int = Field(ge=0, le=5, description="빈도 0~5. 단위는 strength_frequency_unit으로 구분")
+    strength_frequency_unit: Literal["days", "sessions"] | None = None
     strength_intensity: str | None = Field(None, description="LIGHT / MODERATE / HARD")
     aerobic_low_minutes: int = Field(0, ge=0, le=1000)
     aerobic_moderate_minutes: int = Field(0, ge=0, le=1000)
@@ -27,6 +29,7 @@ class ExerciseHabitsRequest(BaseModel):
 class ExerciseHabitsResponse(BaseSerializerModel):
     id: UUID
     strength_weekly_count: int
+    strength_frequency_unit: Literal["days", "sessions"] | None = None
     strength_intensity: str | None = None
     aerobic_low_minutes: int
     aerobic_moderate_minutes: int

@@ -54,7 +54,7 @@ fun ProfileHomeScreen(state: ProfileState, onNavigate: (ProfileScreenKey) -> Uni
                 Text(if (count != null && stage != null) "모은 재료 ${count}개 · 댐 ${stage}단계" else "내 댐과 재료 보러 가기", style = TmtnType.body, color = colors.onSurface)
             }
             ProfileSectionLabel("내 생활과 정보")
-            ProfileListItem("기본 정보", "이름 · 별명 · 생년월") { onNavigate(ProfileScreenKey.BASIC) }
+            ProfileListItem("기본 정보", "이름 · 별명 · 태어난 연·월") { onNavigate(ProfileScreenKey.BASIC) }
             ProfileListItem("신체 정보", "키 · 몸무게 · 성별") { onNavigate(ProfileScreenKey.HEALTH) }
             val exercise = state.exerciseHabits.value
             ProfileListItem("운동 정보", exercise?.let { "근력 ${it.strength_weekly_count}${if (it.strength_weekly_count == 5) "일 이상" else "일"} · 중강도 ${it.aerobic_moderate_minutes}분" } ?: "평소 운동량과 강도") { onNavigate(ProfileScreenKey.EXERCISE) }

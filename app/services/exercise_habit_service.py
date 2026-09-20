@@ -23,6 +23,7 @@ class ExerciseHabitService:
         snapshot = await self.repo.create(
             user_id=user.id,
             strength_weekly_count=request.strength_weekly_count,
+            strength_frequency_unit=request.strength_frequency_unit,
             strength_intensity=request.strength_intensity,
             aerobic_low_minutes=request.aerobic_low_minutes,
             aerobic_moderate_minutes=request.aerobic_moderate_minutes,

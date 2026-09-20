@@ -1,0 +1,110 @@
+[
+  {
+    "expected": {
+      "age_top_coded_80_plus": false,
+      "diabetes_available": true,
+      "diabetes_score": 88.15665139849106,
+      "hypertension_available": true,
+      "hypertension_score": 88.20936971353362,
+      "supported_input": true
+    },
+    "features": {
+      "age_years": 45,
+      "height_cm": 172,
+      "leisure_aerobic_moderate_equivalent_min_week": 150,
+      "sex_code": 1,
+      "strength_days_week": 2,
+      "weight_kg": 75
+    },
+    "pregnancy_status": "nonpregnant"
+  },
+  {
+    "expected": {
+      "age_top_coded_80_plus": false,
+      "diabetes_available": true,
+      "diabetes_score": 73.90300298607502,
+      "hypertension_available": true,
+      "hypertension_score": 73.87258443911917,
+      "supported_input": true
+    },
+    "features": {
+      "age_years": 68,
+      "height_cm": 155,
+      "leisure_aerobic_moderate_equivalent_min_week": 0,
+      "sex_code": 2,
+      "strength_days_week": 0,
+      "weight_kg": 62
+    },
+    "pregnancy_status": "nonpregnant"
+  },
+  {
+    "expected": {
+      "age_top_coded_80_plus": false,
+      "diabetes_available": true,
+      "diabetes_score": 99.73361249785845,
+      "hypertension_available": true,
+      "hypertension_score": 97.32366048495709,
+      "supported_input": true
+    },
+    "features": {
+      "age_years": 19,
+      "height_cm": 180,
+      "leisure_aerobic_moderate_equivalent_min_week": 300,
+      "sex_code": 1,
+      "strength_days_week": 5,
+      "weight_kg": 80
+    },
+    "pregnancy_status": "nonpregnant"
+  },
+  {
+    "expected": {
+      "age_top_coded_80_plus": true,
+      "diabetes_available": true,
+      "diabetes_score": 81.80081393531545,
+      "hypertension_available": true,
+      "hypertension_score": 82.92304060691207,
+      "supported_input": true
+    },
+    "features": {
+      "age_years": 90,
+      "height_cm": 160,
+      "leisure_aerobic_moderate_equivalent_min_week": 150,
+      "sex_code": 2,
+      "strength_days_week": 3,
+      "weight_kg": 60
+    },
+    "pregnancy_status": "nonpregnant"
+  },
+  {
+    "expected": {
+      "diabetes_score": null,
+      "hypertension_score": null,
+      "supported_input": false
+    },
+    "features": {
+      "age_years": 45,
+      "height_cm": 172,
+      "leisure_aerobic_moderate_equivalent_min_week": 150,
+      "sex_code": 1,
+      "strength_days_week": 2,
+      "weight_kg": 75
+    },
+    "pregnancy_status": "pregnant"
+  },
+  {
+    "expected": {
+      "diabetes_score": null,
+      "hypertension_score": null,
+      "supported_input": false
+    },
+    "features": {
+      "age_years": 45,
+      "height_cm": 172,
+      "leisure_aerobic_moderate_equivalent_min_week": 150,
+      "sex_code": 1,
+      "strength_days_week": 2,
+      "weight_kg": 75
+    },
+    "pregnancy_status": "unknown"
+  }
+]

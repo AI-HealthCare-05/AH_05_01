@@ -1,0 +1,236 @@
+{
+  "ageContext": {
+    "ageTopCoded": false,
+    "ageYearsUsed": 35,
+    "healthAgeSupported": true,
+    "isApproximate": false,
+    "notice": "출생연월과 기준일로 만 나이를 계산했습니다.",
+    "policy": "completed_birth_month_lower_age_v1",
+    "possibleAgeYears": [
+      35,
+      35
+    ],
+    "referenceDate": "2026-09-09",
+    "timezone": "Asia/Seoul"
+  },
+  "ageTopCoded": false,
+  "availableComponentCount": 4,
+  "availableComponents": [
+    "physical",
+    "diabetes",
+    "hypertension",
+    "lifestyle"
+  ],
+  "comparisonKey": "peer-equal-four-v0.1-candidate|tuntun_integrated_candidate_v0_1|peer-fixed-model42-unweighted-broad-v0.1-20260907|19-39:1|physical,diabetes,hypertension,lifestyle|birth-month-app-inputs-v0.2|age=35|approx=False",
+  "components": [
+    {
+      "absoluteReferenceScore": 0.024061597690083758,
+      "available": true,
+      "componentKey": "physical",
+      "direction": "higher_is_healthier",
+      "display": {
+        "percentile": 0.0,
+        "text": "상위 약 99% 이상",
+        "topPercentApprox": 100.0
+      },
+      "displayPolicyVersion": "peer-rank100-v0.2",
+      "formulaVersion": "peer-equal-four-v0.1-candidate",
+      "includedInComposite": true,
+      "label": "신체 참고지표",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "peerPercentile": 0.0,
+      "percentileRange": [
+        0.0,
+        0.0
+      ],
+      "rankDisplay": {
+        "rankApprox": 100,
+        "rankRange": [
+          100,
+          100
+        ],
+        "text": "또래 100명 중 약 100등",
+        "tieNotice": null
+      },
+      "referenceEffectiveN": 2077.0,
+      "referenceGroup": "19-39:1",
+      "referenceN": 2077,
+      "referenceVersion": "peer-fixed-model42-unweighted-broad-v0.1-20260907",
+      "source": "model_inference",
+      "tieMassPercent": 0.0,
+      "topPercentApprox": 100.0,
+      "unavailableReason": null,
+      "valueType": "health_direction_peer_percentile"
+    },
+    {
+      "absoluteReferenceScore": 85.06707534631244,
+      "available": true,
+      "componentKey": "diabetes",
+      "direction": "higher_is_healthier",
+      "display": {
+        "percentile": 1.9,
+        "text": "상위 약 98.1%",
+        "topPercentApprox": 98.1
+      },
+      "displayPolicyVersion": "peer-rank100-v0.2",
+      "formulaVersion": "peer-equal-four-v0.1-candidate",
+      "includedInComposite": true,
+      "label": "당뇨 참고지표",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "peerPercentile": 1.8649193548387097,
+      "percentileRange": [
+        1.8649193548387097,
+        1.8649193548387097
+      ],
+      "rankDisplay": {
+        "rankApprox": 98,
+        "rankRange": [
+          98,
+          98
+        ],
+        "text": "또래 100명 중 약 98등",
+        "tieNotice": null
+      },
+      "referenceEffectiveN": 1984.0,
+      "referenceGroup": "19-39:1",
+      "referenceN": 1984,
+      "referenceVersion": "peer-fixed-model42-unweighted-broad-v0.1-20260907",
+      "source": "model_inference",
+      "tieMassPercent": 0.0,
+      "topPercentApprox": 98.1350806451613,
+      "unavailableReason": null,
+      "valueType": "health_direction_peer_percentile"
+    },
+    {
+      "absoluteReferenceScore": 77.62809950891959,
+      "available": true,
+      "componentKey": "hypertension",
+      "direction": "higher_is_healthier",
+      "display": {
+        "percentile": 6.1,
+        "text": "상위 약 93.9%",
+        "topPercentApprox": 93.9
+      },
+      "displayPolicyVersion": "peer-rank100-v0.2",
+      "formulaVersion": "peer-equal-four-v0.1-candidate",
+      "includedInComposite": true,
+      "label": "고혈압 참고지표",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "peerPercentile": 6.09284332688588,
+      "percentileRange": [
+        6.09284332688588,
+        6.09284332688588
+      ],
+      "rankDisplay": {
+        "rankApprox": 94,
+        "rankRange": [
+          94,
+          94
+        ],
+        "text": "또래 100명 중 약 94등",
+        "tieNotice": null
+      },
+      "referenceEffectiveN": 2068.0,
+      "referenceGroup": "19-39:1",
+      "referenceN": 2068,
+      "referenceVersion": "peer-fixed-model42-unweighted-broad-v0.1-20260907",
+      "source": "model_inference",
+      "tieMassPercent": 0.0,
+      "topPercentApprox": 93.90715667311412,
+      "unavailableReason": null,
+      "valueType": "health_direction_peer_percentile"
+    },
+    {
+      "absoluteReferenceScore": 90.0,
+      "available": true,
+      "componentKey": "lifestyle",
+      "direction": "higher_is_healthier",
+      "display": {
+        "percentile": 76.4,
+        "text": "상위 약 23.6%",
+        "topPercentApprox": 23.6
+      },
+      "displayPolicyVersion": "peer-rank100-v0.2",
+      "formulaVersion": "peer-equal-four-v0.1-candidate",
+      "includedInComposite": true,
+      "label": "생활습관",
+      "modelVersion": "tuntun_integrated_candidate_v0_1",
+      "peerPercentile": 76.37019230769232,
+      "percentileRange": [
+        75.52884615384616,
+        77.21153846153847
+      ],
+      "rankDisplay": {
+        "rankApprox": 24,
+        "rankRange": [
+          23,
+          24
+        ],
+        "text": "또래 100명 중 약 24등",
+        "tieNotice": "동점자가 있어 대략적인 위치입니다."
+      },
+      "referenceEffectiveN": 2080.0,
+      "referenceGroup": "19-39:1",
+      "referenceN": 2080,
+      "referenceVersion": "peer-fixed-model42-unweighted-broad-v0.1-20260907",
+      "source": "questionnaire",
+      "tieMassPercent": 1.6826923076923066,
+      "topPercentApprox": 23.62980769230768,
+      "unavailableReason": null,
+      "valueType": "health_direction_peer_percentile"
+    }
+  ],
+  "compositeDisplay": {
+    "bandLabel": null,
+    "score": 21.1,
+    "text": "튼튼지수 21.1점",
+    "unit": "점"
+  },
+  "displayPolicyVersion": "peer-rank100-v0.2",
+  "formulaVersion": "peer-equal-four-v0.1-candidate",
+  "habitContext": {
+    "bedToWakeIntervalMinutes": null,
+    "bedToWakeStatus": "incomplete_optional_input",
+    "lowIntensityMinutes": 60,
+    "lowIntensityNotice": "저강도 활동 기록에 반영했습니다. 현재 건강모델·생활습관 점수에는 가산하지 않습니다.",
+    "moderateEquivalentMinutes": 120,
+    "sleepNotice": "취침부터 기상까지의 시간 간격이며 실제 수면시간·수면의 질·규칙성 점수는 아닙니다.",
+    "strengthDaysTopCoded": false,
+    "strengthIntensity": "moderate",
+    "strengthIntensityNotice": "선택한 근력 강도 설명에 반영합니다. 강도를 높였다고 자동 가산하지 않습니다.",
+    "totalReportedActivityMinutes": 180
+  },
+  "inputMappingVersion": "birth-month-app-inputs-v0.2",
+  "inputRevision": "test-164",
+  "inputUsage": {
+    "aerobicLowMinutes": "context_only_not_scored",
+    "aerobicModerateMinutes": "health_models_and_lifestyle",
+    "aerobicVigorousMinutes": "health_models_and_lifestyle_times_two",
+    "bedtimeWakeTime": "time_interval_context_only_not_scored",
+    "birthYearMonth": "model_age_and_peer_reference",
+    "heightCm": "health_models",
+    "pregnancyStatus": "health_eligibility",
+    "sex": "model_and_peer_reference",
+    "strengthIntensity": "context_only_not_scored",
+    "strengthWeeklyCount": "health_models_and_lifestyle_if_days_confirmed",
+    "weightKg": "health_models"
+  },
+  "isMock": false,
+  "isPartialScore": false,
+  "isSynthetic": false,
+  "lifestyleAvailableSubcomponentCount": 2,
+  "modelVersion": "tuntun_integrated_candidate_v0_1",
+  "notice": "또래 순위는 건강확률이나 진단이 아닙니다. 부분점수와 서로 다른 비교 기준의 점수는 직접 비교하지 마세요.",
+  "peerCompositeScore": 21.081988747354227,
+  "referenceCaution": "동일 성별·연령대 개발 표본의 환산 위치입니다. 실제 100명의 등수가 아니며 연령대 변경으로 순위가 달라질 수 있습니다.",
+  "referencePopulation": "2019–2021 개발 적격 성인 관측 표본의 동일 성별·연령대 (전국민 대표 아님)",
+  "referenceVersion": "peer-fixed-model42-unweighted-broad-v0.1-20260907",
+  "referenceYears": [
+    2019,
+    2020,
+    2021
+  ],
+  "releaseStatus": "LOCAL_REVIEW_CANDIDATE",
+  "schemaVersion": "tuntun-app-vnext-v0.2",
+  "scoreAvailable": true
+}

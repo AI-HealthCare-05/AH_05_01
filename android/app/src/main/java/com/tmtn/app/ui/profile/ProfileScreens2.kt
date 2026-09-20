@@ -57,7 +57,7 @@ fun HealthEditScreen(state: ProfileState, scope: CoroutineScope, onBack: () -> U
         ) {
             Text("기본 정보", style = TmtnType.title, color = colors.onSurface)
             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("생년월", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                Text("태어난 연·월", style = TmtnType.caption, color = colors.onSurfaceVariant)
                 Text(if (user?.birth_year != null && user.birth_month != null) "${user.birth_year}년 ${user.birth_month}월" else "등록된 정보가 없어요",
                     style = TmtnType.bodyLarge, color = colors.onSurface)
             }

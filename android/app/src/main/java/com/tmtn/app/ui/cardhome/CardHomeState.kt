@@ -72,6 +72,7 @@ class CardHomeState(
     private val serviceDateProvider: suspend () -> String = { currentServiceDateString() },
     val waist: com.tmtn.app.ui.reference.WaistEstimateState = com.tmtn.app.ui.reference.WaistEstimateState(),
     private val peerScoreEnabled: Boolean = com.tmtn.app.BuildConfig.PEER_SCORE_ENABLED,
+    private val exerciseApiProvider: () -> com.tmtn.app.network.ExerciseMissionApi = { ApiClient.exerciseMissionApi },
     private val missionApiProvider: () -> com.tmtn.app.network.CardHomeApi = { ApiClient.cardHomeApi },
 ) {
     var step = mutableStateOf(CardHomeStep.LOADING)
@@ -267,6 +268,7 @@ class CardHomeState(
             // "연속 기록"이 항상 초기값 0으로만 보이고, 기록 탭·내 정보 탭(각자 따로 조회)과
             // 어긋났음. 홈 로드 시에도 정확한 값을 받아오게 함.
             launch { loadStreak() }
+            if (todayChallengeState.value == "COMPLETED") launch { refreshHomeExerciseProgress() }
         }
     }
 
@@ -296,6 +298,10 @@ class CardHomeState(
     }
 
     private fun applyHomeWindow(window: com.tmtn.app.network.model.CardWindowResponse) {
+        if (cardServiceDate.value != window.service_date) {
+            homeExerciseProgress.value = null
+            exerciseProgressRevision++
+        }
         if (setId.value != window.set_id) hasMemoToday.value = null
         setId.value = window.set_id
         cardServiceDate.value = window.service_date
@@ -345,6 +351,7 @@ class CardHomeState(
                 launch { loadCompanion() }
                 launch { loadTuntunIndexSummary() }
                 launch { loadStreak() }
+                if (todayChallengeState.value == "COMPLETED") launch { refreshHomeExerciseProgress() }
             }
         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (_: Exception) {
@@ -764,48 +771,37 @@ class CardHomeState(
     // 중 무엇이든 정확한 화면으로 보내야 해서, 성공 후 revealChallenge()로 최신 카드를
     // 다시 받아와 stepForRevealedCard()로 이동함(startTimer()처럼 무조건 한 화면으로
     // 고정하면 CHECK·SENSOR형이 잘못된 화면으로 감).
-    suspend fun restartFromGiveUp() {
-        val challengeId = revealedCard.value?.challenge_id ?: return
-        isLoading.value = true
-        errorMessage.value = null
-        runCatching {
-            val response = ApiClient.cardHomeApi.startChallenge(challengeId)
-            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
-            val revealResponse = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!revealResponse.isSuccessful) failWithMessage(parseErrorMessage(revealResponse))
-            revealResponse.body()!!
-        }.onSuccess { card ->
-            revealedCard.value = card
-            isTodayGivenUp.value = false
-            step.value = stepForRevealedCard(card)
-        }.onFailure { e ->
-            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
-            errorMessage.value = e.userMessageOr("다시 시작하지 못했어요.")
-        }
-        isLoading.value = false
-    }
+    suspend fun restartFromGiveUp() = enterInProgressMission(restartSkipped = true)
 
     // B22(중단)의 "미션 이어서 하기" · C25의 "쉬어가기 취소하고 도전하기"(이미 카드를
     // 확정한 날) 전용 - 홈 화면에서 직접 호출되므로 revealedCard가 아직 비어있을 수 있어
     // todayChallengeId를 기준으로 씀(continueTodayMission()과 fetch는 같지만, REVEALED가
     // 아니라 stepForRevealedCard()로 곧장 진행 화면까지 들어가는 게 다름 -
     // refreshAndEnterInProgressMission()과 같은 목적, 소스만 다름).
-    suspend fun enterInProgressMission() {
-        val challengeId = todayChallengeId.value ?: return
-        isLoading.value = true
-        errorMessage.value = null
-        runCatching {
-            val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
-            response.body()!!
-        }.onSuccess { card ->
+    suspend fun enterInProgressMission(restartSkipped: Boolean = false) {
+        val challengeId = todayChallengeId.value ?: revealedCard.value?.challenge_id ?: return
+        transitionMission("미션 정보를 가져오지 못했어요. 다시 눌러 주세요.") {
+            val api = missionApiProvider()
+            suspend fun fetchCard(): CardRevealResponse {
+                val response = api.revealChallenge(challengeId)
+                if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+                return response.body() ?: failWithMessage("카드 내용을 확인하지 못했어요.")
+            }
+            var card = fetchCard()
+            // 쉼 취소는 REST 기록만 지운다. 명시적으로 재도전한 경우에만 SKIPPED를 재시작한다.
+            // 재시작 뒤 조회가 실패해도 재시도 때 최신 상태를 먼저 읽어 중복 시작을 피한다.
+            if (restartSkipped && card.state == "SKIPPED") {
+                val started = api.startChallenge(challengeId)
+                if (!started.isSuccessful) failWithMessage(parseErrorMessage(started))
+                isTodayGivenUp.value = false
+                todayChallengeState.value = "ACTIVE"
+                card = fetchCard()
+            }
             revealedCard.value = card
+            todayChallengeState.value = card.state
+            if (card.state != "SKIPPED") isTodayGivenUp.value = false
             step.value = stepForRevealedCard(card)
-        }.onFailure { e ->
-            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
-            errorMessage.value = e.userMessageOr("미션 정보를 가져오지 못했어요.")
         }
-        isLoading.value = false
     }
 
     // ===== C그룹: 챌린지 진행 (타이머형) =====
@@ -982,8 +978,30 @@ class CardHomeState(
     // 시작 가능하지만, 목록 자체는 항상 조회 가능(card_completed=false면 화면에서
     // "카드부터 완료해 주세요" 안내로 대체 - B17 카드 완료 화면 안내와 일관되게).
     var exerciseMissionsToday = mutableStateOf<ExerciseMissionsTodayResponse?>(null)
+    var exerciseListError = mutableStateOf<String?>(null)
     var selectedExerciseOption = mutableStateOf<ExerciseMissionOption?>(null)
     var activeExerciseSession = mutableStateOf<ExerciseMissionSessionResponse?>(null)
+    val homeExerciseProgress = mutableStateOf<HomeExerciseProgress?>(null)
+    private var exerciseProgressRevision = 0L
+
+    /** 홈의 응원에 필요한 서버 완료 횟수만 읽는다. 운동 화면으로 자동 이동하지 않는다. */
+    suspend fun refreshHomeExerciseProgress() {
+        val date = cardServiceDate.value ?: return
+        val revision = ++exerciseProgressRevision
+        try {
+            val response = exerciseApiProvider().getToday()
+            val today = response.body()?.takeIf { response.isSuccessful } ?: return
+            if (revision != exerciseProgressRevision || cardServiceDate.value != date) return
+            if (today.card_completed) confirmHomeExerciseProgress(date, today.used, today.remaining)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (_: Exception) { /* 조회 실패는 완료로 추측하지 않고 같은 날의 마지막 확인값만 유지한다. */ }
+    }
+
+    internal fun confirmHomeExerciseProgress(date: String?, used: Int, remaining: Int) {
+        if (date == null || date != cardServiceDate.value || used < 0 || remaining < 0) return
+        exerciseProgressRevision++
+        homeExerciseProgress.value = HomeExerciseProgress(date, used, remaining)
+    }
 
     // ⚠️ 2026-09-17 추가(QA F13, 홍주님 회신) - "저장 중/저장 실패/저장 완료"를 구분해서
     // 화면이 참고할 수 있게 함. 저장 완료는 별도 값 없이 exerciseRewardResult가 채워지고
@@ -1002,6 +1020,10 @@ class CardHomeState(
     )
 
     suspend fun loadExerciseMissionsToday() {
+        val requestedFrom = step.value
+        val requestedDate = cardServiceDate.value
+        val progressRevision = ++exerciseProgressRevision
+        exerciseListError.value = null
         // ⚠️ 2026-09-17 추가(QA #3 후속 - PR #21 M07 "앱 재실행 후 기록 복원") - 목록을
         // 새로 불러오기 전에, 프로세스 종료로 못 끝낸 완료·그만두기 요청이 있으면 먼저
         // 정리한다. 그래야 아래 active_session 판단이 서버의 최신 진실을 반영함(예: 저장
@@ -1011,10 +1033,14 @@ class CardHomeState(
             PendingExerciseSyncManager.replayPending(com.tmtn.app.TmtnApplication.appContext)
         }
         runCatching {
-            val response = ApiClient.exerciseMissionApi.getToday()
+            val response = exerciseApiProvider().getToday()
             if (response.isSuccessful) response.body() else null
         }.onSuccess { body ->
             exerciseMissionsToday.value = body
+            if (body?.card_completed == true && progressRevision == exerciseProgressRevision) {
+                confirmHomeExerciseProgress(requestedDate, body.used, body.remaining)
+            }
+            if (body == null) exerciseListError.value = "운동을 불러오지 못했어요. 연결을 확인하고 다시 시도해 주세요."
             // ⚠️ 2026-09-16 추가(QA) - 진행 중(ACTIVE/PAUSED)인 세션이 있으면 목록 대신
             // 바로 진행 화면으로 이어줌. 오늘의 카드 Challenge의 "미션 이어하기"와 같은
             // 원칙 - 뒤로가기·홈 버튼으로 화면을 나가도 세션을 취소하지 않으니(더 이상
@@ -1022,12 +1048,19 @@ class CardHomeState(
             val active = body?.active_session
             if (active != null) {
                 activeExerciseSession.value = active
-                step.value = CardHomeStep.EXTRA_RUNNING
+                // 조회가 끝나기 전에 홈으로 나간 사용자를 다시 측정 화면으로 보내지 않는다.
+                if (step.value == requestedFrom) step.value = CardHomeStep.EXTRA_RUNNING
             }
+        }.onFailure { error ->
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            exerciseListError.value = "운동을 불러오지 못했어요. 연결을 확인하고 다시 시도해 주세요."
         }
     }
 
+    val extraListOrigin = mutableStateOf(CardHomeStep.HOME)
+
     fun openExerciseMissionList() {
+        extraListOrigin.value = if (step.value == CardHomeStep.COMPLETED) CardHomeStep.COMPLETED else CardHomeStep.HOME
         step.value = CardHomeStep.EXTRA_LIST
     }
 
@@ -1099,6 +1132,7 @@ class CardHomeState(
         manualCheck: Boolean = false, accumulatedCount: Int? = null, accumulatedDurationSeconds: Int? = null,
     ) {
         val session = activeExerciseSession.value ?: return
+        val submittedDate = cardServiceDate.value
         if (exerciseSaveState.value == ExerciseSaveState.SAVING) return
         // ⚠️ 2026-09-16 버그 수정(QA F09) - 예전엔 매번 새 UUID.randomUUID()를 써서,
         // 완료가 서버에서는 성공했는데 응답만 못 받고 실패로 보여서 사용자가 다시
@@ -1170,6 +1204,7 @@ class CardHomeState(
                     android.util.Log.i("ExerciseMissionSave", "complete success: sessionId=${session.id} rewardSlot=${response.body()?.reward_slot}")
                     exerciseSaveState.value = ExerciseSaveState.IDLE
                     exerciseRewardResult.value = response.body()
+                    response.body()?.let { confirmHomeExerciseProgress(submittedDate, it.used, it.remaining) }
                     step.value = CardHomeStep.EXTRA_REWARD
                     // ⚠️ 2026-09-17 추가(QA 리뷰 #3) - 세션이 끝났으니 서비스의 주기
                     // 동기화 대상에서 뺀다(화면이 이미 다른 탭에 있어 STOP 액션을 못

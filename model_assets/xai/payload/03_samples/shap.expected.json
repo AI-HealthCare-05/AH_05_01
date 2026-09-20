@@ -1,0 +1,121 @@
+{
+  "wrapperVersion": "waist-cm-shap-v0.1-20260911",
+  "output": "predicted_waist_cm",
+  "unit": "cm",
+  "predictionCm": [
+    79.1776712222443,
+    124.63591872069098,
+    80.1455020427952,
+    81.3831515849371,
+    95.13892491489963
+  ],
+  "baseValueCm": [
+    84.21763012297134,
+    84.21763012297134,
+    84.21763012297134,
+    84.21763012297134,
+    84.21763012297134
+  ],
+  "shapValuesCm": [
+    [
+      -2.8150103780153213,
+      0.2929328454885618,
+      -1.8607731754570263,
+      0.008251970574671308,
+      -0.23195438943972224,
+      -0.4334057738780315
+    ],
+    [
+      -0.7868501376907631,
+      1.1094793625012005,
+      -0.7134168593261543,
+      42.55936141010036,
+      -0.4786599536053706,
+      -1.271625224259728
+    ],
+    [
+      -2.788293316644621,
+      0.38602682129641286,
+      -1.8996928322519244,
+      -0.01479186398930965,
+      0.1347249701619826,
+      0.10989814125154984
+    ],
+    [
+      3.4668705658142134,
+      0.03599092397264103,
+      3.134537997886049,
+      -8.785154080443911,
+      -0.5561880524189813,
+      -0.13053589284373457
+    ],
+    [
+      5.365139675662819,
+      0.005172498663321701,
+      -2.8112001653285104,
+      8.971054861647202,
+      -0.3683529648311272,
+      -0.24051911388537572
+    ]
+  ],
+  "featureOrder": [
+    "age_years",
+    "sex_code",
+    "height_cm",
+    "weight_kg",
+    "leisure_aerobic_moderate_equivalent_min_week",
+    "strength_days_week"
+  ],
+  "preparedInputs": [
+    {
+      "age_years": 35.0,
+      "sex_code": 1.0,
+      "height_cm": 170.0,
+      "weight_kg": 64.0,
+      "leisure_aerobic_moderate_equivalent_min_week": 120.0,
+      "strength_days_week": 4.0
+    },
+    {
+      "age_years": 35.0,
+      "sex_code": 1.0,
+      "height_cm": 170.0,
+      "weight_kg": 164.0,
+      "leisure_aerobic_moderate_equivalent_min_week": 120.0,
+      "strength_days_week": 4.0
+    },
+    {
+      "age_years": 35.0,
+      "sex_code": 1.0,
+      "height_cm": 170.0,
+      "weight_kg": 64.0,
+      "leisure_aerobic_moderate_equivalent_min_week": 0.0,
+      "strength_days_week": 0.0
+    },
+    {
+      "age_years": 68.0,
+      "sex_code": 2.0,
+      "height_cm": 155.0,
+      "weight_kg": 55.0,
+      "leisure_aerobic_moderate_equivalent_min_week": 150.0,
+      "strength_days_week": 2.0
+    },
+    {
+      "age_years": 80.0,
+      "sex_code": 1.0,
+      "height_cm": 170.0,
+      "weight_kg": 75.0,
+      "leisure_aerobic_moderate_equivalent_min_week": 150.0,
+      "strength_days_week": 2.0
+    }
+  ],
+  "backgroundRowsUsed": 300,
+  "backgroundMeanPredictionCm": 84.21763012297129,
+  "explainer": "ExactExplainer",
+  "masker": "Independent",
+  "link": "identity",
+  "modelOutput": "predict_waist_cm",
+  "maxCoalitions": 64,
+  "maxAbsAdditivityErrorCm": 5.258016244624741e-13,
+  "atolCm": 1e-09,
+  "shapVersion": "0.49.1"
+}

@@ -73,7 +73,8 @@ data class ExerciseHabitsRequest(
     val strength_intensity: String?,     // "LIGHT" / "MODERATE" / "HARD", count=0이면 null
     val aerobic_low_minutes: Int,
     val aerobic_moderate_minutes: Int,
-    val aerobic_high_minutes: Int
+    val aerobic_high_minutes: Int,
+    val strength_frequency_unit: String = "days",
 )
 
 data class ExerciseHabitsResponse(
@@ -83,7 +84,8 @@ data class ExerciseHabitsResponse(
     val aerobic_low_minutes: Int,
     val aerobic_moderate_minutes: Int,
     val aerobic_high_minutes: Int,
-    val recorded_at: String
+    val recorded_at: String,
+    val strength_frequency_unit: String? = null,
 )
 
 // ===== A09~A10: 생활시간 =====

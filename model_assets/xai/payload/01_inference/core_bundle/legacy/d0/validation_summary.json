@@ -1,0 +1,129 @@
+{
+  "generated_at_utc": "2026-09-04T02:40:20.790174+00:00",
+  "independent_performance_evaluation_performed": false,
+  "inputs_sha256": {
+    "disease_pipeline": "bfa8a5cc7e440649a69ca5cfa784fadeb02a0fdfd70b30494b058fdae5fc226b",
+    "fold/diabetes/42/outer": "db05750e26afb84c7cb630a9173f15802c7201dbf0e98b39a3dd75a021791f9c",
+    "fold/hypertension/42/outer": "090a724b203ca62f989c8041c072eb528e3a788eb8bed4812d4923affa8b1942",
+    "io_helpers": "3d0ffcae1195d945eddd8fa98b02bd95fe4907068e74d149d8c71fa1f109d7fb",
+    "refit_contract": "5279bac2bf09a9392d3a343612510a3f9e132854279714546011b44c4cc8e606",
+    "review": "b80baefc0de3333cbf12d95abcf877d17ec7a189e24309462de0e7fb931b3089",
+    "runtime": "bcc88a3f919e76fcf980f93c1065a05d7e2aa782dd278d04db787bcf24e22a9e",
+    "selection_contract": "31e72cbbc9583239877a4784fcca65426a435f94c2eabe18e4598f5080afbd24",
+    "selection_manifest": "eb871ef829b07375f1e68d2bc3e4605ee170fafd854833dac3f138ce44d4a873",
+    "selection_result": "5a0fcd4795aade33b785db2e5b8eaeadd30f238ed54983e4caed182308a6f5a2",
+    "selection_summary": "493a9e667285ce449f6273754c74c804090bc1ab7bed7b440f65ae7741a55c56",
+    "selector": "b63643a9add51301085bb2abe1936140253ab75778a3fc25dec4eefcf4fb91f3",
+    "task_frame/diabetes": "46c82d17cfe8ef87fcc4d0684f49ab17a8d29191ba87cade918ebc6a731aa854",
+    "task_frame/hypertension": "fafbecbae9abde5ad07a3517f57415e83e28295400a5e02773bb817a9052aedd",
+    "trainer": "835e8daedda969ff1d83eb5f2c441d6212caaf93fc00df26ba0bb03d87e67115"
+  },
+  "production_release_gate": "BLOCKED",
+  "row_level_outputs_written": false,
+  "status": "REFIT_SERIALIZATION_VERIFIED",
+  "tasks": {
+    "diabetes": {
+      "calibrator_coefficient": 1.1007013597541957,
+      "calibrator_intercept": 0.15661175323555518,
+      "crossfit_coverage": 15720,
+      "crossfit_fold_audit": [
+        {
+          "fit_n": 12576,
+          "fold": 0,
+          "heldout_n": 3144,
+          "overlap": 0
+        },
+        {
+          "fit_n": 12576,
+          "fold": 1,
+          "heldout_n": 3144,
+          "overlap": 0
+        },
+        {
+          "fit_n": 12576,
+          "fold": 2,
+          "heldout_n": 3144,
+          "overlap": 0
+        },
+        {
+          "fit_n": 12576,
+          "fold": 3,
+          "heldout_n": 3144,
+          "overlap": 0
+        },
+        {
+          "fit_n": 12576,
+          "fold": 4,
+          "heldout_n": 3144,
+          "overlap": 0
+        }
+      ],
+      "full_refit_n": 15720,
+      "n": 15720,
+      "n_events": 2039,
+      "not_independent_validation": true,
+      "raw_crossfit_brier_descriptive": 0.10242521394039164,
+      "serialization_max_abs_diff_raw_calibrated": [
+        0.0,
+        0.0
+      ]
+    },
+    "hypertension": {
+      "calibrator_coefficient": 1.1645928771228602,
+      "calibrator_intercept": 0.25038978600354245,
+      "crossfit_coverage": 16325,
+      "crossfit_fold_audit": [
+        {
+          "fit_n": 13060,
+          "fold": 0,
+          "heldout_n": 3265,
+          "overlap": 0
+        },
+        {
+          "fit_n": 13060,
+          "fold": 1,
+          "heldout_n": 3265,
+          "overlap": 0
+        },
+        {
+          "fit_n": 13060,
+          "fold": 2,
+          "heldout_n": 3265,
+          "overlap": 0
+        },
+        {
+          "fit_n": 13060,
+          "fold": 3,
+          "heldout_n": 3265,
+          "overlap": 0
+        },
+        {
+          "fit_n": 13060,
+          "fold": 4,
+          "heldout_n": 3265,
+          "overlap": 0
+        }
+      ],
+      "full_refit_n": 16325,
+      "n": 16325,
+      "n_events": 2476,
+      "not_independent_validation": true,
+      "raw_crossfit_brier_descriptive": 0.12025841030612207,
+      "serialization_max_abs_diff_raw_calibrated": [
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "training_environment": {
+    "PyYAML": "6.0.3",
+    "joblib": "1.5.3",
+    "numpy": "2.5.2",
+    "pandas": "2.3.3",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.7",
+    "scikit-learn": "1.9.0",
+    "scipy": "1.18.1",
+    "threadpoolctl": "3.6.0"
+  }
+}

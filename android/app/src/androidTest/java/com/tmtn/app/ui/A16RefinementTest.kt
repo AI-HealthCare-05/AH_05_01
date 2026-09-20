@@ -63,9 +63,10 @@ class A16RefinementTest {
         capture("01-a16-three-days")
         compose.runOnIdle {
             val request = state.exerciseHabitsRequest()
+            assertEquals("days", request.strength_frequency_unit)
             assertEquals(3,request.strength_weekly_count); assertEquals("MODERATE",request.strength_intensity)
             assertEquals(60,request.aerobic_low_minutes); assertEquals(90,request.aerobic_moderate_minutes); assertEquals(20,request.aerobic_high_minutes)
-            assertEquals(setOf("strength_weekly_count","strength_intensity","aerobic_low_minutes","aerobic_moderate_minutes","aerobic_high_minutes"),
+            assertEquals(setOf("strength_frequency_unit","strength_weekly_count","strength_intensity","aerobic_low_minutes","aerobic_moderate_minutes","aerobic_high_minutes"),
                 com.google.gson.JsonParser.parseString(com.google.gson.Gson().toJson(request)).asJsonObject.keySet())
         }
         for (day in listOf(1,3,5,6)) compose.onNodeWithTag("strength-weekday-$day").performScrollTo().performClick()
@@ -114,7 +115,7 @@ class A16RefinementTest {
         val state = CardHomeState().apply { exerciseMissionsToday.value = ExerciseMissionsTodayResponse(true,0,2,2,options) }
         compose.setContent { Box(Modifier.width(360.dp).fillMaxHeight()) { Page(MainTab.HOME) { ExerciseMissionListScreen(state,rememberCoroutineScope(),loadToday={}) } } }
         capture("06-extra-mission-list")
-        assertOneLine("조금 더 움직여볼까요?")
+        compose.onNodeWithText("비버와 한 번 더,\n오늘의 틈새 운동").assertIsDisplayed()
         for (option in options) {
             val node = compose.onNodeWithTag("extra-mission-${option.catalog_entry_id}").performScrollTo()
             assertOneLine(option.title)
@@ -124,9 +125,9 @@ class A16RefinementTest {
             assertTrue("Neutral border: $edge", kotlin.math.abs(edge.red-edge.green)<.08f && kotlin.math.abs(edge.green-edge.blue)<.08f)
         }
         compose.onNodeWithTag("extra-mission-${options.last().catalog_entry_id}").assertIsNotEnabled()
-        compose.onNodeWithText("조금 더 움직여볼까요?").performScrollTo()
+        compose.onNodeWithText("비버와 한 번 더,\n오늘의 틈새 운동").performScrollTo()
         capture("06-extra-mission-list")
-        compose.onNodeWithText("천천히 걷기").performClick()
+        compose.onNodeWithText("천천히 걷기").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(CardHomeStep.EXTRA_DETAIL,state.step.value); assertEquals(options[1],state.selectedExerciseOption.value) }
     }
     @Test fun sensorMeasurementUsesCompactTitleAndNeutralPanel() {

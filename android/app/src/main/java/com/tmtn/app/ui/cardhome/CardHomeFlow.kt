@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
  */
 /** 시스템 뒤로가기(제스처/버튼) 눌렀을 때 어느 단계로 돌아갈지.
  * null이면 "여기서 더 뒤로 가면 이 화면(홈 탭) 자체를 벗어남" - 시스템 기본 동작 허용. */
-private fun previousStepFor(step: CardHomeStep): CardHomeStep? = when (step) {
+internal fun previousStepFor(step: CardHomeStep, extraListOrigin: CardHomeStep = CardHomeStep.HOME): CardHomeStep? = when (step) {
     CardHomeStep.LOADING -> null
     CardHomeStep.HOME -> null // 최상위 - 뒤로가면 다른 탭이나 앱 종료(시스템 기본 동작)
     CardHomeStep.DECK_PICK -> CardHomeStep.HOME
@@ -77,16 +77,11 @@ private fun previousStepFor(step: CardHomeStep): CardHomeStep? = when (step) {
     CardHomeStep.SENSOR_PERMISSION_FALLBACK -> CardHomeStep.REVEALED
     CardHomeStep.SENSOR_RESULT -> null
 
-    // ⚠️ 2026-09-11 추가, 2026-09-15 정정 - 틈새 운동. LIST는 완료 화면(COMPLETED)에서
-    // 왔으니 거기로, DETAIL은 목록으로. RUNNING은 애초에 "측정 화면과 같은 원칙"으로 막을
-    // 생각이었는데, 실제 오늘의 카드 측정 화면(SENSOR_MEASURING/CHALLENGE_TIMER_RUNNING)은
-    // 둘 다 뒤로가기가 열려 있어서 원칙이 안 맞았음(QA 지적) - 화면을 벗어나면
-    // DisposableEffect가 센서를 정지시키니(그만두기와 동일 효과) 열어도 안전함.
-    // REWARD(보상 화면)는 오늘의 카드의 완료 후 화면들(CHALLENGE_RETROSPECT/STAGE_UP)과
-    // 같은 성격이라 그대로 막아둠.
-    CardHomeStep.EXTRA_LIST -> CardHomeStep.COMPLETED
+    // 목록은 들어온 화면으로 돌아간다. 측정 화면은 홈으로 나가며 세션은 유지한다.
+    // 재실행으로 복원한 세션에는 selectedExerciseOption이 없으므로 상세 화면으로 보내지 않는다.
+    CardHomeStep.EXTRA_LIST -> extraListOrigin
     CardHomeStep.EXTRA_DETAIL -> CardHomeStep.EXTRA_LIST
-    CardHomeStep.EXTRA_RUNNING -> CardHomeStep.EXTRA_DETAIL
+    CardHomeStep.EXTRA_RUNNING -> CardHomeStep.HOME
     CardHomeStep.EXTRA_REWARD -> null
 }
 
@@ -236,7 +231,7 @@ fun CardHomeFlow(
     }
 
     // 시스템 뒤로가기(제스처/버튼) - 화면 안의 "←" 버튼과 똑같이 동작하게.
-    val previousStep = previousStepFor(state.step.value)
+    val previousStep = previousStepFor(state.step.value, state.extraListOrigin.value)
     androidx.activity.compose.BackHandler(enabled = state.step.value == CardHomeStep.CHALLENGE_PROCESSING) { }
     // ⚠️ 2026-09-07 반영: 쉬어가기·전환 시트들(showRestDaySheet 등)은 step과 별개인
     // 오버레이라서, 시트가 열려 있어도 아래 when(state.step.value)는 그걸 전혀 모름 -
@@ -404,7 +399,7 @@ fun CardHomeFlow(
                         // 그 카드로 곧장 이어서 진행 화면까지 들어가야 함 - 하나의 시트를
                         // 여러 홈 상태가 같이 쓰므로 여기서 drawState로 분기함.
                         if (state.drawState.value == "SELECTED") {
-                            state.enterInProgressMission()
+                            state.enterInProgressMission(restartSkipped = true)
                         } else {
                             state.step.value = CardHomeStep.DECK_PICK
                         }
@@ -470,109 +465,10 @@ fun CardHomeFlow(
     }
 }
 
-/**
- * ⚠️ 2026-09-07 반영: 상태전이 정책 신규 홈 화면 8종(HomeStateScreens.kt, B18~B26) 배선.
- * 예전엔 CardHomeStep.HOME이 항상 CardHomeScreen(B01/B01b) 하나만 보여줬음 - 쉼/포기/
- * 중단 같은 상태도 전부 그 화면 안의 마스코트 카드 문구만 바뀌는 식이었는데, 실제 전달받은
- * Figma 화면은 상태별로 완전히 다른 화면(그림·배지·버튼 구성)이었음. 여기서 실제 상태
- * 조합(drawState·todayChallengeState·isTodayRestDay·isTodayGivenUp)에 따라 그 화면들로
- * 갈라지게 함.
- *
- * ⚠️ 못 다룬 것 (의도적으로 남겨둠, 완전히 빠짐없이 처리한 척 안 함):
- * - B24(측정 중 -> 포기)는 B21(카드 뽑음 -> 포기)과 구분 안 하고 항상 B21로 보여줌.
- *   SKIPPED가 되고 나면 서버 응답(CardWindowResponse)엔 "포기 전에 진행 중이었는지"를
- *   구분할 값이 없어서(정확히 구분하려면 accumulated_duration_seconds/count를 홈 로딩
- *   시점에 추가로 받아와야 함) 안전한 쪽(B21 문구)으로 통일함.
- * - B22(일시정지) elapsedLabel은 정확한 경과 시간 대신 일반적인 문구를 씀 - 정확한 값을
- *   보여주려면 홈 진입 시 revealChallenge까지 추가로 불러야 해서(다른 카드 3장 등과 함께
- *   이미 병렬로 여러 API를 부르는 로딩 경로에 하나를 더 얹는 셈), 이번엔 범위 밖으로 둠.
- * - B26(자정 정산 후 다음 날 첫 진입 배너)은 아예 안 붙임 - "어제가 미완료로 끝났다"는
- *   걸 안정적으로 판단할 신호(어제 상태를 따로 불러와 비교하는 로직)가 아직 없음.
- */
+/** 확정 시안 C를 쉼·포기·일시정지 상태에도 공통 적용한다. 상태 전이 콜백은 CardHomeScreen에 유지한다. */
 @Composable
 private fun HomeStepDispatch(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScore: () -> Unit = {}, onOpenDam: () -> Unit = {}) {
-    val isSelected = state.drawState.value == "SELECTED"
-    val challengeState = state.todayChallengeState.value
-    val isRestDay = state.isTodayRestDay.value
-    val isGivenUp = state.isTodayGivenUp.value
-    val isCompleted = challengeState == "COMPLETED"
-    val isSkipped = challengeState == "SKIPPED"
-    val isPaused = challengeState == "PAUSED"
-    val onNotifications: () -> Unit = { state.step.value = CardHomeStep.NOTIFICATION_INBOX }
-
-    when {
-        // 완료는 새 화면 세트(B18~B26)에 대응 항목이 없음 - 기존 B01/B01b의 완료 처리를 그대로 씀.
-        isCompleted -> CardHomeScreen(state, scope, onOpenTuntunScore, onOpenDam = onOpenDam)
-
-        // B18 · 카드 미선택 · 쉬어가기
-        !isSelected && isRestDay -> HomeRestNoCardScreen(
-            state, onNotifications,
-            onOpenTuntunScore = onOpenTuntunScore,
-            onChallengeFromRest = { state.showRestCancelSheet.value = true },
-            onGiveUp = { state.showRestToGiveUpSheet.value = true },
-        )
-
-        // B19 · 카드 미선택 · 포기(G3)
-        !isSelected && isGivenUp -> HomeGiveUpNoCardScreen(
-            state, onNotifications,
-            onOpenTuntunScore = onOpenTuntunScore,
-            onPickCardAgain = { state.step.value = CardHomeStep.DECK_PICK },
-            onRestInstead = { scope.launch { state.openRestDaySheet() } },
-        )
-
-        // ⚠️ 2026-09-08 반영(QA - "포기에서 쉬어가기를 눌렀는데 계속 포기 화면"): 예전엔
-        // B21(isSelected && isSkipped)이 아래 쉬어가기 분기들보다 **먼저** 있었음.
-        // record_service.mark_rest_day()는 note.is_rest_day만 켜고 challenge.state는
-        // SKIPPED 그대로 두므로(그게 "포기 이력"이라 지우면 안 됨), 포기 상태에서 쉬어가기를
-        // 확정해도 이 분기에 다시 걸려서 B21이 그려졌음 - 서버는 쉼으로 바뀌었는데 화면만
-        // 포기로 남는 모순. 반대 방향(쉼 -> 포기)은 switch_to_give_up()이 is_rest_day를
-        // 꺼주기 때문에 원래 정상이었고, 이쪽만 빠져 있었음.
-        // 쉬어가기 분기를 포기 분기보다 위로 올려서 "가장 마지막에 사용자가 고른 것"이
-        // 화면을 결정하게 함.
-
-        // B20 · 카드 뽑음(아직 시작 전 또는 포기) · 쉬어가기
-        // ⚠️ SKIPPED를 여기(B20)에 같이 넣은 이유: 이제 포기하면 서버가 진행값을 0으로
-        // 지우므로(challenge_service.skip), 포기 후 쉼으로 바꾼 날은 진행 이력이 남아있는
-        // B23("하다가 쉼")보다 "아직 안 한 상태에서 쉼"인 B20이 실제와 맞음.
-        isSelected && isRestDay && (challengeState == "READY" || challengeState == "SKIPPED") ->
-            HomeRestCardDrawnScreen(
-                state, onNotifications,
-            onOpenTuntunScore = onOpenTuntunScore,
-                onChallengeFromRest = { state.showRestCancelSheet.value = true },
-                onPreviewTodayCard = { scope.launch { state.continueTodayMission() } },
-                onGiveUp = { state.showRestToGiveUpSheet.value = true },
-            )
-
-        // B23 · 카드 뽑고 진행하다가(ACTIVE/PAUSED) · 쉬어가기
-        isSelected && isRestDay -> HomeRestInProgressScreen(
-            state, onNotifications,
-            onOpenTuntunScore = onOpenTuntunScore,
-            onChallengeFromRest = { state.showRestCancelSheet.value = true },
-            onPreviewTodayCard = { scope.launch { state.continueTodayMission() } },
-            onGiveUp = { state.showRestToGiveUpSheet.value = true },
-        )
-
-        // B21(+ B24 통합) · 카드 뽑음 · 포기 (쉬어가기로 바꾸지 않은 경우만 - 위 분기 참고)
-        isSelected && isSkipped -> HomeGiveUpCardDrawnScreen(
-            state, onNotifications,
-            onOpenTuntunScore = onOpenTuntunScore,
-            onChallenge = { scope.launch { state.restartFromGiveUp() } },
-            onRestInstead = { scope.launch { state.openRestDaySheet() } },
-        )
-
-        // B22 · 진행하다 일시정지(쉼도 포기도 아님)
-        isSelected && isPaused -> HomePausedScreen(
-            state, onNotifications,
-            onOpenTuntunScore = onOpenTuntunScore,
-            elapsedLabel = "이어서 해볼까요?",
-            onResume = { scope.launch { state.enterInProgressMission() } },
-            onRestInstead = { scope.launch { state.openRestDaySheet() } },
-            onGiveUp = { state.showGiveUpConfirmSheet.value = true },
-        )
-
-        // 그 외(카드 미선택 + 평범한 상태, 진행 중인데 쉼/포기 아님 등) - 기존 B01/B01b.
-        else -> CardHomeScreen(state, scope, onOpenTuntunScore, onOpenDam = onOpenDam)
-    }
+    CardHomeScreen(state, scope, onOpenTuntunScore, onOpenDam = onOpenDam)
 }
 
 /** Figma B08 · 덱 불러오는 중 */
@@ -606,3 +502,5 @@ private fun LoadingScreen() {
         Text("오늘의 카드를 가져오는 중입니다…", style = TmtnType.caption, color = colors.onSurfaceVariant)
     }
 }
+
+

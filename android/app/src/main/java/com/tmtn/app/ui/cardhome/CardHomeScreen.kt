@@ -1,226 +1,194 @@
 package com.tmtn.app.ui.cardhome
 
-import com.tmtn.app.ui.common.TmtnHomeHero
-import com.tmtn.app.ui.theme.tmtnClickable
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.withStyle
-import com.tmtn.app.ui.common.toKoreanDateLabel
-import java.time.LocalDate
-import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
-import com.tmtn.app.ui.theme.LocalTmtnColors
-import com.tmtn.app.ui.theme.TmtnType
+import com.tmtn.app.R
+import com.tmtn.app.ui.theme.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material3.Icon
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-/** Figma B01·B01b · 홈 (오늘 카드 미선택/선택됨은 draw_state로 구분) */
+/** 확정 시안 C. 모든 미션 상태에서 동일한 홈 구조와 기존 상태 전이를 사용한다. */
 @Composable
 fun CardHomeScreen(state: CardHomeState, scope: CoroutineScope, onOpenTuntunScore: () -> Unit = {}, showDebugTools: Boolean = true, onOpenDam: () -> Unit = {}) {
-    val colors = LocalTmtnColors.current
-    val isSelected = state.drawState.value == "SELECTED"
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("홈", style = TmtnType.label, color = colors.onSurface)
-            Text(
-                "알림", style = TmtnType.label, color = colors.onSurfaceVariant,
-                // ⚠️ 2026-09-06 QA(접근성) 반영: 패딩이 아예 없어서 터치 영역이 약 20dp였음.
-                modifier = Modifier
-                    .tmtnClickable { state.step.value = CardHomeStep.NOTIFICATION_INBOX }
-                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                    .wrapContentSize(Alignment.Center),
-            )
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).testTag("home-c-scroll")
+        .padding(horizontal = 20.dp, vertical = 12.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("틈튼", style = TmtnType.title, color = TmtnHomeColor.Forest, modifier = Modifier.weight(1f))
+            Text(state.displayDateLabel().format(DateTimeFormatter.ofPattern("M월 d일 EEEE", Locale.KOREAN)),
+                style = TmtnType.caption, color = ColorOnSurfaceVariant)
+            // 기존 알림함 진입은 보존한다. 카드·일보의 장식 화살표는 사용하지 않는다.
+            IconButton(onClick = { state.step.value = CardHomeStep.NOTIFICATION_INBOX }, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.Notifications, "알림", tint = ColorOnSurfaceVariant, modifier = Modifier.size(20.dp))
+            }
         }
-        Text(if (state.todayChallengeState.value == "COMPLETED") "오늘의 카드, 잘 마쳤어요." else if (isSelected) "오늘 고른 작은 행동." else "오늘도 한 틈씩.",
-            style = TmtnType.editorialHeadline, color = colors.onSurface)
-        Text(state.displayDateLabel().format(java.time.format.DateTimeFormatter.ofPattern("M월 d일 EEEE", java.util.Locale.KOREAN)), style = TmtnType.caption, color = colors.onSurfaceVariant)
-
-        // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 M04) - HomeStateScreens.kt와 같은 배너.
-        ActiveExerciseBanner(state)
-
-        MascotCard(state, isSelected, scope)
+        if (state.activeExerciseSession.value != null) {
+            ActiveExerciseBanner(state)
+            Spacer(Modifier.height(16.dp))
+        }
+        if (state.todayChallengeState.value == "COMPLETED") {
+            HomeCompletionPanel(state, onViewCard = { scope.launch { state.continueTodayMission() } }, onOpenDam)
+        } else HomeCardMission(state, scope)
+        Spacer(Modifier.height(32.dp))
         ExtraExerciseHomeEntry(state)
+        Spacer(Modifier.height(16.dp))
         TmtnIndexSummaryCard(state, onOpenTuntunScore)
+        Spacer(Modifier.height(12.dp))
         HomeWaistPanel(state.waist)
     }
 }
 
-/** Latest extra-exercise feature remains reachable from the refreshed home. */
 @Composable
 internal fun ExtraExerciseHomeEntry(state: CardHomeState) {
-    val colors = LocalTmtnColors.current
     val completed = state.todayChallengeState.value == "COMPLETED"
-    androidx.compose.runtime.LaunchedEffect(completed) {
-        if (completed) state.loadExerciseMissionsToday()
-    }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-        .background(colors.surface).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("틈새 운동", style = TmtnType.label, color = colors.onSurface)
-        if (!completed) Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp), tint = colors.onSurfaceVariant)
+    val allExtrasDone = completed && homeCelebration(state.cardServiceDate.value, state.homeExerciseProgress.value) == HomeCelebration.EXTRA_TWO
+    // 목록 진입 때 기존 목록 화면이 조회한다. 홈 렌더링만으로 측정 화면으로 이동하지 않는다.
+    Row(Modifier.fillMaxWidth().testTag("home-extra")
+        .clip(RoundedCornerShape(20.dp))
+        .background(if (completed) TmtnHomeColor.ExtraOpen else TmtnHomeColor.ExtraLocked)
+        .then(if (completed) Modifier.tmtnClickable(onClick = { state.openExerciseMissionList() }) else Modifier.semantics(mergeDescendants = true) { disabled() })
+        .heightIn(min = 96.dp).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Image(painterResource(R.drawable.home_extra_exercise_mat), null, Modifier.size(64.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("틈새 운동", style = TmtnType.missionName, color = ColorOnSurface, modifier = Modifier.semantics { heading() })
+            Text(when { allExtrasDone -> "오늘 두 번 완료 · 운동 목록 보기"; completed -> "오늘의 운동 5가지 보기"; else -> "오늘의 카드 완료 후 열려요." }, style = TmtnType.caption, color = ColorOnSurface)
         }
-        if (completed) {
-            val today = state.exerciseMissionsToday.value
-            Text(if (today != null) "오늘 ${today.used} / ${today.limit}회 · 추가로 받은 재료" else "조금 더 움직이고 싶은 날, 재료를 하나 더.",
-                style = TmtnType.body, color = colors.onSurfaceVariant)
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                .tmtnClickable { state.openExerciseMissionList() }.heightIn(min = 48.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("틈새 운동 둘러보기", style = TmtnType.actionLabel, color = colors.onSurface, modifier = Modifier.weight(1f))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(20.dp), tint = colors.onSurface)
-            }
-        } else {
-            Text("오늘의 카드를 마치면 열려요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Icon(painterResource(if (completed) R.drawable.home_lock_open else R.drawable.home_lock_closed), null,
+                Modifier.size(24.dp), tint = if (completed) TmtnHomeColor.Forest else ColorOnSurfaceVariant)
+            Text(if (completed) "열림" else "잠김", style = TmtnType.caption,
+                color = if (completed) TmtnHomeColor.Forest else ColorOnSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun MascotCard(state: CardHomeState, isSelected: Boolean, scope: CoroutineScope) {
-    val colors = LocalTmtnColors.current
-    val isRestDay = state.isTodayRestDay.value
-    val isCompleted = state.todayChallengeState.value == "COMPLETED"
-    val isGivenUp = state.todayChallengeState.value == "SKIPPED"
-    val isPaused = state.todayChallengeState.value == "PAUSED"
-    val isReady = state.todayChallengeState.value == "READY"
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        val selectedCard = state.revealedCard.value.takeIf { isSelected && it?.challenge_id == state.todayChallengeId.value }
-        if (selectedCard != null) {
-            HomeMissionCard(selectedCard, completed = isCompleted) {
-                TmtnPrimaryButton(if (isCompleted || isGivenUp) "오늘 카드 다시 보기" else if (isPaused) "이어서 실천하기" else "이 카드 실천하기",
-                    onClick = { scope.launch { state.continueTodayMission() } })
-            }
-            Spacer(Modifier.height(4.dp))
-        } else {
-        TmtnHomeHero(
-            image = when {
-                isCompleted -> com.tmtn.app.R.drawable.beaver_cheer
-                isGivenUp -> com.tmtn.app.R.drawable.beaver_empty
-                isPaused -> com.tmtn.app.R.drawable.beaver_tilt
-                isSelected -> com.tmtn.app.R.drawable.beaver_cheer
-                isRestDay -> com.tmtn.app.R.drawable.beaver_rest
-                else -> com.tmtn.app.R.drawable.beaver_card
-            },
-            description = when {
-                isCompleted -> "미션을 마치고 기뻐하는 비버"
-                isGivenUp -> "오늘 미션을 마무리한 비버"
-                isPaused -> "잠시 숨을 고르는 비버"
-                isSelected -> "미션을 응원하는 비버"
-                isRestDay -> "쉬고 있는 비버"
-                else -> "오늘의 카드를 든 비버"
-            },
-            status = when {
-                isCompleted -> "오늘 실천 완료"
-                isGivenUp -> "오늘은 여기까지"
-                isPaused -> "잠시 중단"
-                isReady -> "카드 선택 완료"
-                isSelected -> "미션 진행 중"
-                isRestDay -> "쉬어가는 날"
-                else -> ""
-            },
-            title = when {
-                isCompleted -> "오늘도 해냈어요"
-                isGivenUp -> "오늘은 여기까지"
-                isPaused -> "이어서 해볼까요?"
-                isReady -> "시작해 볼까요?"
-                isSelected -> "한 곳씩 메우는 중"
-                isRestDay -> "편하게 쉬어요"
-                else -> ""
-            },
-        )
+private fun HomeCardMission(state: CardHomeState, scope: CoroutineScope) {
+    val selected = state.drawState.value == "SELECTED"
+    val completed = state.todayChallengeState.value == "COMPLETED"
+    // 쉼을 포기보다 먼저 판정: 서버는 쉼으로 바꾸어도 SKIPPED 이력을 보존한다.
+    val rest = !completed && state.isTodayRestDay.value
+    val givenUp = !completed && !rest && (state.isTodayGivenUp.value || state.todayChallengeState.value == "SKIPPED")
+    val paused = !completed && !rest && !givenUp && state.todayChallengeState.value == "PAUSED"
+    val card = state.revealedCard.value.takeIf { selected && it?.challenge_id == state.todayChallengeId.value }
+    val primary = when {
+        completed -> "완료한 카드 보기"
+        rest -> if (selected) "고른 미션 도전하기" else "오늘 미션 도전하기"
+        givenUp -> if (selected) "고른 미션 도전하기" else "오늘의 카드 고르기"
+        paused -> "미션 이어서 하기"
+        !selected -> "오늘의 카드 고르기"
+        state.todayChallengeState.value == "ACTIVE" -> "미션 이어서 하기"
+        else -> "이 행동 시작하기"
+    }
+    val onPrimary: () -> Unit = {
+        when {
+            rest -> state.showRestCancelSheet.value = true
+            !selected -> state.step.value = CardHomeStep.DECK_PICK
+            givenUp -> scope.launch { state.restartFromGiveUp() }
+            paused -> scope.launch { state.enterInProgressMission() }
+            selected && !completed -> scope.launch { state.enterInProgressMission() }
+            else -> scope.launch { state.continueTodayMission() }
         }
-        if (selectedCard == null) TmtnPrimaryButton(
-            text = when {
-                isCompleted || isGivenUp || isSelected -> "오늘 카드 다시 보기"
-                isRestDay -> "오늘 미션 해보기"
-                else -> "오늘의 카드 고르기"
-            },
-            onClick = {
-                if (isSelected) scope.launch { state.continueTodayMission() }
-                else state.step.value = CardHomeStep.DECK_PICK
-            },
-        )
-        if (isCompleted || (isRestDay && !isSelected)) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("연속 기록 ${state.currentStreak.value}일째", style = TmtnType.caption,
-                    color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
-                // 2026-09-17 추가(QA H01/H02) - refreshHomeOnReturn()이 조용히 실패하면
-                // 연속 기록이 예전 값에 멈춰 있는데도 사용자는 알 방법이 없었음. 실패했을
-                // 때만 작게 안내하고, 눌렀을 때 loadStreak()만 다시 부른다(오늘의 카드
-                // 재조회나 완료 API 재호출 없이 이 조회만 재시도 - H02 요건).
-                if (state.streakLoadFailed.value) {
-                    com.tmtn.app.ui.onboarding.TmtnTextButton(
-                        "연속 기록을 새로 가져오지 못했어요 · 다시 시도",
-                        onClick = { scope.launch { state.loadStreak() } },
-                    )
-                } else if (state.isHomeRefreshing.value) {
-                    Text("새로 확인하는 중…", style = TmtnType.caption, color = colors.onSurfaceVariant)
+    }
+    val actions: @Composable (Boolean) -> Unit = { onForest ->
+        Row(Modifier.fillMaxWidth().testTag("home-mission-actions").heightIn(min = 58.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (completed) {
+                Text("완료했어요", style = TmtnType.caption, color = TmtnHomeColor.Forest,
+                    modifier = Modifier.weight(.3f), textAlign = TextAlign.Center)
+            } else {
+                TextButton(onClick = {
+                    if (rest) state.showRestToGiveUpSheet.value = true else scope.launch { state.openRestDaySheet() }
+                }, enabled = !state.isLoading.value, modifier = Modifier.weight(.3f).heightIn(min = 48.dp)) {
+                    Text(if (rest) "오늘 포기" else "쉬어가기", style = TmtnType.label,
+                        color = if (onForest) Color.White else TmtnHomeColor.Forest, textAlign = TextAlign.Center)
                 }
             }
-        } else if (!isGivenUp) {
-            com.tmtn.app.ui.onboarding.TmtnTextButton("오늘은 쉬어가기",
-                onClick = { scope.launch { state.openRestDaySheet() } })
+            Button(onClick = onPrimary, enabled = !state.isLoading.value, modifier = Modifier.weight(.7f).heightIn(min = 48.dp),
+                shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = if (onForest) TmtnHomeColor.Paper else TmtnHomeColor.Forest,
+                    contentColor = if (onForest) ColorOnSurface else Color.White)) {
+                Text(primary, style = TmtnType.label, textAlign = TextAlign.Center)
+            }
         }
+    }
+    Column(Modifier.fillMaxWidth().testTag("home-mission-group"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (selected) {
+            if (card != null) HomeMissionCard(card, date = state.displayDateLabel()) else {
+                // 조회 실패 때 예전 비버 요약이나 다른 카드로 대체하지 않는다.
+                Column(Modifier.fillMaxWidth().heightIn(min = 418.dp).background(TmtnHomeColor.Paper, RoundedCornerShape(24.dp))
+                    .padding(24.dp), verticalArrangement = Arrangement.Center) {
+                    Text("선택한 카드를 확인해 주세요", style = TmtnType.title, color = TmtnHomeColor.PaperInk)
+                    Text("아래 버튼으로 카드 내용을 다시 불러올 수 있어요.", style = TmtnType.body, color = TmtnHomeColor.PaperMuted)
+                }
+            }
+            if (rest || givenUp || paused) Text(when {
+                rest -> "오늘은 쉬어가는 날이에요. 고른 카드는 남아 있어요."
+                givenUp -> "오늘은 여기까지. 원하면 다시 도전할 수 있어요."
+                else -> "잠시 멈췄어요. 이어서 실천할 수 있어요."
+            }, style = TmtnType.caption, color = ColorOnSurfaceVariant)
+            actions(false)
+            if (rest) TextButton(onClick = { scope.launch { state.continueTodayMission() } }) {
+                Text("오늘 카드 다시 보기", style = TmtnType.label, color = TmtnHomeColor.Forest)
+            }
+            if (paused) TextButton(onClick = { state.showGiveUpConfirmSheet.value = true }) {
+                Text("오늘 포기", style = TmtnType.caption, color = ColorOnSurfaceVariant)
+            }
+        } else {
+            HomeBeforeDrawCard(when { rest -> "편하게\n쉬어요."; givenUp -> "오늘은\n여기까지."; else -> "오늘도\n한 틈씩." },
+                if (rest || givenUp) "원할 때 작은 실천을\n다시 골라봐요." else "작은 실천 하나를\n함께 골라봐요.") { actions(true) }
+        }
+        if (state.streakLoadFailed.value && (completed || rest)) TextButton(onClick = { scope.launch { state.loadStreak() } }) {
+            Text("연속 기록을 새로 가져오지 못했어요 · 다시 시도", style = TmtnType.caption, color = ColorOnSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun HomeBeforeDrawCard(title: String, subtitle: String, actions: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().testTag("home-before-draw").heightIn(min = 418.dp)
+        .background(TmtnHomeColor.Forest, RoundedCornerShape(24.dp)).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("오늘의 카드", style = TmtnType.label, color = Color.White, modifier = Modifier.weight(1f))
+            Text("하루 한 장", style = TmtnType.label, color = ColorOnSurface,
+                modifier = Modifier.background(TmtnHomeColor.Paper, RoundedCornerShape(8.dp)).padding(8.dp))
+        }
+        Row(Modifier.fillMaxWidth().heightIn(min = 196.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = TmtnType.headline, color = Color.White)
+                Text(subtitle, style = TmtnType.body, color = Color.White)
+            }
+            Image(painterResource(R.drawable.beaver_card), null, Modifier.size(130.dp))
+        }
+        Text("완료하면 댐을 쌓을 재료를 받아요", style = TmtnType.label, color = Color.White)
+        actions()
     }
 }
 
 @Composable
 internal fun StatusBadge(text: String) {
     val colors = LocalTmtnColors.current
-    Box(
-        modifier = Modifier
-            .background(colors.surface, RoundedCornerShape(999.dp))
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-    ) {
+    Box(Modifier.background(colors.surface, RoundedCornerShape(999.dp)).padding(horizontal = 12.dp, vertical = 4.dp)) {
         Text(text, style = TmtnType.caption, color = colors.onSurface)
     }
 }

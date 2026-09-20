@@ -27,7 +27,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
     val colors = LocalTmtnColors.current
     val report = state.weeklyReport.value
     Column(Modifier.fillMaxSize()) {
-        TmtnTopBar("최근 7일", { state.tab.value = RecordTab.MONTHLY })
+        TmtnTopBar("이번 주 · 월요일 시작", { state.tab.value = RecordTab.MONTHLY })
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Text("나의 일주일을\n한눈에.", style = TmtnType.headline, color = colors.onSurface)
             when {
@@ -47,7 +47,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                                 val date = runCatching { LocalDate.parse(day.date) }.getOrNull()
                                 if (date != null) Column(Modifier.width(cellWidth), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.KOREAN), style = TmtnType.caption, color = colors.onSurfaceVariant)
-                                    DayCell(date.dayOfMonth, day.status, date == LocalDate.now(), date.isAfter(LocalDate.now())) {
+                                    DayCell(date.dayOfMonth, day.status, date == LocalDate.now(), day.status == "FUTURE" || date.isAfter(LocalDate.now(java.time.ZoneId.of("Asia/Seoul")))) {
                                         scope.launch { state.openDayDetail(day.date) }
                                     }
                                 }
@@ -63,7 +63,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                         Text("실천 ${report.completed_count}일 · 쉼 ${report.days.count { it.status == "REST" }}일", style = TmtnType.label, color = colors.onSurface)
                     }
                     val previous = state.previousWeek.value
-                    if (previous != null && report.days.size == 7 && report.days.none { it.status == "BEFORE_SIGNUP" }) {
+                    if (previous != null && report.days.size == 7 && report.days.none { it.status == "BEFORE_SIGNUP" || it.status == "FUTURE" }) {
                         val before = previous.count { it.status == "COMPLETED" }
                         val difference = report.completed_count - before
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -73,8 +73,8 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                                 else -> "이번에 남긴 ${report.completed_count}일도 소중해요."
                             }, style = TmtnType.title, color = colors.onSurface)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                                ComparisonBar("이전 7일", before, false, Modifier.weight(1f))
-                                ComparisonBar("최근 7일", report.completed_count, true, Modifier.weight(1f))
+                                ComparisonBar("지난주", before, false, Modifier.weight(1f))
+                                ComparisonBar("이번 주", report.completed_count, true, Modifier.weight(1f))
                             }
                             Text("각 기간 7일 기준 · ${shortRecordDate(previous.first().date)}부터 / ${shortRecordDate(report.start_date)}부터", style = TmtnType.caption, color = colors.onSurfaceVariant)
                         }

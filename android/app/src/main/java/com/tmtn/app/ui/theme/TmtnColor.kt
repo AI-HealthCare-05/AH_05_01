@@ -31,6 +31,8 @@ val ColorSecondary = Color(0xFFFF7A1A)
 // ⚠️ 이 값은 스크린샷에서 별도로 뽑은 "옅은 주황"이 없어서 secondary를 흰색 쪽으로
 // 옅게 섞어 만든 추정값. 정확한 값이 필요하면 팀에 확인 요청할 것.
 val ColorSecondaryContainer = Color(0xFFFFE8D6)
+// 센서형 미션 라벨: 옅은 살구 바탕에서도 읽히는 짙은 주황.
+val ColorSensorLabel = Color(0xFF9A4310)
 
 // 색 · 댐 재료(나무) - 이번 캡처엔 댐 화면 재료색이 뚜렷하게 안 보여서 기존값 유지(추정)
 val ColorWood = Color(0xFFBB8A52)
@@ -72,3 +74,22 @@ val NavigationIconActive = ColorPrimary
 val NavigationIconInactive = ColorOnSurfaceVariant
 val NavigationLabelActive = ColorPrimary
 val NavigationLabelInactive = ColorOnSurfaceVariant
+
+// 강도와 홈의 역할별 색. 강도는 색뿐 아니라 이름·막대 개수로 구분한다.
+object TmtnFeatureColor {
+    val Low = Color(0xFF62683D)
+    val Moderate = ColorBrandForest
+    val High = Color(0xFF684B3C)
+    val Mission = Color(0xFF234E3E)
+    val OnMission = Color(0xFFFFFFFF)
+    val OnMissionMuted = Color(0xFFDBEAE2)
+    val Extra = ColorBrandForest
+    val Journal = Color(0xFF77563A)
+    val JournalInk = ColorBackground
+    val Waist = Color(0xFF293E45)
+    val OnFeature = ColorBackground
+    val OnFeatureMuted = Color(0xFFE5E7DF)
+    val TapeSurface = ColorSurface
+    val TapeInk = ColorOnSurface
+    val TapeMarker = ColorBrandForest
+}

@@ -1,10 +1,15 @@
 package com.tmtn.app.ui.common
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
@@ -83,12 +88,26 @@ fun TmtnExerciseFields(
 @Composable
 private fun AerobicInput(label: String, description: String, examples: String, minutes: Int, onChange: (Int) -> Unit) {
     val colors = LocalTmtnColors.current
-    TmtnSurfaceCard(TmtnSurfaceRole.Exercise) {
-        TmtnIntensityBand(label, colors.secondaryContainer)
+    val level = when (label) { "저강도" -> 1; "중강도" -> 2; else -> 3 }
+    val accent = when (level) { 1 -> TmtnFeatureColor.Low; 2 -> TmtnFeatureColor.Moderate; else -> TmtnFeatureColor.High }
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(colors.background)
+        .border(1.dp, colors.outlineVariant, RoundedCornerShape(20.dp)).testTag("aerobic-level-$level")) {
+        Row(Modifier.fillMaxWidth().background(accent).padding(horizontal = 18.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, style = TmtnType.label, color = TmtnFeatureColor.OnFeature)
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
+                repeat(3) { index ->
+                    Box(Modifier.size(width = 8.dp, height = (10 + index * 7).dp)
+                        .background(if (index < level) TmtnFeatureColor.OnFeature else TmtnFeatureColor.OnFeature.copy(alpha = .28f), RoundedCornerShape(2.dp)))
+                }
+            }
+        }
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(description, style = TmtnType.body, color = colors.onSurface)
             Text(examples, style = TmtnType.caption, color = colors.onSurfaceVariant)
         }
         TmtnStepper(value = minutes, unit = "분", onDecrement = { onChange((minutes - 10).coerceAtLeast(0)) }, onIncrement = { onChange((minutes + 10).coerceAtMost(1000)) }, maxValue = 1000)
+        }
     }
 }
