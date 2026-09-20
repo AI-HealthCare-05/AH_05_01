@@ -55,6 +55,10 @@ artifacts/
 # 무결성이 고정된 배포물의 일부). 위 *.joblib 규칙은 다른 곳(임시 학습 산출물 등)의
 # joblib을 계속 막아야 하므로 그대로 두고, 여기만 명시적으로 되살림.
 !tuntun_peer_bridge/**/*.joblib
+# ⚠️ 2026-09-21 추가(PR21_REVIEW.md 지적 반영) - model_assets/xai/payload/의 모델도
+# 마찬가지로 manifest SHA-256으로 무결성이 고정된 배포물의 일부라 커밋에 반드시 있어야
+# 함. 위와 같은 이유로 여기만 명시적으로 되살림(다른 곳의 임시 joblib은 계속 막음).
+!model_assets/xai/payload/**/*.joblib
 *.pt
 *.pth
 *.onnx
