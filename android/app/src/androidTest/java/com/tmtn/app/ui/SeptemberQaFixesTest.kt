@@ -125,7 +125,7 @@ class SeptemberQaFixesTest {
         compose.onNodeWithText("오늘의 카드로 가기").performClick()
         compose.waitUntil(10_000) { state.step.value == CardHomeStep.REVEALED }
         compose.onNodeWithText("오늘의 카드").assertIsDisplayed()
-        compose.onNodeWithText("이 행동 시작하기").assertIsDisplayed()
+        compose.onNodeWithText("이 카드 실천하기").assertIsDisplayed()
         capture("09-journal-to-card")
         compose.runOnIdle { assertTrue(calls.isNotEmpty()); assertTrue(calls.all { it in listOf("getTodayCards","revealChallenge") }) }
     }

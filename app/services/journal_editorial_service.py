@@ -7,7 +7,7 @@ LLM output or article's own review_status can grant publication permission.
 import hashlib
 import json
 import logging
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -67,6 +67,21 @@ def reading_cycle(articles):
         for group in groups.values()
         if i < len(group)
     ]
+
+
+def issue_readings(articles, issue_date: date, count: int):
+    """호별 무작위 순서는 새로고침해도 유지하며, 두 글의 주제는 겹치지 않습니다."""
+    ordered = sorted(articles, key=lambda a: hashlib.sha256(f"{issue_date.isoformat()}:{a.id}".encode()).digest())
+    picked, topics = [], set()
+    for article in ordered:
+        topic = article.topic or article.id
+        if topic in topics:
+            continue
+        picked.append(article)
+        topics.add(topic)
+        if len(picked) == count:
+            break
+    return picked
 
 
 def content_hash(item: dict) -> str:
@@ -227,7 +242,16 @@ def select_editorial(
         if available:
             start = today.toordinal() % len(available)
             related[domain] = (available[start:] + available[:start])[:2]
-    return JournalEditorialResponse(service_date=today, preview=preview, sections=sections, related_readings=related)
+    monday = today - timedelta(days=today.weekday())
+    return JournalEditorialResponse(
+        service_date=today,
+        preview=preview,
+        sections=sections,
+        related_readings=related,
+        daily_articles=issue_readings(all_eligible.values(), today, 1),
+        weekly_articles=issue_readings(all_eligible.values(), monday, 2),
+        weekly_issue_start=monday,
+    )
 
 
 def load_catalog(directory: Path = CATALOG_DIR, *, internal_review: bool = False) -> tuple[list, list, list]:

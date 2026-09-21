@@ -32,12 +32,8 @@ import com.tmtn.app.ui.common.tmtnMaterialDrawable
 import com.tmtn.app.ui.theme.*
 import kotlinx.coroutines.launch
 
-// ⚠️ 2026-09-18 이식(UI/UX 핸드오프 FR01~08 "첫 복구", PR #21 소스 기준) - 원본은
-// OnboardingState.canReturnToInputSummary/returnToInputSummary()로 뒤로가기를 조건부
-// 노출했는데, 우리 온보딩엔 이 개념이 없어서 onBack을 항상 null(뒤로가기 없음)로
-// 단순화함. 나머지 로직(phase 전이, 재시도, 완료 판정)은 원본 그대로.
 @Composable
-internal fun FirstDamRoute(onContinue: () -> Unit) {
+internal fun FirstDamRoute(state: OnboardingState, onContinue: () -> Unit) {
     val repair = remember { FirstRepairState() }
     val scope = rememberCoroutineScope()
     val reduced = rememberTmtnReducedMotion()
@@ -45,7 +41,7 @@ internal fun FirstDamRoute(onContinue: () -> Unit) {
         else TmtnMotion.FirstRepairTravelMillis + TmtnMotion.FirstRepairSettleMillis
     LaunchedEffect(Unit) { repair.refresh() }
     if (repair.phase == FirstRepairPhase.Legacy) {
-        LegacyFirstDamRoute(onContinue)
+        LegacyFirstDamRoute(state, onContinue)
         return
     }
     BackHandler(repair.busy) { /* 저장 중 뒤로 이동해 중복 작업을 시작하지 않는다. */ }
@@ -53,7 +49,7 @@ internal fun FirstDamRoute(onContinue: () -> Unit) {
         phase = repair.phase, busy = repair.busy, failedOperation = repair.failedOperation,
         completedStage = repair.data?.companion?.current_stage ?: 1,
         reducedMotion = reduced,
-        onBack = null,
+        onBack = if (!repair.busy && state.canReturnToInputSummary) ({ state.returnToInputSummary() }) else null,
         onAction = {
             when (repair.phase) {
                 FirstRepairPhase.Welcome -> scope.launch { repair.receiveGift() }
@@ -153,7 +149,7 @@ private fun FirstRepairScene(phase: FirstRepairPhase, completedStage: Int, reduc
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val sceneWidth = maxWidth
             // 비트맵과 이동 경로만 비례 축소하며 글자 영역에는 고정 높이를 주지 않는다.
-            val damHeight = sceneWidth / (350f / 190f)
+            val damHeight = sceneWidth / com.tmtn.app.ui.common.DamArtworkAspectRatio
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Crossfade(if (done) completedStage else 0,
                     animationSpec = tween(if (reducedMotion) TmtnMotion.SheetReducedMillis else TmtnMotion.EnterMillis), label = "첫 복구 결과") { stage ->

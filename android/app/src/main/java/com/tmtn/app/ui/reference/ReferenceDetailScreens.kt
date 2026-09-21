@@ -82,7 +82,7 @@ fun ReferenceInputsScreen(
                     Text("입력 정보를 불러오고 있어요", style = TmtnType.body, color = colors.onSurfaceVariant)
                 } else {
                     Text("입력 정보를 불러오지 못했어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
-                    TmtnPrimaryButton("다시 시도", { scope.launch { load() } })
+                    TmtnPrimaryButton("다시 불러오기", { scope.launch { load() } })
                 }
             } else {
                 if (state.errorMessage.value != null && !requesting && !state.isLoading.value) {

@@ -49,4 +49,7 @@ class JournalEditorialResponse(BaseModel):
     preview: bool = False
     sections: list[JournalReadingSection]
     related_readings: dict[str, list[JournalKnowledgeArticle]] = Field(default_factory=dict)
+    daily_articles: list[JournalKnowledgeArticle] = Field(default_factory=list)
+    weekly_articles: list[JournalKnowledgeArticle] = Field(default_factory=list)
+    weekly_issue_start: date | None = None
     model_explanation: JournalModelExplanation = Field(default_factory=JournalModelExplanation)

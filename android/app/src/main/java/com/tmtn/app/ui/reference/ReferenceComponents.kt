@@ -114,8 +114,8 @@ internal fun ScoreArrow(accent: Boolean = false) {
     val colors = LocalTmtnColors.current
     Icon(
         if (accent) Icons.AutoMirrored.Filled.ArrowForward else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-        null, tint = colors.onSurface,
-        modifier = if (accent) Modifier.size(36.dp).background(colors.secondary, CircleShape).padding(8.dp)
+        null, tint = if (accent) colors.background else colors.onSurface,
+        modifier = if (accent) Modifier.size(36.dp).background(colors.primary, CircleShape).padding(8.dp)
         else Modifier.size(20.dp),
     )
 }

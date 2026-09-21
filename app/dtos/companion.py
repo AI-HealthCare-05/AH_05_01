@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, TypedDict
 
 from pydantic import BaseModel
 
@@ -12,8 +12,15 @@ MATERIAL_INFO = {
     "WATER": {"material_name": "물길", "domain_label": "수분"},
 }
 
+
+class StageDefinition(TypedDict):
+    stage_number: int
+    label: str
+    threshold: int
+
+
 # G03 화면 그대로. 임계값은 "총 재료 개수"의 누적 기준값.
-STAGE_DEFINITIONS = [
+STAGE_DEFINITIONS: list[StageDefinition] = [
     {"stage_number": 1, "label": "물 터 잡기", "threshold": 5},
     {"stage_number": 2, "label": "기둥 세우기", "threshold": 15},
     {"stage_number": 3, "label": "몸통 연결하기", "threshold": 35},
@@ -22,12 +29,7 @@ STAGE_DEFINITIONS = [
 ]
 
 
-# ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08 "첫 복구") - PR #21 소스 기준 이식.
-# first_repair_completed=False(기본값)면 STAGE_DEFINITIONS와 완전히 동일한 리스트를
-# 반환하므로, 이 함수를 그냥 추가하는 것만으로는 기존 호출부(인자 없이 STAGE_DEFINITIONS를
-# 직접 참조하던 곳)에 아무 영향이 없음 - 첫 복구를 마친 계정만 1단계 임계값이 5→1로
-# 내려감(2~5단계는 그대로).
-def stage_definitions(first_repair_completed: bool = False) -> list[dict]:
+def stage_definitions(first_repair_completed: bool = False) -> list[StageDefinition]:
     """첫 복구를 마친 계정만 1개로 1단계. 기존 계정과 2~5단계 기준은 유지한다."""
     return [
         {**stage, "threshold": 1, "label": "첫 빈틈 받치기"}
@@ -62,8 +64,6 @@ class CompanionResponse(BaseModel):
     stages: list[StageItem]
 
 
-# ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08) - "첫 선물은 완료한 운동 카드와 별개이며
-# 서버가 중복 지급을 막는다."
 FirstRepairStatus = Literal["ELIGIBLE", "GIFT_RECEIVED", "COMPLETED", "UNAVAILABLE"]
 
 
@@ -92,6 +92,7 @@ class MaterialHistoryResponse(BaseModel):
     domain_label: str
     count: int
     recent_history: list[CardHistoryItem]  # 최근 5개만
+    welcome_gift_count: int = 0
 
 
 class CardCollectionResponse(BaseModel):

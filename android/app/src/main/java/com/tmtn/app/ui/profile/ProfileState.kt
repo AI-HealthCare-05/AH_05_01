@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.profile
 
+import com.tmtn.app.ui.legal.LegalDocument
+
 import com.tmtn.app.ui.common.failWithMessage
 import com.tmtn.app.ui.common.userMessageOr
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +36,12 @@ class ProfileState(private val profileApiProvider: () -> com.tmtn.app.network.Pr
     var isLoading = mutableStateOf(false)
     var errorMessage = mutableStateOf<String?>(null)
     var termsOrigin = ProfileScreenKey.HOME
+    var legalDocument = mutableStateOf(LegalDocument.TERMS)
+    fun openLegal(document: LegalDocument) {
+        termsOrigin = screen.value
+        legalDocument.value = document
+        screen.value = ProfileScreenKey.TERMS
+    }
     var loadFailed = mutableStateOf(false)
 
     var userInfo = mutableStateOf<UserInfoResponse?>(null)

@@ -49,9 +49,9 @@ class SensorRepository:
         그대로 스냅샷으로 보내므로 카운터와 동일하게 최댓값 갱신 방식을 씀.
         ⚠️ 2026-09-16 버그 수정(QA F10) - 위와 같은 원자적 조건부 UPDATE로 교체."""
 
-        updated = await Challenge.filter(
-            id=challenge.id, accumulated_duration_seconds__lt=candidate_seconds
-        ).update(accumulated_duration_seconds=candidate_seconds)
+        updated = await Challenge.filter(id=challenge.id, accumulated_duration_seconds__lt=candidate_seconds).update(
+            accumulated_duration_seconds=candidate_seconds
+        )
         if updated:
             challenge.accumulated_duration_seconds = candidate_seconds
         return bool(updated)

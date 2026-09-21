@@ -91,7 +91,7 @@ internal fun NewsRecords(load: EditorialLoad<WeeklyReportResponse>, onRetry: () 
                 else {
                     Text(news.headline, style = TmtnType.headline, color = colors.onSurface, modifier = Modifier.semantics { heading() })
                     Text(news.detail, style = TmtnType.bodyLarge, color = ColorBrandForest)
-                    Image(painterResource(if (news.empty) R.drawable.beaver_rest else if (news.evening) R.drawable.score_news_evening else R.drawable.beaver_newspaper),
+                    Image(painterResource(if (news.empty) R.drawable.beaver_rest else if (news.evening) R.drawable.score_news_evening else R.drawable.beaver_newspaper_white),
                         null, Modifier.fillMaxWidth().then(if (news.evening) Modifier.aspectRatio(1.5f) else Modifier.height(160.dp)),
                         contentScale = ContentScale.Fit)
                     Text(scorePeriod(load.value.start_date, load.value.end_date) + " · 실천 완료 기록",
@@ -130,7 +130,7 @@ internal fun NewsPracticeWeek(load: EditorialLoad<WeeklyReportResponse>, onRetry
                                 }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(listOf("월", "화", "수", "목", "금", "토", "일")[date.dayOfWeek.value - 1], style = TmtnType.label, color = colors.onSurfaceVariant)
                                 Text(date.dayOfMonth.toString(), style = TmtnType.bodyLarge, color = colors.onSurface)
-                                Text(if (complete) "✓" else if (status == "REST") "쉼" else "·", style = TmtnType.label, color = if (complete) colors.secondary else colors.onSurfaceVariant)
+                                Text(if (complete) "✓" else if (status == "REST") "쉼" else "·", style = TmtnType.label, color = if (complete) colors.primary else colors.onSurfaceVariant)
                             }
                         }
                     }

@@ -201,7 +201,7 @@ private fun DamMenuRow(title: String, body: String, onClick: () -> Unit) {
 
 /** Figma G02 · 재료 도감 */
 @Composable
-private fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (String) -> Unit) {
+internal fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (String) -> Unit) {
     val colors = LocalTmtnColors.current
     val materials = listOf(
         "WOOD" to ("나뭇가지" to "움직임 · 유산소"),
@@ -261,7 +261,7 @@ private fun MaterialEncyclopediaScreen(onBack: () -> Unit, onOpenMaterial: (Stri
 
 /** Figma G03 · 댐 단계 안내 */
 @Composable
-private fun StageGuideScreen(companion: CompanionResponse?, onBack: () -> Unit) {
+internal fun StageGuideScreen(companion: CompanionResponse?, onBack: () -> Unit) {
     val colors = LocalTmtnColors.current
 
     Column(modifier = Modifier.fillMaxSize()) {

@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 
-/** Figma A15 · 온보딩 완료 (node 282:4788). A09/A16(건너뛰기·나중에)와 A10(맞추기)이 전부 여기로 옴. */
+/** Figma A20 · 입력 확인 (1314:2734). 생활시간 저장/건너뛰기 → 요약 → A21 첫 댐 공개. */
 @Composable
 fun A15CompleteScreen(state: OnboardingState, onOnboardingComplete: () -> Unit) {
     val colors = LocalTmtnColors.current
@@ -55,7 +55,7 @@ fun A15CompleteScreen(state: OnboardingState, onOnboardingComplete: () -> Unit) 
 
         Text("준비가 끝났어요", style = TmtnType.display, color = colors.onSurface, textAlign = TextAlign.Center)
         Text(
-            "오늘의 카드를 골라보세요.",
+            "첫 댐을 만나기 전에 한 번 확인해 주세요.",
             style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
         )
 
@@ -74,16 +74,16 @@ fun A15CompleteScreen(state: OnboardingState, onOnboardingComplete: () -> Unit) 
             SummaryRow("몸무게", "${state.weightKg.value.ifBlank { "-" }} kg")
             SummaryRow(
                 "일주일 운동량",
-                "근력 ${strengthLabel(state.strengthWeeklyCount.value)} · 유산소 " +
+                "근력 ${strengthLabel(state.strengthWeeklyCount.value, state.strengthWeekdays.value)} · 유산소 " +
                     "${state.aerobicLowMinutes.value + state.aerobicModerateMinutes.value + state.aerobicHighMinutes.value}분",
             )
         }
 
         Text(
-            "값은 내 정보에서 언제든 고칠 수 있어요.",
+            "키·몸무게와 운동 정보는 내 정보에서 고칠 수 있어요.",
             style = TmtnType.caption, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
         )
-        TmtnPrimaryButton(text = "오늘의 카드 보러 가기", onClick = onOnboardingComplete)
+        TmtnPrimaryButton(text = "첫 댐 만나기", onClick = onOnboardingComplete)
     }
 }
 
@@ -105,4 +105,9 @@ private fun SummaryRow(label: String, value: String) {
     }
 }
 
-private fun strengthLabel(count: Int): String = if (count == 0) "안 함" else "주 ${count}회"
+private fun strengthLabel(count: Int, days: Set<Int>?): String = when {
+    count == 0 -> "안 함"
+    days != null && strengthCountForDays(days) == count -> "주 ${days.size}일"
+    count >= 5 -> "주 5일 이상"
+    else -> "주 ${count}일"
+}

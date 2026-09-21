@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.onboarding
 
+import com.tmtn.app.ui.legal.LegalDocument
+
 import com.tmtn.app.ui.common.failWithMessage
 import com.tmtn.app.ui.common.userMessageOr
 import androidx.compose.runtime.mutableStateOf
@@ -25,7 +27,7 @@ enum class OnboardingStep {
     A06_CONSENT, A07_PROFILE, A08_EXERCISE, A09_SCHEDULE_INTRO, A10_SCHEDULE,
     A11_VERIFY_RETRY, A12_PASSWORD_RESET_REQUEST, A13_NEW_PASSWORD, A14_TERMS_DETAIL,
     A15_COMPLETE, A16_PERMISSIONS, SIGNUP_COMPLETE,
-    AUTH_CHOICE, DONE
+    AUTH_CHOICE, FIRST_DAM, DONE
 }
 
 /** Shared HTTP copy; response bodies never appear directly in a UI error label. */
@@ -41,6 +43,9 @@ class OnboardingState(private val authApiProvider: () -> com.tmtn.app.network.Au
     var isLoading = mutableStateOf(false)
     private var registration = RegistrationProgress()
     val accountCreated get() = registration.accountCreated
+    // A resumed first reveal has no in-memory summary. Do not navigate back to default input values.
+    private var inputSummaryAvailable = false
+    val canReturnToInputSummary get() = inputSummaryAvailable
 
     init {
         if (TokenHolder.accessToken != null) {
@@ -70,6 +75,12 @@ class OnboardingState(private val authApiProvider: () -> com.tmtn.app.network.Au
     // 미리 체크된 동의는 법적으로 동의로 인정되지 않음. 반드시 false로 시작해서 사용자가
     // 직접 체크해야만 함(allMandatoryAgreed가 "다음" 버튼 활성화를 이미 막아줌).
     var agreeTermsOfService = mutableStateOf(false)
+    var legalDocument = mutableStateOf(LegalDocument.TERMS)
+    fun openLegal(document: LegalDocument) {
+        legalDocument.value = document
+        step.value = OnboardingStep.A14_TERMS_DETAIL
+    }
+
     var agreePrivacyPolicy = mutableStateOf(false)
     var agreeAgeOver14 = mutableStateOf(false)
     var agreeHealthDataUsage = mutableStateOf(false) // ⚠️ 2026-09-02 추가: 키·몸무게·운동습관 "수집·이용" 자체(필수) - 틈튼지수 "분석"과는 별개
@@ -370,7 +381,8 @@ class OnboardingState(private val authApiProvider: () -> com.tmtn.app.network.Au
     /** Rehydrate already saved fields after reopening an unfinished signup. */
     suspend fun restoreProfileForResume() {
         if (!accountCreated || OnboardingCheckpoint.pendingStep() == null) return
-        if (step.value in listOf(OnboardingStep.A06_CONSENT, OnboardingStep.SIGNUP_COMPLETE)) return
+        // First reveal needs only companion status; completed profile inputs must not block it on resume.
+        if (step.value in listOf(OnboardingStep.A06_CONSENT, OnboardingStep.SIGNUP_COMPLETE, OnboardingStep.FIRST_DAM)) return
         runStep(block = {
             runCatching {
                 val response = ApiClient.profileApi.getMe()
@@ -481,12 +493,24 @@ class OnboardingState(private val authApiProvider: () -> com.tmtn.app.network.Au
             },
             // ⚠️ FLOWS.md 갱신: A10 "이 시간으로 맞추기"는 이제 바로 끝나는 게 아니라
             // A15(온보딩 완료 요약)를 거침.
-            onSuccess = { step.value = OnboardingStep.A15_COMPLETE }
+            onSuccess = { returnToInputSummary() }
         )
     }
 
     fun skipSchedule() {
+        returnToInputSummary()
+    }
+
+    fun returnToInputSummary() {
+        inputSummaryAvailable = true
+        OnboardingCheckpoint.save(OnboardingStep.A15_COMPLETE)
         step.value = OnboardingStep.A15_COMPLETE
+    }
+
+    fun openFirstDam() {
+        inputSummaryAvailable = true
+        OnboardingCheckpoint.save(OnboardingStep.FIRST_DAM)
+        step.value = OnboardingStep.FIRST_DAM
     }
 
     // ===== A16 =====

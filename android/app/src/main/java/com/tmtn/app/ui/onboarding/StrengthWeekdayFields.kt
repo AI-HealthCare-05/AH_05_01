@@ -70,11 +70,11 @@ internal fun StrengthWeekdayFields(
             Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(12.dp)).padding(16.dp)
                 .semantics { liveRegion = LiveRegionMode.Polite }) {
                 if (largeType) {
-                    Text(if (selectedDays == null && count == 5) "주 5일 이상" else "주 ${count}일", style = TmtnType.inputHeadline, color = colors.secondary)
+                    Text(if (selectedDays == null && count == 5) "주 5일 이상" else "주 ${count}일", style = TmtnType.inputHeadline, color = colors.primary)
                     Spacer(Modifier.height(8.dp))
                     Text(summary, style = TmtnType.caption, color = colors.onSurfaceVariant)
                 } else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(if (selectedDays == null && count == 5) "주 5일+" else "주 ${count}일", style = TmtnType.inputHeadline, color = colors.secondary)
+                    Text(if (selectedDays == null && count == 5) "주 5일+" else "주 ${count}일", style = TmtnType.inputHeadline, color = colors.primary)
                     Text(summary, style = TmtnType.caption, color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
                 }
             }
@@ -110,7 +110,7 @@ private fun WeekdayToggle(day: Int, selected: Boolean, onToggle: () -> Unit, mod
     val reduced = rememberTmtnReducedMotion()
     val interactions = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(14.dp)
-    val fill by animateColorAsState(if (selected) colors.onSurface else colors.surface,
+    val fill by animateColorAsState(if (selected) colors.primary else colors.surface,
         animationSpec = if (reduced) snap() else tween(TmtnMotion.PressMillis), label = "weekday selection")
     Column(modifier.heightIn(min = 72.dp).tmtnFocusOutline(interactions, shape).clip(shape).background(fill)
         .toggleable(selected, interactionSource = interactions, indication = null, role = Role.Checkbox, onValueChange = { onToggle() })

@@ -89,10 +89,12 @@ class WeeklyEditorialService:
             # ⚠️ 2026-09-17 추가(QA 3번) - 틈튼일보에 완료한 미션명은 있었는데 완료일이
             # 없었음. day.date(해당 기록의 서비스 날짜)는 이미 있던 값이라 문구에만
             # 추가함 - 새로 조회하지 않음.
-            claims.append(EditorialClaim(
-                id="claim.records.completed_card",
-                text=f"{day.date.strftime('%m월 %d일')} {detail.mission_title} 카드가 기록에 남았어요.",
-            ))
+            claims.append(
+                EditorialClaim(
+                    id="claim.records.completed_card",
+                    text=f"{day.date.strftime('%m월 %d일')} {detail.mission_title} 카드가 기록에 남았어요.",
+                )
+            )
             record_ids.append(str(day.date))
         return claims, record_ids
 

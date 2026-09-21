@@ -96,7 +96,7 @@ private fun PermissionCard(title: String, required: Boolean, description: String
             Box(
                 modifier = Modifier
                     .background(
-                        if (required) colors.secondary else colors.surface,
+                        if (required) colors.primary else colors.surface,
                         RoundedCornerShape(999.dp),
                     )
                     .padding(horizontal = 8.dp, vertical = 2.dp),
@@ -104,7 +104,7 @@ private fun PermissionCard(title: String, required: Boolean, description: String
                 Text(
                     if (required) "자동 측정에 필요" else "거리 미션에서",
                     style = TmtnType.caption,
-                    color = if (required) colors.onSurface else colors.onSurfaceVariant,
+                    color = if (required) colors.background else colors.onSurfaceVariant,
                 )
             }
         }

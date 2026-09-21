@@ -1,5 +1,7 @@
 package com.tmtn.app.ui.dam
 
+import com.tmtn.app.ui.common.tmtnMaterialName
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -52,9 +54,13 @@ internal fun MaterialDetailScreen(element: String, onBack: () -> Unit) {
                 history == null -> DamLoadMessage(false) {}
                 else -> {
                     val result = history!!
-                    Text("모은 ${result.material_name} ${result.count}개", style = TmtnType.title, color = colors.onSurface)
+                    Text("모은 ${tmtnMaterialName(element, result.material_name)} ${result.count}개", style = TmtnType.title, color = colors.onSurface)
+                    if (result.welcome_gift_count > 0) {
+                        Text("첫 만남 선물 · 나뭇가지 ${result.welcome_gift_count}개", style = TmtnType.label, color = colors.onSurface)
+                        Text("첫 빈틈을 함께 메운 재료예요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+                    }
                     if (result.recent_history.isEmpty()) {
-                        Text("아직 모은 재료가 없어요. 실천을 마치면 이곳에 남아요.", style = TmtnType.body, color = colors.onSurfaceVariant)
+                        Text("아직 완료한 카드 기록이 없어요. 실천을 마치면 이곳에 남아요.", style = TmtnType.body, color = colors.onSurfaceVariant)
                     } else result.recent_history.forEach { card ->
                         Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(card.title, style = TmtnType.label, color = colors.onSurface)
@@ -130,7 +136,7 @@ internal fun CollectionContent(collection: CardCollectionResponse?, failed: Bool
                         MaterialIcon(card.five_element, 44.dp)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(card.title, style = TmtnType.label, color = colors.onSurface)
-                            Text("${historyDate(card.completed_at)} · ${card.material_name}", style = TmtnType.body, color = colors.onSurfaceVariant)
+                            Text("${historyDate(card.completed_at)} · ${tmtnMaterialName(card.five_element, card.material_name)}", style = TmtnType.body, color = colors.onSurfaceVariant)
                         }
                     }
                 }
@@ -160,7 +166,7 @@ private fun CompletedCardDetail(card: CardHistoryItem, onBack: () -> Unit) {
                 Image(painterResource(tmtnMaterialDrawable(card.five_element)), null, Modifier.fillMaxWidth().height(120.dp))
                 Text(card.title, style = TmtnType.headline, color = colors.onSurface)
                 Text("${historyDate(card.completed_at)} · 실천 완료", style = TmtnType.body, color = colors.onSurfaceVariant)
-                Text("${card.material_name} · ${card.domain_label}", style = TmtnType.label, color = colors.wood)
+                Text("${tmtnMaterialName(card.five_element, card.material_name)} · ${card.domain_label}", style = TmtnType.label, color = colors.wood)
             }
             day?.memo?.takeIf { it.isNotBlank() }?.let { memo ->
                 Text("함께 남긴 메모", style = TmtnType.label, color = colors.onSurface)

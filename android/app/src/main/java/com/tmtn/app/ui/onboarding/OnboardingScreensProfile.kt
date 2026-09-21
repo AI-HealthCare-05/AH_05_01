@@ -72,9 +72,9 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
         ) {
 
 
-            Text("너의 하루를 알려 줘.", style = TmtnType.headline, color = colors.onSurface)
-            Text("1 / 2 · 내 정보   다음은 평소 운동이에요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
-            Text("이 정보로 무리 없는 미션을 준비할게. 별명으로 편하게 불러 줄게!", style = TmtnType.body, color = colors.onSurface)
+            Text("평소 하루를 알려 주세요.", style = TmtnType.headline, color = colors.onSurface)
+            Text("내 정보 1 / 2. 다음은 평소 운동이에요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            Text("이 정보로 무리 없는 미션을 준비해요. 별명으로 편하게 불러 드릴게요.", style = TmtnType.body, color = colors.onSurface)
             // 이름 · 별명
             ResponsiveFieldPair(first = { fieldModifier ->
                 TmtnTextField(
@@ -184,7 +184,12 @@ fun A07ProfileScreen(state: OnboardingState, scope: CoroutineScope) {
 @Composable
 private fun SectionHeader(title: String, hint: String) {
     val colors = LocalTmtnColors.current
-    Row(
+    // At large text the right-aligned hint wrapped into a ragged two-line block; stack it instead.
+    val large = androidx.compose.ui.platform.LocalDensity.current.fontScale * com.tmtn.app.ui.theme.LocalTmtnTextScale.current > 1.3f
+    if (large) Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = TmtnType.label, color = colors.onSurface)
+        Text(hint, style = TmtnType.caption, color = colors.onSurfaceVariant)
+    } else Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

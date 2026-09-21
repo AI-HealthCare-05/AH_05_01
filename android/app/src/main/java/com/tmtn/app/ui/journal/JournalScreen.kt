@@ -135,7 +135,7 @@ fun JournalScreen(
                 WeeklyFootprints(weekly, collection, cards, onRefresh, exercises)
                 JournalWeeklyHistory(history, onRetryHistory)
                 SectionTitle("02", "생활 읽을거리")
-                if (editorial == null) LivingArticles() else JournalReadingColumns(editorial, onRefresh)
+                if (editorial == null) LivingArticles() else JournalReadingColumns(editorial, onRefresh, weekly = true)
                 SectionTitle("03", "틈튼이의 작은 수리일지")
                 RepairDiary()
             } else {

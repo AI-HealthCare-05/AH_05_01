@@ -73,7 +73,7 @@ fun RetrospectScreen(state: CardHomeState, scope: CoroutineScope) {
                 }
             }
 
-            Text("오늘 어땠어?", style = TmtnType.headline, color = colors.onSurface)
+            Text("오늘 어땠어요?", style = TmtnType.headline, color = colors.onSurface)
             Text(
                 "짧게 남겨도 좋아요. 오늘의 기록에 함께 담아 둘게요.",
                 style = TmtnType.body, color = colors.onSurfaceVariant,

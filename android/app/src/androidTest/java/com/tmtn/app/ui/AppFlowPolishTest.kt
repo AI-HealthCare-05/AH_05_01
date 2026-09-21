@@ -155,7 +155,7 @@ class AppFlowPolishTest {
         compose.onNodeWithText("평소 운동 알려주기").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("아니요").performScrollTo().performClick()
         compose.onNodeWithText("평소 운동 알려주기").performScrollTo().assertIsEnabled()
-        compose.onNodeWithText("너의 하루를 알려 줘.").performScrollTo()
+        compose.onNodeWithText("평소 하루를 알려 주세요.").performScrollTo()
         capture("profile-form")
     }
 

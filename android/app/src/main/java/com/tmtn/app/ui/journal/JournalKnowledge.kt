@@ -42,11 +42,29 @@ internal fun journalArticles(response: JournalEditorialResponse?, section: Strin
         }.distinctBy { it.id }
 }
 
+/** 서버가 고른 호별 목록에도 원문·해시·공개 조건 검증을 동일하게 적용합니다. */
+internal fun journalIssueArticles(response: JournalEditorialResponse?, weekly: Boolean, reviewPreview: Boolean = false): List<JournalKnowledgeArticle> {
+    response ?: return emptyList()
+    val date = runCatching { LocalDate.parse(response.service_date) }.getOrNull() ?: return emptyList()
+    val monday = date.minusDays((date.dayOfWeek.value - 1).toLong())
+    val chosen = if (weekly) response.weekly_articles else response.daily_articles
+    if (weekly && chosen != null && response.weekly_issue_start != monday.toString()) return emptyList()
+    val pool = if (chosen == null) journalArticles(response, null, reviewPreview) else {
+        val groups = chosen.groupBy { it.section }.map { (key, rows) -> JournalReadingSection(key, "ready", rows) }
+        journalArticles(response.copy(sections = groups), null, reviewPreview)
+    }
+    val seed = if (weekly) monday else date
+    val ordered = if (chosen != null) pool else pool.sortedBy {
+        java.security.MessageDigest.getInstance("SHA-256").digest("$seed:${it.id}".toByteArray()).joinToString("") { b -> "%02x".format(b.toInt() and 255) }
+    }
+    return ordered.distinctBy { it.topic?.takeIf(String::isNotBlank) ?: it.id }.take(if (weekly) 2 else 1)
+}
+
 @Composable
 fun JournalReadingColumns(
     editorial: JournalLoad<JournalEditorialResponse>?,
     onRetry: () -> Unit,
-    section: String? = null,
+    weekly: Boolean = false,
     reviewPreview: Boolean = false,
 ) {
     val colors = LocalTmtnColors.current
@@ -58,10 +76,9 @@ fun JournalReadingColumns(
         }
         else -> {
             val response = (editorial as? JournalLoad.Ready)?.value
-            val articles = journalArticles(response, section, reviewPreview)
+            val articles = journalIssueArticles(response, weekly, reviewPreview)
             if (articles.isEmpty()) Text("새로운 읽을거리를 준비하고 있어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
             else Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                if (response?.preview == true) Text("검토용 문장 · 앱 공개 전 확인이 필요해요", style = TmtnType.label, color = colors.onSurfaceVariant)
                 articles.forEachIndexed { index, article ->
                     if (index > 0) HorizontalDivider()
                     JournalKnowledgeArticleView(article)

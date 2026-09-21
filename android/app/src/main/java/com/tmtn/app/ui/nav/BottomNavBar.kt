@@ -74,7 +74,7 @@ private fun NavItem(tab: MainTab, isActive: Boolean, onClick: () -> Unit, labelS
             TabIcon(tab, iconColor)
         }
         Text(tab.label, style = labelStyle.copy(fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium),
-            color = iconColor, textAlign = TextAlign.Center, maxLines = 1, softWrap = false)
+            color = if (isActive) colors.navigationLabelActive else colors.navigationLabelInactive, textAlign = TextAlign.Center, maxLines = 1, softWrap = false)
     }
 }
 

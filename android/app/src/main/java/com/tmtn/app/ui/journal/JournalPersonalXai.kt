@@ -77,8 +77,8 @@ internal fun JournalActivityComparison(activity: PersonalActivityComparison, pra
                         Text(label, style = TmtnType.caption, color = colors.onSurfaceVariant)
                         Text(amount, style = TmtnType.label, color = colors.onSurface)
                     }
-                    Box(Modifier.fillMaxWidth().height(5.dp).background(Color(0xFFE4E7EB))) {
-                        if (value > 0) Box(Modifier.fillMaxWidth((value / maximum).toFloat()).fillMaxHeight().background(if (label == "내 설문") Color(0xFF2F4A3A) else Color(0xFF949C96)))
+                    Box(Modifier.fillMaxWidth().height(5.dp).background(colors.outlineVariant)) {
+                        if (value > 0) Box(Modifier.fillMaxWidth((value / maximum).toFloat()).fillMaxHeight().background(if (label == "내 설문") colors.primary else colors.onSurfaceVariant))
                     }
                 }
             }
@@ -124,6 +124,19 @@ internal fun verifiedPersonalSnapshot(state: JournalLoad<PersonalXaiResponse>?):
     return snapshot
 }
 
+/** 동일 입력·기준일·모델·출력·등수가 확인된 영역에만 SHAP를 붙입니다. */
+internal fun boundPersonalDomain(score: TuntunScorePeerV2Response?, snapshot: PersonalXaiSnapshot, key: String): PersonalXaiDomain? {
+    if (score == null || score.isMock || score.modelVersion != snapshot.model_version ||
+        score.explanationInputRevision != snapshot.input_revision ||
+        score.explanationReferenceDate != snapshot.reference_date) return null
+    val component = score.components.singleOrNull { it.componentKey == key && it.available } ?: return null
+    val domain = snapshot.domains?.singleOrNull { it.domain == key } ?: return null
+    val output = component.absoluteReferenceScore ?: return null
+    if (!output.isFinite() || abs(output - (domain.output_value ?: return null)) > 1e-6 ||
+        component.rankDisplay.rankApprox != domain.rank) return null
+    return domain
+}
+
 private fun validPersonalDomain(value: PersonalXaiDomain): Boolean {
     val base = value.base_value ?: return false
     val output = value.output_value ?: return false
@@ -143,6 +156,7 @@ internal fun JournalPersonalExplanation(snapshot: PersonalXaiSnapshot, domain: P
     var details by remember(snapshot.snapshot_id, domain.domain) { mutableStateOf(false) }
     var expanded by remember(snapshot.snapshot_id, domain.domain) { mutableStateOf(false) }
     val narrative = verifiedPersonalNarrative(domain)
+    val quietMotion = rememberTmtnReducedMotion() || androidx.compose.ui.platform.LocalInputModeManager.current.inputMode == androidx.compose.ui.input.InputMode.Keyboard
     Column(Modifier.fillMaxWidth().testTag("personal-xai-${domain.domain}"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (showActivity) verifiedActivityComparison(snapshot)?.let { JournalActivityComparison(it, practice, onGoMission) }
         HorizontalDivider()
@@ -159,7 +173,10 @@ internal fun JournalPersonalExplanation(snapshot: PersonalXaiSnapshot, domain: P
         TextButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("personal-shap-toggle").semantics { stateDescription = if (expanded) "펼쳐짐" else "접힘" }) {
             Text(if (expanded) "계산 과정 접기" else "내 정보가 계산에 어떻게 쓰였을까요?", style = TmtnType.label)
         }
-        if (expanded) {
+        androidx.compose.animation.AnimatedVisibility(visible = expanded,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (quietMotion) 0 else TmtnMotion.EnterMillis)),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (quietMotion) 0 else TmtnMotion.PressMillis))) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (narrative != null) {
             Text(narrative.context_note.orEmpty(), style = TmtnType.body, color = colors.onSurfaceVariant)
             Text(narrative.calculation_title.orEmpty(), style = TmtnType.label, color = colors.onSurface)
@@ -183,11 +200,11 @@ internal fun JournalPersonalExplanation(snapshot: PersonalXaiSnapshot, domain: P
                 }
                 Row(Modifier.fillMaxWidth().height(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f).height(5.dp), contentAlignment = Alignment.CenterEnd) {
-                        if (value < -personalDisplayEpsilon) Box(Modifier.fillMaxWidth((abs(value) / maximum).toFloat()).fillMaxHeight().background(Color(0xFF956549)))
+                        if (value < -personalDisplayEpsilon) Box(Modifier.fillMaxWidth((abs(value) / maximum).toFloat()).fillMaxHeight().background(colors.wood))
                     }
                     Box(Modifier.width(1.dp).height(13.dp).background(colors.onSurfaceVariant))
                     Box(Modifier.weight(1f).height(5.dp)) {
-                        if (value > personalDisplayEpsilon) Box(Modifier.fillMaxWidth((abs(value) / maximum).toFloat()).fillMaxHeight().background(Color(0xFF3F5D4B)))
+                        if (value > personalDisplayEpsilon) Box(Modifier.fillMaxWidth((abs(value) / maximum).toFloat()).fillMaxHeight().background(colors.primary))
                     }
                 }
             }
@@ -195,6 +212,7 @@ internal fun JournalPersonalExplanation(snapshot: PersonalXaiSnapshot, domain: P
         Text(narrative?.scope_note ?: "모델의 계산을 풀어 본 설명이에요. 실제 건강이 달라졌다는 뜻은 아니에요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
         TextButton(onClick = { details = true }, modifier = Modifier.testTag("personal-source-${domain.domain}")) { Text("계산 근거 자세히 보기", style = TmtnType.label) }
         }
+    }
     }
     if (details) AlertDialog(
         onDismissRequest = { details = false }, title = { Text("내 결과와 연결된 설명", style = TmtnType.title) },

@@ -12,6 +12,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import retrofit2.Response
 
 sealed interface JournalLoad<out T> {
@@ -28,8 +30,12 @@ internal val JournalToday.challengeState: String?
 
 /** Uses the existing read endpoints only. Health results never enter local preferences. */
 class JournalState(
+    private val recordApiProvider: () -> com.tmtn.app.network.RecordApi = { ApiClient.recordApi },
+    private val cardApiProvider: () -> com.tmtn.app.network.CardHomeApi = { ApiClient.cardHomeApi },
     private val personalRequest: suspend () -> Response<PersonalXaiResponse> = { ApiClient.tuntunScoreApi.getPersonalXai() },
     private val personalPause: suspend (Long) -> Unit = { delay(it) },
+    private val editorialRequest: suspend () -> Response<JournalEditorialResponse> = { ApiClient.tuntunScoreApi.getJournalEditorial() },
+    private val extraRequest: suspend () -> Response<ExerciseMissionsTodayResponse> = { ApiClient.exerciseMissionApi.getToday() },
     private val companionRequest: suspend () -> Response<CompanionResponse> = { ApiClient.cardHomeApi.getCompanionStatus() },
 ) {
     var companion by mutableStateOf<JournalLoad<CompanionResponse>>(JournalLoad.Loading)
@@ -121,7 +127,7 @@ class JournalState(
                 launch { practiceScore = read { ApiClient.practiceScoreApi.getPracticeScore() } }
                 launch {
                     editorial = try {
-                        val response = ApiClient.tuntunScoreApi.getJournalEditorial()
+                        val response = editorialRequest()
                         if (response.code() in listOf(404, 501)) null
                         else response.body()?.takeIf { response.isSuccessful }?.let { JournalLoad.Ready(it) }
                             ?: JournalLoad.Failed
@@ -129,30 +135,44 @@ class JournalState(
                     catch (_: Exception) { JournalLoad.Failed }
                 }
                 launch {
-                    weekly = read { ApiClient.recordApi.getWeeklyReport() }
+                    val source = read { recordApiProvider().getWeeklyReport() }
+                    weekly = (source as? JournalLoad.Ready)?.value?.let(::mondayEdition)
+                        ?.let { JournalLoad.Ready(it) } ?: JournalLoad.Failed
                     val report = (weekly as? JournalLoad.Ready)?.value
-                    exercises = if (report == null) null else {
-                        exercises = JournalLoad.Loading
-                        readExerciseRecords(report)
-                    }
-                }
-                launch {
-                    collection = when (val result = read { ApiClient.cardHomeApi.getCardCollection() }) {
-                        is JournalLoad.Ready -> JournalLoad.Ready(result.value.cards)
-                        else -> JournalLoad.Failed
+                    if (report == null) {
+                        collection = JournalLoad.Failed
+                        exercises = null
+                    } else coroutineScope {
+                        launch {
+                            exercises = JournalLoad.Loading
+                            exercises = readExerciseRecords(report)
+                        }
+                        launch {
+                            collection = JournalLoad.Loading
+                            val records = report.days.filter { it.status == "COMPLETED" }.map { day ->
+                                async { (read { recordApiProvider().getDayDetail(day.date) } as? JournalLoad.Ready)
+                                    ?.value?.takeIf { it.date == day.date }?.let(::weekCard) }
+                            }.awaitAll()
+                            if (records.any { it == null }) collection = JournalLoad.Failed
+                            else {
+                                val cards = records.filterNotNull().sortedByDescending { it.completed_at }
+                                collection = JournalLoad.Ready(cards)
+                                weekly = JournalLoad.Ready(report.copy(materials_this_week = weekMaterials(cards)))
+                            }
+                        }
                     }
                 }
                 launch {
                     today = try {
-                        val response = ApiClient.cardHomeApi.getTodayCards()
+                        val response = cardApiProvider().getTodayCards()
                         val window = response.body().takeIf { response.isSuccessful }
                         if (window == null) JournalLoad.Failed else {
                             val card = window.challenge_id?.let { id ->
-                                val reveal = ApiClient.cardHomeApi.revealChallenge(id)
+                                val reveal = cardApiProvider().revealChallenge(id)
                                 reveal.body().takeIf { reveal.isSuccessful }
                             }
                             val extras = if ((card?.state ?: window.challenge_state) == "COMPLETED" && !window.is_rest_day)
-                                read { ApiClient.exerciseMissionApi.getToday() } else null
+                                read { extraRequest() } else null
                             JournalLoad.Ready(JournalToday(window, card, extras))
                         }
                     } catch (cancelled: CancellationException) { throw cancelled }
@@ -163,7 +183,7 @@ class JournalState(
     }
 
     private suspend fun readExerciseRecords(report: WeeklyReportResponse): JournalLoad<List<ExerciseMissionRecordItem>>? = try {
-        val response = ApiClient.recordApi.getExerciseMissionRecords(report.start_date, report.end_date)
+        val response = recordApiProvider().getExerciseMissionRecords(report.start_date, report.end_date)
         // Older server builds do not expose this optional read endpoint.
         if (response.code() == 404 || response.code() == 501) null
         else response.body()?.takeIf { response.isSuccessful }?.let {
@@ -200,7 +220,7 @@ internal fun issueExerciseRecords(records: List<ExerciseMissionRecordItem>, repo
     val end = runCatching { LocalDate.parse(report.end_date) }.getOrNull() ?: return emptyList()
     return records.filter { item ->
         val date = runCatching { LocalDate.parse(item.service_date) }.getOrNull()
-        date != null && date >= start && date <= end && item.reward_slot > 0 && item.title.isNotBlank() &&
+        date != null && date >= start && date <= end && report.days.none { it.date == item.service_date && it.status == "FUTURE" } && item.reward_slot > 0 && item.title.isNotBlank() &&
             item.completed_at?.let { completionDate(it) } != null
     }.sortedByDescending { it.completed_at }.distinctBy { it.service_date to it.reward_slot }
 }
@@ -257,7 +277,7 @@ internal fun weeklyLead(report: WeeklyReportResponse?, cards: List<CardHistoryIt
     val rest = report.days.count { it.status == "REST" }
     return when {
         count > 0 -> JournalLead("${count}일의 실천,\n이번 주에 남았어요.",
-            cards.firstOrNull()?.let { "‘${it.title}’도 해냈어요. 바쁜 하루 사이에 직접 해낸 카드들을 모아봤습니다. 다음에도 꺼내고 싶은 실천이 있나요?" }
+            cards.firstOrNull()?.let { "‘${it.title}’도 해냈어요. 바쁜 하루 사이에 직접 해낸 카드들을 모아봤어요. 다음에도 꺼내고 싶은 실천이 있나요?" }
                 ?: "하루에 한 장씩, 해낸 날들이 나란히 남았어요. 이번 주에는 어떤 실천이 가장 편했나요?")
         rest > 0 -> JournalLead("쉬어간 자리에도,\n다음 이야기가 있어요.", "이번 주에는 ${rest}일 쉬어갔어요. 이미 모은 재료는 그대로 있으니, 다시 할 수 있는 날 한 장을 꺼내봐요.")
         else -> JournalLead("첫 소식은,\n작은 한 장부터.", "아직 이번 주에 해낸 카드가 없어요. 오늘 내 하루에 들어갈 만한 카드 한 장을 골라볼까요?")

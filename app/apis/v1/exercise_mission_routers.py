@@ -80,8 +80,12 @@ async def complete_exercise_mission_session(
     동일 결과를 그대로 반환함(중복 지급 없음)."""
 
     return await service.complete_session(
-        user, session_id, request.idempotency_key, request.manual_check,
-        request.accumulated_count, request.accumulated_duration_seconds,
+        user,
+        session_id,
+        request.idempotency_key,
+        request.manual_check,
+        request.accumulated_count,
+        request.accumulated_duration_seconds,
     )
 
 

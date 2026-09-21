@@ -37,10 +37,10 @@ internal fun ScoreNewspaperSummary(state: ReferenceState, onOpenExerciseInfo: ()
             }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (result != null) {
                     Text(if (result.isPreview) "나의 틈튼지수" else "100명 중", style = TmtnType.body, color = ColorBrandForest)
-                    if (large) Text(result.primaryLabel, style = TmtnType.display, color = colors.secondary)
+                    if (large) Text(result.primaryLabel, style = TmtnType.display, color = colors.primary)
                     else Row(verticalAlignment = Alignment.Bottom) {
                         val number = if (result.isPreview) result.scoreNumber else result.position.toString()
-                        Text(number, style = TmtnType.display.copy(fontSize = (if (number.length >= 3) 42 else 54).sp, lineHeight = 58.sp), color = colors.secondary)
+                        Text(number, style = TmtnType.display.copy(fontSize = (if (number.length >= 3) 42 else 54).sp, lineHeight = 58.sp), color = colors.primary)
                         Text(if (result.isPreview) "점" else "번째쯤", style = TmtnType.label, color = colors.onSurface, modifier = Modifier.padding(start = 5.dp, bottom = 7.dp))
                     }
                 } else Text("정보를 더\n입력해 주세요", style = TmtnType.title, color = colors.onSurface)

@@ -6,6 +6,9 @@ data class JournalEditorialResponse(
     val service_date: String? = null,
     val preview: Boolean? = null,
     val sections: List<JournalReadingSection>? = null,
+    val daily_articles: List<JournalKnowledgeArticle>? = null,
+    val weekly_articles: List<JournalKnowledgeArticle>? = null,
+    val weekly_issue_start: String? = null,
     val related_readings: Map<String, List<JournalKnowledgeArticle>>? = null,
 )
 

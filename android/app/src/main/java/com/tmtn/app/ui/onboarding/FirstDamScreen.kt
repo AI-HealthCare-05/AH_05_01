@@ -51,20 +51,17 @@ internal class FirstDamState(
     }
 }
 
-// ⚠️ 2026-09-18 이식(UI/UX 핸드오프 FR01~08, PR #21 소스 기준) - 서버가 UNAVAILABLE
-// (이미 첫 복구를 쓴 적 있거나 애초에 없는 계정)을 반환하면 이 레거시 경로로 옴 -
-// 새 재료를 지급하지 않고 지금 댐 상태를 읽기 전용으로만 보여줌. onBack은
-// FirstRepairScreen.kt와 같은 이유로 항상 null.
+/** Figma A21 (1314:2748), adapted to Pretendard and actual server values. */
 @Composable
-internal fun LegacyFirstDamRoute(onContinue: () -> Unit) {
+internal fun LegacyFirstDamRoute(state: OnboardingState, onContinue: () -> Unit) {
     val dam = remember { FirstDamState() }
     var retry by remember { mutableIntStateOf(0) }
     LaunchedEffect(retry) { dam.refresh() }
     FirstDamScreen(
-        displayName = "",
+        displayName = state.nickname.value.ifBlank { state.name.value },
         companion = dam.companion, loading = dam.loading, failed = dam.failed,
         onRetry = { retry++ },
-        onBack = null,
+        onBack = if (state.canReturnToInputSummary) ({ state.returnToInputSummary() }) else null,
         onContinue = onContinue,
     )
 }

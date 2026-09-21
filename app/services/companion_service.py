@@ -7,6 +7,7 @@ from app.dtos.companion import (
     CardHistoryItem,
     CompanionResponse,
     FirstRepairResponse,
+    FirstRepairStatus,
     MaterialHistoryResponse,
     MaterialItem,
     StageItem,
@@ -24,8 +25,6 @@ class CompanionService:
     def __init__(self):
         self.repo = CompanionRepository()
 
-    # ⚠️ 2026-09-18 수정(UI/UX 핸드오프 FR01~08) - 첫 복구 선물(WOOD 재료 1개)을 반영.
-    # welcome_gift_count()가 0을 반환하는 기존 사용자는 이 변경 전과 결과가 완전히 같음.
     async def get_dam_status(self, user: User) -> CompanionResponse:
         state = await self.repo.get_or_create(user.id)
         counts = dict(state.five_element_completion_counts or {})
@@ -65,10 +64,9 @@ class CompanionService:
             stages=stages,
         )
 
-    # ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08) - PR #21 소스 기준 이식.
     async def get_first_repair(self, user: User) -> FirstRepairResponse:
         repair = await self.repo.get_first_repair(user.id)
-        repair_status = "UNAVAILABLE"
+        repair_status: FirstRepairStatus = "UNAVAILABLE"
         if repair is not None:
             repair_status = (
                 "COMPLETED" if repair.completed_at else "GIFT_RECEIVED" if repair.gift_received_at else "ELIGIBLE"
@@ -90,11 +88,7 @@ class CompanionService:
     def _calculate_stage(self, total_materials: int, first_repair_completed: bool = False) -> tuple[int, int | None]:
         """total_materials 기준으로 "지금 몇 단계인지"와 "다음 단계 임계값"을 계산.
         G01 화면의 "3단계 몸통 연결하기 41/70"이 정확히 이 계산 방식 —
-        현재 단계는 이미 넘은 임계값 중 가장 높은 것, 진행률 분모는 다음 임계값.
-
-        ⚠️ 2026-09-18 수정(UI/UX 핸드오프 FR01~08) - STAGE_DEFINITIONS 고정 대신
-        stage_definitions(first_repair_completed) 사용 - 첫 복구 완료 계정만 1단계
-        임계값이 내려감(위 함수 참고). 기본값 False면 STAGE_DEFINITIONS와 동일."""
+        현재 단계는 이미 넘은 임계값 중 가장 높은 것, 진행률 분모는 다음 임계값."""
 
         current_stage = 0
         for stage in stage_definitions(first_repair_completed):
@@ -116,7 +110,7 @@ class CompanionService:
             element = snapshot.get("five_element")
             if five_element is not None and element != five_element:
                 continue
-            info = MATERIAL_INFO.get(element, {"material_name": "?", "domain_label": "?"})
+            info = MATERIAL_INFO.get(element or "", {"material_name": "?", "domain_label": "?"})
             items.append(
                 CardHistoryItem(
                     title=snapshot.get("title", ""),
@@ -134,13 +128,15 @@ class CompanionService:
         state = await self.repo.get_or_create(user.id)
         counts = state.five_element_completion_counts or {}
         info = MATERIAL_INFO[element]
+        gift_count = await self.repo.welcome_gift_count(user.id) if element == "WOOD" else 0
         history = await self._completed_challenges_with_snapshot(user, five_element=element)
         return MaterialHistoryResponse(
             element=element,
             material_name=info["material_name"],
             domain_label=info["domain_label"],
-            count=counts.get(element, 0),
+            count=counts.get(element, 0) + gift_count,
             recent_history=history[:5],
+            welcome_gift_count=gift_count,
         )
 
     async def get_card_collection(self, user: User, element: str | None = None) -> CardCollectionResponse:
@@ -192,7 +188,7 @@ class CompanionService:
             element = (c.mission_snapshot or {}).get("five_element")
             if element:
                 element_counts[element] = element_counts.get(element, 0) + 1
-        top_element = max(element_counts, key=element_counts.get) if element_counts else None
+        top_element = max(element_counts, key=lambda element: element_counts[element]) if element_counts else None
         top_material_name = MATERIAL_INFO[top_element]["material_name"] if top_element else None
 
         stage_label = next((s["label"] for s in STAGE_DEFINITIONS if s["stage_number"] == latest.stage_number), "")

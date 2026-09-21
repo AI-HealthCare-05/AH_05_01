@@ -39,10 +39,11 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import com.tmtn.app.ui.legal.LegalDocument
 
 /** Figma F19 · 앱 정보 · 오픈소스 라이선스 */
 @Composable
-fun AppInfoScreen(onBack: () -> Unit, onOpenTerms: () -> Unit) {
+fun AppInfoScreen(onBack: () -> Unit, onOpenTerms: (LegalDocument) -> Unit) {
     val colors = LocalTmtnColors.current
     val openSourceLibs = listOf(
         "Retrofit" to "Apache License 2.0",
@@ -59,9 +60,9 @@ fun AppInfoScreen(onBack: () -> Unit, onOpenTerms: () -> Unit) {
             Column(
                 modifier = Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(16.dp)).border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             ) {
-                ProfileListItem("버전", "1.0.0") { }
-                ProfileListItem("서비스 이용약관", null) { onOpenTerms() }
-                ProfileListItem("개인정보 처리방침", null) { onOpenTerms() }
+                ProfileListItem("버전", com.tmtn.app.BuildConfig.VERSION_NAME, horizontalInset = 20.dp)
+                ProfileListItem("서비스 이용약관", null, horizontalInset = 20.dp) { onOpenTerms(LegalDocument.TERMS) }
+                ProfileListItem("개인정보 처리방침", null, horizontalInset = 20.dp) { onOpenTerms(LegalDocument.PRIVACY_NOTICE) }
             }
 
             Text("오픈소스 라이선스", style = TmtnType.label, color = colors.onSurface)

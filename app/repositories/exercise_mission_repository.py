@@ -33,8 +33,16 @@ class ExerciseMissionRepository:
         )
 
     async def create_session(
-        self, *, user_id, service_date: date, catalog_entry: ExerciseMissionCatalog, template_snapshot: dict,
-        target_duration_seconds: int | None, target_count: int | None, started_at, idempotency_key: str,
+        self,
+        *,
+        user_id,
+        service_date: date,
+        catalog_entry: ExerciseMissionCatalog,
+        template_snapshot: dict,
+        target_duration_seconds: int | None,
+        target_count: int | None,
+        started_at,
+        idempotency_key: str,
     ) -> ExerciseMissionSession:
         # ⚠️ 2026-09-16 버그 수정(QA F09) - idempotency_key를 이제 생성 시점에도 저장함.
         # unique 제약이 이미 모델에 있으니(원래는 완료 때만 쓰였음), 같은 키로 재시도가

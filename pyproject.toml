@@ -72,6 +72,8 @@ src_folder = "./."
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+# 외부 모델 묶음은 별도 Python 3.14 런타임의 검증기로 검사합니다.
+norecursedirs = [".*", "build", "dist", "tuntun_peer_bridge", "model_assets"]
 
 [tool.ruff]
 # 기본 라인 길이 설정
@@ -80,7 +82,7 @@ target-version = "py312"
 # ⚠️ 2026-09-09 추가: tuntun_peer_bridge/는 외부에서 받은 검토용 모델 패키지 원본임 -
 # manifest SHA-256으로 무결성이 고정돼 있어서 스타일 수정조차 절대 하면 안 됨(고치면
 # 해시가 깨져서 신뢰 검증이 실패함). 린트 대상에서 완전히 제외.
-extend-exclude = ["tuntun_peer_bridge"]
+extend-exclude = ["tuntun_peer_bridge", "model_assets/xai/payload"]
 
 [tool.ruff.lint]
 # 사용할 린트 규칙들 선택

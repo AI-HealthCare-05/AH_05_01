@@ -79,7 +79,7 @@ fun CompletedScreen(state: CardHomeState, loadSummary: suspend () -> Unit = {
                         style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
                     )
                 } else {
-                    Text("✓ 틈튼카드첩에 저장했어요", style = TmtnType.body, color = colors.onSurface)
+                    Text("틈튼카드첩에 저장했어요", style = TmtnType.body, color = colors.onSurface)
                     Text(
                         "내일도 작은 행동 하나면 충분해요.",
                         style = TmtnType.body, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
@@ -176,7 +176,7 @@ fun CardErrorScreen(state: CardHomeState, scope: CoroutineScope) {
                 )
             }
 
-            TmtnPrimaryButton(text = if (state.isLoading.value) "다시 불러오는 중…" else "다시 시도", onClick = { scope.launch { state.loadToday() } }, enabled = !state.isLoading.value)
+            TmtnPrimaryButton(text = if (state.isLoading.value) "다시 불러오는 중…" else "다시 불러오기", onClick = { scope.launch { state.loadToday() } }, enabled = !state.isLoading.value)
             com.tmtn.app.ui.onboarding.TmtnTonalButton("홈으로 돌아가기", { state.errorMessage.value = null; state.step.value = CardHomeStep.HOME })
         }
     }

@@ -9,11 +9,14 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntRect
 import com.tmtn.app.R
 import kotlin.math.roundToInt
+
+const val DamArtworkAspectRatio = 512f / 300f
 
 /** ⚠️ 2026-09-18 교체(UI/UX 핸드오프 DM01~09) - 새 시트(dam_water_repair_sheet,
  * 1536×1024, 3열×2행 각 512×512)로 교체. 각 셀의 실제 콘텐츠 바운딩 박스를 픽셀
@@ -26,9 +29,10 @@ import kotlin.math.roundToInt
 fun DamArtwork(stage: Int, modifier: Modifier = Modifier, description: String? = null) {
     val art = ImageBitmap.imageResource(R.drawable.dam_water_repair_sheet)
     val source = damArtworkSourceRect(stage, art.width, art.height)
-    Canvas(modifier.fillMaxWidth().aspectRatio(source.width.toFloat() / source.height).then(
-        if (description != null) Modifier.semantics { contentDescription = description } else Modifier
-    )) {
+    Canvas(modifier.fillMaxWidth().aspectRatio(source.width.toFloat() / source.height).semantics {
+        contentDescription = description ?: "내 댐 ${stage.coerceIn(0, 5)}단계"
+        stateDescription = damWaterDescription(stage)
+    }) {
         drawImage(art, srcOffset = source.topLeft,
             srcSize = IntSize(source.width, source.height),
             dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()))
@@ -43,6 +47,16 @@ internal fun damArtworkSourceRect(stage: Int, width: Int, height: Int): IntRect 
     val top = scene / 3 * (height / 2) + if (scene < 3) 170 else 60
     return IntRect(left, top, left + cellWidth, top + 300)
 }
+
+fun damWaterDescription(stage: Int): String = when (stage.coerceIn(0, 5)) {
+    0 -> "댐의 빈틈으로 나온 물이 모래 위로 넓게 흐르고 있어요."
+    1 -> "첫 재료를 더한 자리에서 물줄기가 조금 줄었어요."
+    2 -> "빈틈을 이어 붙여 모래 위 물길이 한결 좁아졌어요."
+    3 -> "댐을 이으니 작은 틈으로만 물이 흐르고 있어요."
+    4 -> "마지막 작은 틈에 물방울만 남았어요."
+    else -> "틈이 메워져 물은 댐 안에, 모래는 보송하게 남았어요."
+}
+
 
 fun damRepairLabel(stage: Int): String = when (stage) {
     0 -> "함께 메울 작은 빈틈"

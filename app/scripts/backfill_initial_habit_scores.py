@@ -104,8 +104,12 @@ async def run(confirm: bool) -> None:
             snapshot.contributions = calc["contributions"]
             await snapshot.save(
                 update_fields=[
-                    "input_revision", "input_definition", "formula_version",
-                    "policy_status", "score", "contributions",
+                    "input_revision",
+                    "input_definition",
+                    "formula_version",
+                    "policy_status",
+                    "score",
+                    "contributions",
                 ]
             )
 

@@ -56,7 +56,7 @@ internal fun WaistEstimateArticle(result: WaistEstimateUi, onRetry: () -> Unit =
             is WaistEstimateUi.Available -> {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f).clearAndSetSemantics {
-                        contentDescription = "모델이 추정한 허리둘레 약 ${result.displayValue} 센티미터"
+                        contentDescription = result.readingDescription
                     }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("약", style = TmtnType.body, color = colors.onSurfaceVariant)
                         if (large) {

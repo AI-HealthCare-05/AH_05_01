@@ -22,8 +22,14 @@ def prepare(root):
             raise RuntimeError(f"모델 자산 해시 불일치: {relative}")
     target = root / ".env.xai-review"
     if target.exists():
-        values = dict(line.split("=", 1) for line in target.read_text().splitlines() if "=" in line and not line.startswith("#"))
-        if values.get("ENV") != "dev" or values.get("TUNTUN_XAI_URL") != "http://127.0.0.1:8776" or len(values.get("TUNTUN_XAI_TOKEN", "")) < 32:
+        values = dict(
+            line.split("=", 1) for line in target.read_text().splitlines() if "=" in line and not line.startswith("#")
+        )
+        if (
+            values.get("ENV") != "dev"
+            or values.get("TUNTUN_XAI_URL") != "http://127.0.0.1:8776"
+            or len(values.get("TUNTUN_XAI_TOKEN", "")) < 32
+        ):
             raise RuntimeError("기존 .env.xai-review 설정을 확인해 주세요. 파일은 변경하지 않았습니다.")
         print("기존 XAI 설정을 유지합니다. 모델 자산 검사 통과.")
         return

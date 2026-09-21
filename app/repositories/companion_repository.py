@@ -1,8 +1,6 @@
-from datetime import datetime
-
+from tortoise import timezone
 from tortoise.transactions import in_transaction
 
-from app.core import config
 from app.dtos.companion import stage_definitions
 from app.models.companion import CompanionFirstRepair, CompanionStageLog, CompanionState
 
@@ -15,7 +13,6 @@ class CompanionRepository:
         state, _ = await self._model.get_or_create(user_id=user_id, defaults={"five_element_completion_counts": {}})
         return state
 
-    # ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08) - PR #21 소스 기준 이식.
     async def get_first_repair(self, user_id) -> CompanionFirstRepair | None:
         return await CompanionFirstRepair.get_or_none(user_id=user_id)
 
@@ -40,10 +37,10 @@ class CompanionRepository:
             if complete and repair.gift_received_at is None:
                 return "GIFT_REQUIRED"
             if repair.gift_received_at is None:
-                repair.gift_received_at = datetime.now(config.TIMEZONE)
+                repair.gift_received_at = timezone.now()
                 await repair.save(update_fields=["gift_received_at"])
             if complete and repair.completed_at is None:
-                repair.completed_at = datetime.now(config.TIMEZONE)
+                repair.completed_at = timezone.now()
                 await repair.save(update_fields=["completed_at"])
                 total = sum((state.five_element_completion_counts or {}).values()) + 1
                 await CompanionStageLog.get_or_create(
@@ -79,11 +76,6 @@ class CompanionRepository:
         거의 동시에 같은 값을 읽으면 증가분 하나가 사라질 수 있었음. select_for_update()로
         행 잠금을 걸어서 막음 — 호출부(challenge_service.complete())가 이미 in_transaction()
         안에서 이 함수를 부르고 있어서 바로 적용 가능함.
-
-        ⚠️ 2026-09-18 수정(UI/UX 핸드오프 FR01~08) - welcome_gift_count()(첫 복구 선물)를
-        total_materials에 더하고, _calculate_stage()에 first_repair_completed를 넘기도록
-        확장. 첫 복구 레코드가 없는 기존 사용자는 gift_count=0이라 이 변경 전과 결과가
-        완전히 같음.
         """
 
         await self.get_or_create(user_id)  # 첫 완료라 행이 아직 없으면 먼저 만들어둠(PK가 user_id라 중복 생성은 막힘)

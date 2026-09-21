@@ -61,7 +61,7 @@ fun A09ScheduleIntroScreen(state: OnboardingState) {
                     .height(240.dp)
                     .fillMaxWidth()
                     .background(colors.secondaryContainer, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.secondary, RoundedCornerShape(16.dp)),
+                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(

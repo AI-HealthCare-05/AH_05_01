@@ -29,6 +29,7 @@ import com.tmtn.app.ui.theme.LocalTmtnColors
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import com.tmtn.app.ui.legal.LegalDocument
 
 /**
  * Figma A06 · 필수 동의 (node 100:107)
@@ -59,7 +60,7 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
 
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth().weight(1f)
                 .verticalScroll(rememberScrollState())
                 .imePadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
@@ -83,7 +84,7 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
                     onCheckedChange = null,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("모두 동의합니다", style = TmtnType.bodyLarge, color = colors.onSurface)
+                Text("선택 항목을 포함해 모두 동의", style = TmtnType.bodyLarge, color = colors.onSurface)
             }
 
             Column {
@@ -92,57 +93,60 @@ fun A06ConsentScreen(state: OnboardingState, scope: CoroutineScope) {
                 )
                 TmtnCheckRow(
                     label = "[필수] 서비스 이용약관", checked = tos, onCheckedChange = { tos = it },
-                    onViewClick = { state.step.value = OnboardingStep.A14_TERMS_DETAIL },
+                    onViewClick = { state.openLegal(LegalDocument.TERMS) },
                 )
                 Text(
                     "틈튼을 이용하는 데 필요한 기본 약속입니다.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 48.dp, end = 8.dp, bottom = 12.dp),
                 )
                 TmtnCheckRow(
                     label = "[필수] 개인정보 수집 · 이용 동의", checked = privacy, onCheckedChange = { privacy = it },
-                    onViewClick = { state.step.value = OnboardingStep.A14_TERMS_DETAIL },
+                    onViewClick = { state.openLegal(LegalDocument.PERSONAL_DATA) },
                 )
                 Text(
-                    "이름 · 생년월일(연·월) · 성별을 받습니다. 광고나 외부 제공에 쓰지 않습니다.",
+                    "계정 확인과 프로필 관리에 필요한 정보를 사용해요. 자세한 항목은 보기에서 확인해 주세요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 48.dp, end = 8.dp, bottom = 12.dp),
                 )
                 TmtnCheckRow(
                     label = "[필수] 건강정보 수집 · 이용 동의", checked = healthUsage,
                     onCheckedChange = { healthUsage = it },
-                    onViewClick = { state.step.value = OnboardingStep.A14_TERMS_DETAIL },
+                    onViewClick = { state.openLegal(LegalDocument.HEALTH_DATA) },
                 )
                 Text(
-                    "키 · 몸무게 · 운동 습관을 받습니다. 이용자에게 맞는 난이도를 고르기 위해서입니다.",
+                    "키 · 몸무게 · 운동량을 개인화 기능과 허리둘레 추정에 사용해요.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 48.dp, end = 8.dp, bottom = 12.dp),
                 )
                 TmtnCheckRow(
                     label = "[선택] 위치정보 수집 · 이용 동의", checked = locationUsage,
                     onCheckedChange = { locationUsage = it }, optional = true,
-                    onViewClick = { state.step.value = OnboardingStep.A14_TERMS_DETAIL },
+                    onViewClick = { state.openLegal(LegalDocument.LOCATION) },
                 )
                 Text(
                     "걷기·달리기 미션에서 이동 거리를 잴 때 사용해요. 미션을 시작하기 전에 위치 권한을 요청합니다.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 48.dp, end = 8.dp, bottom = 12.dp),
                 )
                 TmtnCheckRow(
                     label = "[선택] 틈튼지수 산출을 위한 분석", checked = indexAnalysis,
                     onCheckedChange = { indexAnalysis = it }, optional = true,
-                    onViewClick = { state.step.value = OnboardingStep.A14_TERMS_DETAIL },
+                    onViewClick = { state.openLegal(LegalDocument.ANALYSIS) },
                 )
                 Text(
                     "동의하지 않으셔도 챌린지는 그대로 이용하실 수 있습니다.",
                     style = TmtnType.caption, color = colors.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 48.dp, end = 8.dp, bottom = 12.dp),
                 )
                 TmtnCheckRow(
                     label = "[선택] 카드 · 미션 알림 받기", checked = push,
                     onCheckedChange = { push = it }, optional = true,
+                    onViewClick = { state.openLegal(LegalDocument.NOTIFICATIONS) },
                 )
             }
+
+            TmtnTextButton("개인정보 처리방침 읽기", onClick = { state.openLegal(LegalDocument.PRIVACY_NOTICE) })
 
             TmtnPrimaryButton(
                 text = if (state.googleReauthRequired.value) "Google 계정 다시 선택" else "동의하고 가입 완료",

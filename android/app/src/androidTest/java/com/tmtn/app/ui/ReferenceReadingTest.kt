@@ -119,7 +119,7 @@ class ReferenceReadingTest {
             }
         }
         compose.onNodeWithText("입력 정보를 불러오지 못했어요.").assertIsDisplayed()
-        compose.onNodeWithText("다시 시도").performClick()
+        compose.onNodeWithText("다시 불러오기").performClick()
         compose.onNodeWithText("58.5 kg").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("주 0일").performScrollTo().assertIsDisplayed()
         compose.runOnIdle { assertEquals(2, requests) }

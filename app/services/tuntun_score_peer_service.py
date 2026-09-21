@@ -23,6 +23,7 @@ from app.models.users import User
 from app.repositories.consent_repository import ConsentRepository
 from app.repositories.exercise_habit_repository import ExerciseHabitRepository
 from app.repositories.health_repository import HealthInputRepository
+from app.services.personal_xai_service import model_request
 
 SCHEMA_VERSION = "tuntun-app-vnext-v0.2"
 
@@ -133,6 +134,10 @@ class TuntunScorePeerService:
         if response.status_code != 200:
             raise HTTPException(status_code=response.status_code, detail=response.json())
         result = response.json()
+        if health is not None and habit is not None:
+            explanation_input = model_request(user, health, habit, reference_date)
+            result["explanationInputRevision"] = explanation_input["inputRevision"]
+            result["explanationReferenceDate"] = explanation_input["referenceDate"]
 
         # ⚠️ 2026-09-15 추가 - 문홍주 팀장님(SHAP/XAI) 요청: "전후 비교는 model/
         # calibration/input(aggregation)/background/explainer 5종 버전이 모두 같을

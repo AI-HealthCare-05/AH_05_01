@@ -12,6 +12,18 @@ import org.junit.Test
 import retrofit2.Response
 
 class WaistEstimateStateTest {
+    @Test fun inchesUseUnroundedCentimetersAndHalfUpForDisplayOnly() {
+        // 81.41 / 2.54 = 32.051... → 32.1. 먼저 81.4 cm로 반올림하면 32.0이 된다.
+        val raw = BigDecimal("81.41")
+        val estimate = WaistEstimateUi.Available(raw, null)
+        assertEquals("81.4", estimate.displayValue)
+        assertEquals("32.1", estimate.displayInches)
+        assertEquals(raw, estimate.centimeters)
+        assertEquals("32.1", WaistEstimateUi.Available(BigDecimal("81.407"), null).displayInches)
+        assertEquals("32.0", WaistEstimateUi.Available(BigDecimal("81.4069"), null).displayInches)
+        assertEquals("32.4", WaistEstimateUi.Available(BigDecimal("82.36"), null).displayInches)
+    }
+
     private fun result(value: String? = "82.36", status: String = "COMPUTED", type: String = "WAIST_CM_ESTIMATE",
         at: String = "2026-09-09T09:00:00+09:00") = PredictionResultResponse(type, value?.toBigDecimal(), status, at, "approved-v1")
 

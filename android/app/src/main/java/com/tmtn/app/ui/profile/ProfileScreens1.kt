@@ -82,12 +82,12 @@ private fun ProfileSectionLabel(text: String) {
 }
 
 @Composable
-internal fun ProfileListItem(title: String, sub: String?, onClick: (() -> Unit)? = null) {
+internal fun ProfileListItem(title: String, sub: String?, horizontalInset: androidx.compose.ui.unit.Dp? = null, onClick: (() -> Unit)? = null) {
     val colors = LocalTmtnColors.current
     Column {
         Row(
             Modifier.fillMaxWidth().then(if (onClick != null) Modifier.tmtnClickable(role = Role.Button, onClick = onClick) else Modifier)
-                .heightIn(min = 60.dp).padding(vertical = 16.dp, horizontal = if (onClick == null) 20.dp else 4.dp),
+                .heightIn(min = 60.dp).padding(vertical = 16.dp, horizontal = horizontalInset ?: if (onClick == null) 20.dp else 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {

@@ -147,8 +147,8 @@ internal fun RecordPeriodTabs(selectedTab: RecordTab, onSelect: (RecordTab) -> U
                     onClick = { if (!selected) onSelect(tab) })
                 .padding(top = 12.dp, bottom = 3.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(label, style = TmtnType.label, color = if (selected) colors.onSurface else colors.onSurfaceVariant)
-                Box(Modifier.width(36.dp).height(2.dp).background(if (selected) colors.onSurface else Color.Transparent, RoundedCornerShape(1.dp)))
+                Text(label, style = TmtnType.label, color = if (selected) colors.primary else colors.onSurfaceVariant)
+                Box(Modifier.width(36.dp).height(2.dp).background(if (selected) colors.primary else Color.Transparent, RoundedCornerShape(1.dp)))
             }
         }
     }
@@ -319,7 +319,7 @@ private fun StreakCard(state: RecordState) {
             Text("연속 기록", style = TmtnType.label, color = colors.onSurface)
         }
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("${streak.current_streak}", style = TmtnType.display, color = colors.secondary)
+            Text("${streak.current_streak}", style = TmtnType.display, color = colors.primary)
             Text("일째", style = TmtnType.label, color = colors.onSurface)
         }
         Text("쉼으로 표시한 날은 기록을 끊지 않아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)

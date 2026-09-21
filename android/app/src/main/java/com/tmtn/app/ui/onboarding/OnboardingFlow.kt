@@ -11,12 +11,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -44,6 +41,7 @@ private fun previousStepFor(step: OnboardingStep): OnboardingStep? = when (step)
     OnboardingStep.A13_NEW_PASSWORD -> OnboardingStep.A05_LOGIN
     OnboardingStep.A14_TERMS_DETAIL -> OnboardingStep.A06_CONSENT
     OnboardingStep.A15_COMPLETE -> null // 온보딩 마지막 요약 - 더 되돌아갈 곳 없음
+    OnboardingStep.FIRST_DAM -> OnboardingStep.A15_COMPLETE
     OnboardingStep.A16_PERMISSIONS -> OnboardingStep.A08_EXERCISE
     OnboardingStep.SIGNUP_COMPLETE -> null
     OnboardingStep.DONE -> null
@@ -80,11 +78,6 @@ fun OnboardingFlow(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val welcomeState = rememberSaveableStateHolder()
-    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08 "첫 복구") - A15_COMPLETE에서 바로
-    // onOnboardingComplete()를 부르는 대신, 그 사이에 첫 복구 화면(FirstDamRoute)을
-    // 한 번 거치게 함. 기존 사용자(레코드 없음)는 FirstDamRoute 내부에서 자동으로
-    // Legacy(현재 댐 읽기 전용 안내)로 넘어가므로 이 분기 추가 자체는 안전함.
-    var showFirstRepair by remember { mutableStateOf(false) }
 
     // ⚠️ 2026-09-06 QA(P1-9) 반영: 스낵바 타이머가 화면 전환과 분리돼 있어서, 로그인
     // 화면에서 뜬 에러가 "이메일로 가입하기"로 넘어간 뒤에도 6초 동안 그대로 남아있었음
@@ -99,22 +92,22 @@ fun OnboardingFlow(
     LaunchedEffect(state.accountCreated) {
         state.restoreProfileForResume()
     }
-    val previousStep = if (state.accountCreated && state.step.value == OnboardingStep.A06_CONSENT) null else previousStepFor(state.step.value)
+    val previousStep = when {
+        state.accountCreated && state.step.value == OnboardingStep.A06_CONSENT -> null
+        state.step.value == OnboardingStep.FIRST_DAM && !state.canReturnToInputSummary -> null
+        else -> previousStepFor(state.step.value)
+    }
     BackHandler(enabled = previousStep != null || state.isLoading.value || state.googlePicking.value) {
         if (!state.isLoading.value && !state.googlePicking.value) {
             if (state.step.value == OnboardingStep.A06_CONSENT) state.leaveConsent()
+            else if (state.step.value == OnboardingStep.FIRST_DAM) state.returnToInputSummary()
             else previousStep?.let { state.step.value = it }
         }
     }
 
     Column(modifier = modifier.fillMaxSize()) {
       Box(Modifier.weight(1f)) {
-        if (showFirstRepair) {
-            FirstDamRoute(onContinue = {
-                OnboardingCheckpoint.clear()
-                onOnboardingComplete()
-            })
-        } else when (state.step.value) {
+        when (state.step.value) {
             OnboardingStep.A01_SPLASH -> A01SplashScreen(state)
             OnboardingStep.A02_START -> welcomeState.SaveableStateProvider("welcome") { A02StartScreen(state) }
             OnboardingStep.AUTH_CHOICE -> AuthChoiceScreen(
@@ -140,8 +133,10 @@ fun OnboardingFlow(
             OnboardingStep.A12_PASSWORD_RESET_REQUEST -> A12PasswordResetRequestScreen(state)
             OnboardingStep.A13_NEW_PASSWORD -> A13NewPasswordScreen(state)
             OnboardingStep.A14_TERMS_DETAIL -> A14TermsDetailScreen(state)
-            OnboardingStep.A15_COMPLETE -> A15CompleteScreen(state) {
-                showFirstRepair = true
+            OnboardingStep.A15_COMPLETE -> A15CompleteScreen(state, state::openFirstDam)
+            OnboardingStep.FIRST_DAM -> FirstDamRoute(state) {
+                OnboardingCheckpoint.clear()
+                onOnboardingComplete()
             }
             OnboardingStep.A16_PERMISSIONS -> A16PermissionsScreen(state, onRequestPermissions)
             OnboardingStep.DONE -> {
