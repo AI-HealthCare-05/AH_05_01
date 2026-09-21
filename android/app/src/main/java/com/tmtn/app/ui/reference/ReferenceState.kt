@@ -1,0 +1,160 @@
+package com.tmtn.app.ui.reference
+
+import com.tmtn.app.ui.common.failWithMessage
+import com.tmtn.app.ui.common.userMessageOr
+import androidx.compose.runtime.mutableStateOf
+import com.tmtn.app.network.ApiClient
+import com.tmtn.app.network.model.PracticeScoreResponse
+import com.tmtn.app.network.model.ScoreInputsResponse
+import com.tmtn.app.network.model.TuntunScorePeerV2Response
+
+/** E01~E06 "틈튼지수" 탭 전체 단계.
+ * ⚠️ E06(이 지수에 대하여)은 HANDOFF.md 기준 "진입 경로가 없음"(마이/설정 쪽 추정) —
+ * 이 플로우 안에서는 못 들어가고, 나중에 F그룹(내정보/설정)에서 별도로 연결해야 함. */
+enum class ReferenceStep {
+    LOADING,
+    SUMMARY,       // E01
+    INELIGIBLE,    // E05 - 산출 불가
+    DETAIL,        // E02
+    FACTORS,       // E03
+    INPUTS,        // E04
+    WAIST,         // Read-only waist estimate, separate from the composite score.
+    ABOUT,         // E06 - 이 플로우 밖 F그룹에서 진입 예정, 여기선 미연결
+}
+
+/** E그룹 전체 상태. CardHomeState/RecordState와 같은 패턴 — 백스택은 E04가
+ * E01(요약)·E03(반영 항목) 양쪽에서 들어올 수 있어서 맵 대신 실제 스택으로 관리함. */
+class ReferenceState(private val peerScoreEnabled: Boolean = com.tmtn.app.BuildConfig.PEER_SCORE_ENABLED) {
+    val journal = com.tmtn.app.ui.journal.JournalState()
+    val waist = WaistEstimateState()
+    internal val editorial = ScoreEditorialState()
+    internal val factorOpenRequest = androidx.compose.runtime.mutableIntStateOf(0)
+    private val backStack = mutableListOf(ReferenceStep.LOADING)
+    val step = mutableStateOf(backStack.last())
+
+    val score = mutableStateOf<TuntunScorePeerV2Response?>(null)
+    // ⚠️ 2026-09-16 추가 - 초기 습관 반영된 종합(틈튼지수) 계산. tuntunScoreApi(기존
+    // 브릿지 원본)와 별개 API - 실패해도 위 score는 그대로 쓸 수 있어야 하니 독립적으로
+    // null 허용. composite_score/lifestyle_score가 null이면 "아직 계산 전"(초기 습관
+    // 정책 미확정 등)이지 오류가 아님 - composite_blocked_reason으로 구분.
+    val practiceScore = mutableStateOf<PracticeScoreResponse?>(null)
+    val eligibleRecordedDaysLabel = mutableStateOf("")
+    val eligibleRequiredDaysLabel = mutableStateOf("")
+    val scoreInputs = mutableStateOf<ScoreInputsResponse?>(null)
+    val isLoading = mutableStateOf(false)
+    val errorMessage = mutableStateOf<String?>(null)
+
+    private fun push(next: ReferenceStep) {
+        backStack.add(next)
+        step.value = next
+    }
+
+    /** 시스템/화면 뒤로가기 공통 처리. 스택에 더 없으면 false를 돌려줘서
+     * 상위(MainActivity)가 홈 탭으로 보내게 함. */
+    fun goBack(): Boolean {
+        if (backStack.size <= 1) return false
+        backStack.removeAt(backStack.lastIndex)
+        step.value = backStack.last()
+        return true
+    }
+
+    // ⚠️ 2026-09-10 반영: 실모델(또래 백분위) 연동. 기존 v2(Mock)는 "최근 7일 기록 일수"로
+    // 산출 가능 여부를 판정했는데, 새 계약엔 그 개념이 없음(availableComponentCount로만 판정).
+    suspend fun loadScore() {
+        if (isLoading.value) return
+        if (!peerScoreEnabled) {
+            score.value = null
+            errorMessage.value = null
+            replaceRoot(ReferenceStep.SUMMARY)
+            return
+        }
+        isLoading.value = true
+        errorMessage.value = null
+        runCatching {
+            val response = ApiClient.tuntunScoreApi.getTuntunScorePeerV2()
+            if (response.code() == 403) {
+                failWithMessage("틈튼지수 분석에 동의하지 않아 이용할 수 없어요. 내 정보 > 동의 관리에서 켜주세요.")
+            }
+            if (!response.isSuccessful) failWithMessage("틈튼지수를 불러오지 못했어요.")
+            response.body()!!
+        }.onSuccess { result ->
+            if (result.scoreAvailable) {
+                score.value = result
+                replaceRoot(ReferenceStep.SUMMARY)
+                loadPracticeScore()
+            } else {
+                score.value = null
+                eligibleRecordedDaysLabel.value = ""
+                eligibleRequiredDaysLabel.value = "신체정보 또는 운동습관"
+                replaceRoot(ReferenceStep.INELIGIBLE)
+            }
+        }.onFailure { e ->
+            if (e is kotlinx.coroutines.CancellationException) {
+                isLoading.value = false
+                throw e
+            }
+            errorMessage.value = e.userMessageOr("틈튼지수를 불러오지 못했어요.")
+        }
+        isLoading.value = false
+    }
+
+    // ⚠️ 2026-09-16 추가 - practice-score는 별도로 실패해도 위 틈튼지수(브릿지) 화면
+    // 자체는 정상 표시돼야 하므로, 여기서 조용히 실패함(errorMessage를 안 건드림).
+    // 미션 완료 화면들(CardHomeState.completeChallenge/completeExerciseMission)이
+    // 이 화면으로 돌아올 때 다시 loadScore()를 부르면 자동으로 재조회됨.
+    suspend fun loadPracticeScore() {
+        runCatching {
+            val response = ApiClient.practiceScoreApi.getPracticeScore()
+            if (!response.isSuccessful) return@runCatching
+            practiceScore.value = response.body()
+        }
+    }
+
+    private fun replaceRoot(rootStep: ReferenceStep) {
+        backStack.clear()
+        backStack.add(rootStep)
+        step.value = rootStep
+    }
+
+    /** 홈·기록의 일보 바로가기는 이전 상세 페이지나 일간면 대신 주간면을 연다. */
+    fun openWeeklyJournal() {
+        journal.requestedEdition = 0
+        replaceRoot(ReferenceStep.SUMMARY)
+    }
+
+    // E01 "자세히 >" -> E02
+    fun openDetail() = push(ReferenceStep.DETAIL)
+
+    // E02 "이번 계산에 반영된 항목 보기" -> E03
+    fun openFactors() {
+        factorOpenRequest.intValue++
+        push(ReferenceStep.FACTORS)
+    }
+
+    fun openWaist() = push(ReferenceStep.WAIST)
+
+    // E01 "계산에 쓰인 값 보기" 또는 E03 "값 다시 입력하기" -> E04
+    fun openInputs() {
+        push(ReferenceStep.INPUTS)
+        // 진입할 때마다 최신 값 다시 조회 (F/A그룹에서 수정하고 돌아왔을 수 있음)
+    }
+
+    suspend fun loadInputs() {
+        isLoading.value = true
+        runCatching {
+            val response = ApiClient.tuntunScoreApi.getTuntunScoreInputs()
+            if (!response.isSuccessful) failWithMessage("입력값을 불러오지 못했어요.")
+            response.body()!!
+        }.onSuccess { scoreInputs.value = it }
+            .onFailure { e ->
+                if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
+                errorMessage.value = e.userMessageOr("입력값을 불러오지 못했어요.") }
+        isLoading.value = false
+    }
+
+    // E04 "값 고치고 다시 계산" - 편집은 F/A그룹 화면에서 이미 저장됐으므로, 여기선 최신
+    // 상태로 다시 불러와서 E01로 돌아가는 역할만 함 (재계산 자체는 서버가 조회 시점에 매번 함).
+    suspend fun recalculateAndReturnToSummary() {
+        loadScore()
+    }
+}

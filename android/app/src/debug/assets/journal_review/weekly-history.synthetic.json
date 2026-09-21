@@ -1,0 +1,94 @@
+{
+  "schema_version": "tmtn-weekly-xai-v1",
+  "status": "ready",
+  "points": [
+    {
+      "week_start": "2026-07-27",
+      "week_end": "2026-08-02",
+      "observed_on": null,
+      "status": "missing",
+      "diabetes": null,
+      "hypertension": null,
+      "comparison_key": null
+    },
+    {
+      "week_start": "2026-08-03",
+      "week_end": "2026-08-09",
+      "observed_on": "2026-08-08",
+      "status": "recorded",
+      "diabetes": 47.6,
+      "hypertension": 57.6,
+      "comparison_key": "SYNTHETIC-PREVIEW-ONLY"
+    },
+    {
+      "week_start": "2026-08-10",
+      "week_end": "2026-08-16",
+      "observed_on": "2026-08-15",
+      "status": "recorded",
+      "diabetes": 46.7,
+      "hypertension": 57.0,
+      "comparison_key": "SYNTHETIC-PREVIEW-ONLY"
+    },
+    {
+      "week_start": "2026-08-17",
+      "week_end": "2026-08-23",
+      "observed_on": null,
+      "status": "missing",
+      "diabetes": null,
+      "hypertension": null,
+      "comparison_key": null
+    },
+    {
+      "week_start": "2026-08-24",
+      "week_end": "2026-08-30",
+      "observed_on": null,
+      "status": "missing",
+      "diabetes": null,
+      "hypertension": null,
+      "comparison_key": null
+    },
+    {
+      "week_start": "2026-08-31",
+      "week_end": "2026-09-06",
+      "observed_on": "2026-09-05",
+      "status": "recorded",
+      "diabetes": 44.0,
+      "hypertension": 55.2,
+      "comparison_key": "SYNTHETIC-PREVIEW-ONLY"
+    },
+    {
+      "week_start": "2026-09-07",
+      "week_end": "2026-09-13",
+      "observed_on": "2026-09-12",
+      "status": "recorded",
+      "diabetes": 43.1,
+      "hypertension": 54.6,
+      "comparison_key": "SYNTHETIC-PREVIEW-ONLY"
+    },
+    {
+      "week_start": "2026-09-14",
+      "week_end": "2026-09-20",
+      "observed_on": "2026-09-19",
+      "status": "recorded",
+      "diabetes": 42.2,
+      "hypertension": 54.0,
+      "comparison_key": "SYNTHETIC-PREVIEW-ONLY"
+    }
+  ],
+  "practice": [
+    {
+      "week_start": "2026-09-07",
+      "recorded": true,
+      "completed_days": 4,
+      "rest_days": 1,
+      "elapsed_days": 7
+    },
+    {
+      "week_start": "2026-09-14",
+      "recorded": true,
+      "completed_days": 2,
+      "rest_days": 1,
+      "elapsed_days": 6
+    }
+  ]
+}

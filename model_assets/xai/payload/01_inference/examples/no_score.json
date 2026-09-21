@@ -1,0 +1,18 @@
+{
+  "aerobicLowMinutes": 60,
+  "aerobicModerateMinutes": null,
+  "aerobicVigorousMinutes": 0,
+  "bedtime": null,
+  "birthMonth": 1,
+  "birthYear": 1991,
+  "heightCm": 170,
+  "inputRevision": "test-64",
+  "pregnancyStatus": "not_applicable",
+  "referenceDate": "2026-09-09",
+  "sex": "male",
+  "strengthFrequencyUnit": "days",
+  "strengthIntensity": null,
+  "strengthWeeklyCount": null,
+  "wakeTime": null,
+  "weightKg": 64
+}

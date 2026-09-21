@@ -3,25 +3,17 @@ from starlette import status
 from tortoise.contrib.test import TestCase
 
 from app.main import app
+from app.tests.helpers import signup_via_email_verification
 
 
 class TestJWTTokenRefreshAPI(TestCase):
     async def test_token_refresh_success(self):
-        # 사용자 등록 및 로그인하여 리프레시 토큰 획득
-        signup_data = {
-            "email": "refresh@example.com",
-            "password": "Password123!",
-            "name": "리프레시테스터",
-            "gender": "MALE",
-            "birth_date": "1990-01-01",
-            "phone_number": "01099998888",
-        }
+        email = "refresh@example.com"
+        password = "Password123!"
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            await client.post("/api/v1/auth/signup", json=signup_data)
+            await signup_via_email_verification(client, email, password)
 
-            login_response = await client.post(
-                "/api/v1/auth/login", json={"email": "refresh@example.com", "password": "Password123!"}
-            )
+            login_response = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
 
             # 쿠키에서 refresh_token 추출
             set_cookie = login_response.headers.get("set-cookie")

@@ -54,3 +54,14 @@ def validate_birthday(birthday: date | str) -> date:
         raise ValueError("서비스 약관에 따라 만14세 미만은 회원가입이 불가합니다.")
 
     return birthday
+
+
+def validate_birth_year_month(birth_year: int, birth_month: int) -> None:
+    """v2: 전체 생년월일 대신 연·월만 받는 온보딩 화면 반영.
+    일(day)을 모르니 정확한 나이는 못 구하지만, "이 연월이면 최소 14세는 넘겼는지"만 근사 검증.
+    1차 방어선은 A06 화면의 "만 14세 이상입니다" 체크박스(자기 신고)이고, 이건 2차 안전장치."""
+
+    today = datetime.now(tz=config.TIMEZONE).date()
+    months_since_birth = (today.year - birth_year) * 12 + (today.month - birth_month)
+    if months_since_birth < 14 * 12:
+        raise ValueError("서비스 약관에 따라 만14세 미만은 이용이 불가합니다.")

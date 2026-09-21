@@ -3,49 +3,39 @@ from starlette import status
 from tortoise.contrib.test import TestCase
 
 from app.main import app
+from app.tests.helpers import signup_via_email_verification
 
 
 class TestUserMeApis(TestCase):
     async def test_get_user_me_success(self):
-        # 사용자 등록 및 로그인
+        # ⚠️ 2026-09-02: v2 가입 흐름에서는 이름/성별/생년월일이 가입 시점에 없음
+        # (온보딩 후속 단계에서 PATCH /users/me로 채워짐) - 그래서 여기서도 가입 직후
+        # name을 바로 검증하지 않고, PATCH로 채운 뒤에 GET으로 확인함.
         email = "me@example.com"
-        signup_data = {
-            "email": email,
-            "password": "Password123!",
-            "name": "내정보테스터",
-            "gender": "FEMALE",
-            "birth_date": "1992-02-02",
-            "phone_number": "01055556666",
-        }
+        password = "Password123!"
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            await client.post("/api/v1/auth/signup", json=signup_data)
+            await signup_via_email_verification(client, email, password)
 
-            login_response = await client.post("/api/v1/auth/login", json={"email": email, "password": "Password123!"})
+            login_response = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
             access_token = login_response.json()["access_token"]
+            headers = {"Authorization": f"Bearer {access_token}"}
+
+            await client.patch("/api/v1/users/me", json={"name": "내정보테스터"}, headers=headers)
 
             # 내 정보 조회
-            headers = {"Authorization": f"Bearer {access_token}"}
             response = await client.get("/api/v1/users/me", headers=headers)
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["email"] == email
         assert response.json()["name"] == "내정보테스터"
 
     async def test_update_user_me_success(self):
-        # 사용자 등록 및 로그인
         email = "update_me@example.com"
-        signup_data = {
-            "email": email,
-            "password": "Password123!",
-            "name": "수정전",
-            "gender": "MALE",
-            "birth_date": "1990-10-10",
-            "phone_number": "01077778888",
-        }
+        password = "Password123!"
         update_data = {"name": "수정후"}
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            await client.post("/api/v1/auth/signup", json=signup_data)
+            await signup_via_email_verification(client, email, password)
 
-            login_response = await client.post("/api/v1/auth/login", json={"email": email, "password": "Password123!"})
+            login_response = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
             access_token = login_response.json()["access_token"]
 
             # 내 정보 수정

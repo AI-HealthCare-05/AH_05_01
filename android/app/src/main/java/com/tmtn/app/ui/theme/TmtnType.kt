@@ -1,0 +1,69 @@
+package com.tmtn.app.ui.theme
+
+import androidx.compose.runtime.Composable
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.font.Font
+import com.tmtn.app.R
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
+/** User-approved Pretendard; Figma's Noto is its documented editor fallback (DESIGN.md). */
+val TmtnFontFamily = FontFamily(
+    Font(R.font.pretendard_regular, FontWeight.Normal),
+    Font(R.font.pretendard_medium, FontWeight.Medium),
+    Font(R.font.pretendard_semibold, FontWeight.SemiBold),
+    Font(R.font.pretendard_bold, FontWeight.Bold),
+)
+
+object TmtnType {
+    // Figma 1314:4840, 1314:3813: 32/42 headline, 16/26 body, 14/20 label.
+    val actionLabel: TextStyle @Composable get() = scaled(16.sp, 24.sp, FontWeight.Bold)
+    val choiceLabel: TextStyle @Composable get() = scaled(15.sp, 21.sp, FontWeight.Bold)
+    val display: TextStyle @Composable get() = scaled(36.sp, 44.sp, FontWeight.Bold)
+    val headline: TextStyle @Composable get() = scaled(32.sp, 42.sp, FontWeight.Bold)
+    val editorialHeadline: TextStyle @Composable get() = scaled(28.sp, 36.sp, FontWeight.Bold)
+    val sectionHeading: TextStyle @Composable get() = scaled(20.sp, 28.sp, FontWeight.SemiBold)
+    val inputHeadline: TextStyle @Composable get() = scaled(24.sp, 34.sp, FontWeight.Bold)
+    val missionName: TextStyle @Composable get() = scaled(18.sp, 26.sp, FontWeight.SemiBold)
+    val cardMessage: TextStyle @Composable get() = scaled(24.sp, 34.sp, FontWeight.Medium)
+    val title: TextStyle @Composable get() = scaled(22.sp, 30.sp, FontWeight.SemiBold)
+    val bodyLarge: TextStyle @Composable get() = scaled(18.sp, 28.sp, FontWeight.Medium)
+    val body: TextStyle @Composable get() = scaled(16.sp, 26.sp, FontWeight.Normal)
+    val label: TextStyle @Composable get() = scaled(14.sp, 20.sp, FontWeight.Bold)
+    val caption: TextStyle @Composable get() = scaled(14.sp, 20.sp, FontWeight.Medium)
+    val navigationLabel: TextStyle @Composable get() = scaled(12.sp, 20.sp, FontWeight.Medium)
+
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08 "첫 복구") - 새 시각 언어를 발명하지
+    // 않고 기존 스타일을 그대로 재사용(별칭). eyebrow=작은 라벨이라 caption과, headline은
+    // editorialHeadline과, body는 그대로 body와 크기가 같음.
+    val firstRepairEyebrow: TextStyle @Composable get() = caption
+    val firstRepairHeadline: TextStyle @Composable get() = editorialHeadline
+    val firstRepairBody: TextStyle @Composable get() = body
+
+    @Composable
+    private fun scaled(baseSize: androidx.compose.ui.unit.TextUnit, baseLineHeight: androidx.compose.ui.unit.TextUnit, weight: FontWeight): TextStyle {
+        val scale = LocalTmtnTextScale.current
+        return TextStyle(
+            fontFamily = TmtnFontFamily,
+            fontSize = baseSize * scale,
+            lineHeight = baseLineHeight * scale,
+            fontWeight = weight,
+            letterSpacing = if (baseSize.value >= 22f) (-0.4).sp else 0.sp,
+            fontFeatureSettings = "tnum",
+            platformStyle = PlatformTextStyle(includeFontPadding = false),
+        )
+    }
+}
+
+/** Material fields, dialogs and menus inherit the same seven styles. */
+@Composable
+internal fun tmtnTypography() = Typography(
+    displayLarge = TmtnType.display, displayMedium = TmtnType.display, displaySmall = TmtnType.display,
+    headlineLarge = TmtnType.headline, headlineMedium = TmtnType.headline, headlineSmall = TmtnType.title,
+    titleLarge = TmtnType.title, titleMedium = TmtnType.bodyLarge, titleSmall = TmtnType.label,
+    bodyLarge = TmtnType.body, bodyMedium = TmtnType.body, bodySmall = TmtnType.caption,
+    labelLarge = TmtnType.label, labelMedium = TmtnType.label, labelSmall = TmtnType.caption,
+)

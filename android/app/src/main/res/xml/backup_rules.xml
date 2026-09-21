@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+   API 30 이하(dataExtractionRules 미지원 기기) 대상 - 위와 동일한 목적으로 토큰 저장소와
+   Room DB를 백업에서 제외함. (2026-09-03 리뷰 반영)
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="tmtn_secure_prefs.xml" />
+    <exclude domain="database" path="tmtn_local_db" />
+    <exclude domain="database" path="tmtn_local_db-wal" />
+    <exclude domain="database" path="tmtn_local_db-shm" />
+</full-backup-content>

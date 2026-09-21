@@ -1,0 +1,221 @@
+contract_name: tuntun_score_formula
+contract_version: v0.2
+status: owner_approved_for_analytical_implementation
+approved_by: project_owner
+approved_at: "2026-09-03"
+supersedes:
+  contract: tuntun_score_formula_v0_1_owner_approved.yaml
+  fields:
+    - physical_score.probability_formula
+    - physical_score.sigma
+approval_basis: RECOMMEND_EMPIRICAL_CDF_AMENDMENT
+approval_evidence:
+  validation_report: reports/mvp_baseline_v0_1/physical_score_probability_validation_v0_1/TUNTUN_PHYSICAL_SCORE_PROBABILITY_VALIDATION_2026-09-03.md
+  validation_manifest: reports/mvp_baseline_v0_1/physical_score_probability_validation_v0_1/manifest_sha256.json
+  seeds_analyzed: [42, 1042, 2042]
+  summary: >-
+    6개 연령대x성별 그룹 전부 잔차 정규성 기각(Shapiro p<0.05). 전체 Brier/log
+    loss/ROC AUC/calibration은 두 방식이 사실상 동률(seed 2042의 전체 Brier만
+    empirical이 normal보다 5e-6 더 높음 - 실질적으로 noise 수준). 65세 이상
+    남녀 하위집단에서는 empirical의 ECE가 3개 seed 전부·남녀 전부(6/6)에서
+    normal보다 낮음(더 나은 calibration). 세 seed 결론이 모두 일치.
+
+scope:
+  allowed:
+    - analytical_score_implementation_on_validated_oof_inputs
+    - score_distribution_and_subgroup_validation
+    - mock_api_db_frontend_contract
+  prohibited_until_production_gate:
+    - serving_oof_predictions_as_production_predictions
+    - averaging_predictions_across_oof_seeds
+    - production_model_packaging_before_refit_and_qa
+    - diagnostic_or_treatment_claims
+
+display_contract:
+  composite_label_ko: "튼튼지수"
+  component_order:
+    - physical_score
+    - diabetes_score
+    - hypertension_score
+    - lifestyle_score
+  component_labels_ko:
+    physical_score: "신체"
+    diabetes_score: "당뇨"
+    hypertension_score: "고혈압"
+    lifestyle_score: "생활습관"
+  direction: "higher_is_better"
+  range: [0.0, 100.0]
+  expose_disease_probability_to_user: false
+  expose_abdominal_obesity_probability_to_user: false
+  required_user_notice_ko: >-
+    튼튼지수는 입력 정보와 통계 모델을 바탕으로 산출한 생활습관 개선 참고용 보정 점수이며,
+    의료진의 진단이나 치료를 대신하지 않습니다.
+  older_adult_notice_age_years: 65
+  older_adult_notice_ko: >-
+    65세 이상에서는 모델의 예측 불확실성이 상대적으로 클 수 있어 참고용으로 활용해 주세요.
+
+physical_score:
+  eligibility: "waist_eligible and required waist-score inputs are valid"
+  abdominal_obesity_cutoff_cm:
+    sex_code_1: 90.0
+    sex_code_2: 85.0
+    source: "KSSO 2022 guideline, adults >=18 years; project cohort remains age >=19"
+
+  probability_method: "cross_fitted_empirical_residual_cdf"
+  probability_method_status: "REPLACES_NORMAL_APPROXIMATION_IN_V0_1 -- v0.1's normal-CDF formula is retired for score computation and retained only as a comparison/audit candidate (see audit_only_normal_approximation below)."
+
+  age_band:
+    - {min_age_years: 19, max_age_years_exclusive: 40, label: "19-39"}
+    - {min_age_years: 40, max_age_years_exclusive: 65, label: "40-64"}
+    - {min_age_years: 65, max_age_years_exclusive: null, label: "65+"}
+
+  formula: |
+    residual = observed_waist_cm - estimated_waist_cm
+    threshold = cutoff_cm - estimated_waist_cm
+    reference_pool = { residual_i : same seed, same age_band, same sex_code,
+                        outer_fold_i != target_row.outer_fold }
+    abdominal_obesity_probability_internal =
+        (count(reference_residual >= threshold) + 0.5) / (|reference_pool| + 1)
+    physical_score = 100 * (1 - abdominal_obesity_probability_internal)
+
+  prohibitions:
+    - "target 행 자신의 residual을 reference_pool에 포함하는 것을 금지한다."
+    - "target 행과 동일한 outer_fold에 속한 어떤 residual도 reference_pool에 포함하는 것을 금지한다(target 자신뿐 아니라 같은 fold의 다른 행도 전부 제외)."
+    - "seed 간 예측값 또는 확률을 평균해 단일 값으로 만드는 것을 금지한다. 각 seed는 독립적으로 계산·보고한다."
+    - "abdominal_obesity_probability_internal은 내부 계산·감사 전용이며 사용자 화면에 노출하지 않는다."
+    - "physical_score에 임의 clipping, smoothing, 비선형 변환을 적용하는 것을 금지한다."
+
+  audit_only_normal_approximation:
+    status: "retained for comparison/audit only -- MUST NOT be used to compute the official physical_score"
+    formula: "normal_cdf((estimated_waist_cm - cutoff_cm) / sigma_cm)"
+    note: "v0.1의 정규근사 공식. v0.2에서는 공식 점수 계산에 이 공식을 사용하지 않는다."
+
+  minimum_reference_pool_n:
+    value: 500
+    status: "ANALYTICAL_STAGE_SAFETY_MINIMUM_NOT_A_PRODUCTION_FALLBACK_APPROVAL"
+    note: >-
+      프로젝트 소유자가 이번에 승인한 것은 경험적 CDF 방식 자체이며, 표본이
+      부족한 그룹을 다른 연령대나 전체 표본으로 자동 통합하는 fallback 규칙을
+      승인한 것이 아니다. reference_pool의 크기가 이 값 미만이면 물리 점수
+      계산을 fail-closed로 중단한다 -- 다른 그룹으로 자동 통합하거나 조용히
+      건너뛰지 않는다. production 단계의 실제 fallback/통합 규칙은 별도 승인
+      대상이다.
+    observed_at_validation:
+      seeds_checked: [42, 1042, 2042]
+      # 실제 최소 reference pool n은 분석 실행 시점에 재계산되어
+      # analysis/mvp/build_tuntun_score_frame.py 실행 결과(validation_summary)에
+      # 기록된다. 이 문서는 그 수치를 하드코딩하지 않는다 -- 실행마다 재확인한다.
+      verification_required: true
+
+disease_scores:
+  input_probability: "calibrated_only"
+  retain_raw_probability_for_internal_audit: true
+  expose_probability_to_user: false
+  diabetes_score_formula: "100 * (1 - diabetes_probability_calibrated)"
+  hypertension_score_formula: "100 * (1 - hypertension_probability_calibrated)"
+  clipping: false
+  production_gate: "approved single deployment pipeline plus full-development production refit"
+
+lifestyle_score:
+  aerobic:
+    moderate_equivalent_minutes_formula: "moderate_minutes + 2 * vigorous_minutes"
+    score_formula: "min(100, moderate_equivalent_minutes / 150 * 100)"
+    reference: "WHO Guidelines on physical activity and sedentary behaviour (2020)"
+    valid_range: "aerobic_raw_min_week finite and >= 0"
+  strength:
+    score_formula: "min(100, strength_days_week / 2 * 100)"
+    reference: "WHO Guidelines on physical activity and sedentary behaviour (2020)"
+    valid_range: "strength_days_week finite and in [0, 7]"
+  combination: "arithmetic_mean_of_available_aerobic_and_strength_scores"
+  missing_subcomponent_behavior: "calculate from the available subcomponent and disclose lifestyle_available_subcomponent_count"
+  observed_in_current_input_frame: "both subcomponents are fully observed (0 missing) across all 16,440 union rows as of the 2026-09-02 hardened_v0_3 input frame -- the partial-subcomponent path is implemented and tested but not currently exercised by real data."
+
+composite_tuntun_index:
+  formula: "arithmetic_mean_of_available_component_scores"
+  nominal_weights:
+    physical_score: 0.25
+    diabetes_score: 0.25
+    hypertension_score: 0.25
+    lifestyle_score: 0.25
+  partial_input_behavior: "renormalize equally across available component scores"
+  minimum_available_component_count: 1
+  component_order_for_serialization: [physical, diabetes, hypertension, lifestyle]
+  required_metadata:
+    - available_component_count
+    - available_components
+    - unavailable_components
+    - is_partial_score
+  interpretation_rule: >-
+    A partial composite is not directly comparable with a four-component composite unless the availability metadata is shown.
+
+survey_weight:
+  individual_score_use: false
+  population_reporting: "separate survey-domain analysis contract required"
+
+validation:
+  required_before_internal_score_release:
+    - validate_waist_residual_distribution_and_sigma_table  # historical; superseded by empirical-CDF reference pool validation
+    - validate_empirical_reference_pool_minimum_n
+    - validate_score_ranges_and_missingness
+    - validate_score_distributions_and_extreme_mass
+    - validate_age_and_sex_subgroups
+    - verify_no_participant_id_in_reports_or_console
+  required_before_production_release:
+    - approve_d0_single_deployment_combinations
+    - approve_waist_production_refit_path
+    - refit_all_production_models_on_approved_full_development_data
+    - package_models_preprocessing_schema_versions_and_hashes
+    - complete_backend_db_frontend_end_to_end_qa
+  external_medical_or_legal_review_is_mandatory_gate: false
+
+# Machine-verifiable mirror of the human-readable formulas above. This block
+# does not change any previously approved decision -- it exists only so
+# analysis/mvp/build_tuntun_score_frame.py's load_score_contract() can check
+# concrete numeric/string fields with a strict equality/range check instead
+# of parsing free-text formula strings. Added 2026-09-03 after an
+# independent re-verification found that the loader accepted several
+# contract mutations (e.g. diabetes_score_formula: "0", composite weights
+# 1/0/0/0, a fractional minimum_reference_pool_n) without rejecting them --
+# see reports/mvp_baseline_v0_1/TUNTUN_SCORE_FORMULA_APPROVAL_PACKET_2026-09-02.md
+# for the incident note. Every field here must stay numerically identical to
+# the corresponding human-readable block above.
+implementation_contract:
+  physical:
+    method: cross_fitted_empirical_residual_cdf
+    probability_numerator_offset: 0.5
+    probability_denominator_offset: 1.0
+    score_multiplier: 100.0
+    minimum_reference_pool_n: 500
+    minimum_reference_pool_behavior: fail_closed
+    age_bands:
+      - [19, 40, "19-39"]
+      - [40, 65, "40-64"]
+      - [65, null, "65+"]
+    cutoffs_cm:
+      sex_code_1: 90.0
+      sex_code_2: 85.0
+
+  disease:
+    probability_source: calibrated
+    score_formula_id: one_minus_probability_times_100
+    multiplier: 100.0
+    clipping: false
+
+  lifestyle:
+    aerobic_target_minutes_week: 150.0
+    vigorous_equivalent_multiplier: 2.0
+    strength_target_days_week: 2.0
+    strength_max_days_week: 7.0
+    combination: mean_of_available_subcomponents
+
+  composite:
+    components: [physical, diabetes, hypertension, lifestyle]
+    nominal_weights:
+      physical: 0.25
+      diabetes: 0.25
+      hypertension: 0.25
+      lifestyle: 0.25
+    missing_behavior: equal_weight_renormalization
+    minimum_available_component_count: 1
+
+production_release_gate: BLOCKED

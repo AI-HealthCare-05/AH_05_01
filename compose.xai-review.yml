@@ -1,0 +1,21 @@
+# 기존 EC2 Compose 파일 뒤에 -f compose.xai-review.yml로 추가한다.
+# prepare-xai-ec2.py가 만든 토큰을 API와 모델에 동일하게 전달한다.
+services:
+  fastapi:
+    env_file:
+      - .env
+      - .env.xai-review
+    command: ["uv", "run", "--no-sync", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+  tuntun-xai:
+    build:
+      context: .
+      dockerfile: model_service/Dockerfile
+    platform: linux/amd64
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env.xai-review
+    network_mode: "service:fastapi"
+    depends_on:
+      - fastapi
+    mem_limit: 2g

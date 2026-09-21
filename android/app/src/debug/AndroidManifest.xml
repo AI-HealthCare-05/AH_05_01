@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- 검토 APK에서만 제공하며 실제 회원 계정이나 기록을 변경하지 않는다. -->
+        <activity android:name="com.tmtn.app.review.FinalReviewActivity"
+            android:enabled="${tmtnReviewEnabled}" android:exported="true" android:label="틈튼 화면 검토">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -1,0 +1,6 @@
+age_years,sex_code,height_cm,weight_kg,leisure_aerobic_moderate_equivalent_min_week,strength_days_week
+35,1,170,64,120,4
+35,1,170,164,120,4
+35,1,170,64,0,0
+68,2,155,55,150,2
+90,1,170,75,150,2

@@ -1,0 +1,144 @@
+{
+  "schema_version": "tmtn-personal-xai-v1",
+  "snapshot_id": "fe242565-41c0-47d1-9ec8-666aaaddd075",
+  "input_revision": "test-64",
+  "computed_at": "2026-09-15T09:20:03.303349+00:00",
+  "release_sha256": "bdca54917705cde75fc2d1b275c49a91ebfef05f56f45472d29e4b97ba77c2e9",
+  "model_version": "tuntun_integrated_candidate_v0_1",
+  "reference_version": "peer-fixed-model42-unweighted-broad-v0.1-20260907",
+  "formula_version": "peer-equal-four-v0.1-candidate",
+  "input_mapping_version": "birth-month-app-inputs-v0.2",
+  "display_policy_version": "peer-rank100-v0.2",
+  "reference_date": "2026-09-09",
+  "age_notice": "출생연월과 기준일로 만 나이를 계산했습니다.",
+  "release_stage": "candidate",
+  "is_mock": false,
+  "composite_score": 75.6,
+  "domains": [
+    {
+      "domain": "diabetes",
+      "rank": 34,
+      "rank_range": [
+        34,
+        34
+      ],
+      "reference_group": "19-39:1",
+      "reference_n": 1984,
+      "output_target": "calibrated_reference_score_before_peer_percentile",
+      "unit": "internal_reference_score_point",
+      "base_value": 86.912675745862,
+      "output_value": 98.90584264767556,
+      "feature_order": [
+        "age_years",
+        "sex_code",
+        "height_cm",
+        "weight_kg",
+        "leisure_aerobic_moderate_equivalent_min_week",
+        "strength_days_week"
+      ],
+      "contributions": [
+        {
+          "key": "age_years",
+          "label": "나이",
+          "value": 10.749972344149018
+        },
+        {
+          "key": "sex_code",
+          "label": "성별",
+          "value": -0.7684829899461301
+        },
+        {
+          "key": "height_cm",
+          "label": "키",
+          "value": 0.7620176210948877
+        },
+        {
+          "key": "weight_kg",
+          "label": "몸무게",
+          "value": 0.0851525807854987
+        },
+        {
+          "key": "leisure_aerobic_moderate_equivalent_min_week",
+          "label": "유산소 활동 시간",
+          "value": 0.7262904486166732
+        },
+        {
+          "key": "strength_days_week",
+          "label": "근력운동 일수",
+          "value": 0.43821689711399525
+        }
+      ],
+      "background_sha256": "62407693c4570a4e0bd15a6a8122cdcad59c4a180a127996b7520bcc97df0fb9",
+      "background_rows": 300,
+      "explainer": "ExactExplainer",
+      "masker": "Independent",
+      "link": "identity",
+      "shap_version": "0.49.1",
+      "additivity_error": 3.836930773104541e-13
+    },
+    {
+      "domain": "hypertension",
+      "rank": 19,
+      "rank_range": [
+        19,
+        19
+      ],
+      "reference_group": "19-39:1",
+      "reference_n": 2068,
+      "output_target": "calibrated_reference_score_before_peer_percentile",
+      "unit": "internal_reference_score_point",
+      "base_value": 84.72768774524985,
+      "output_value": 96.68255635412217,
+      "feature_order": [
+        "age_years",
+        "sex_code",
+        "height_cm",
+        "weight_kg",
+        "leisure_aerobic_moderate_equivalent_min_week",
+        "strength_days_week"
+      ],
+      "contributions": [
+        {
+          "key": "age_years",
+          "label": "나이",
+          "value": 7.711039507362435
+        },
+        {
+          "key": "sex_code",
+          "label": "성별",
+          "value": -1.3663198772556888
+        },
+        {
+          "key": "height_cm",
+          "label": "키",
+          "value": 1.1513289078423696
+        },
+        {
+          "key": "weight_kg",
+          "label": "몸무게",
+          "value": 1.5366629726966483
+        },
+        {
+          "key": "leisure_aerobic_moderate_equivalent_min_week",
+          "label": "유산소 활동 시간",
+          "value": 1.487088782330627
+        },
+        {
+          "key": "strength_days_week",
+          "label": "근력운동 일수",
+          "value": 1.4350683158952995
+        }
+      ],
+      "background_sha256": "62407693c4570a4e0bd15a6a8122cdcad59c4a180a127996b7520bcc97df0fb9",
+      "background_rows": 300,
+      "explainer": "ExactExplainer",
+      "masker": "Independent",
+      "link": "identity",
+      "shap_version": "0.49.1",
+      "additivity_error": 6.252776074688882e-13
+    }
+  ],
+  "status": "ready",
+  "reason": null,
+  "elapsed_seconds": 6.713
+}

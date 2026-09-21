@@ -1,0 +1,115 @@
+package com.tmtn.app.network
+
+import com.tmtn.app.BuildConfig
+import com.tmtn.app.network.model.LoginRequest
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import com.tmtn.app.network.TuntunScoreApi
+
+object ApiClient {
+
+    // ⚠️ 2026-09-14 변경 - EC2 팀 내부 HTTP 테스트 배포. 도메인·SSL 아직 없어서 IP+HTTP로
+    // 연결(AndroidManifest.xml에 usesCleartextTraffic="true"가 이미 있어서 별도 설정 불필요).
+    // 이 IP는 Elastic IP로 고정 할당돼 있어서, EC2 인스턴스를 중지(Stop) 후 재시작(Start)해도
+    // 안 바뀜(예전엔 자동 할당 IP라 재부팅마다 바뀔 위험이 있었음).
+    private const val BASE_URL = "http://54.144.123.148/api/v1/"
+
+    // ⚠️ 2026-09-02 리뷰 반영: 예전엔 이메일·비밀번호가 여기 평문으로 박혀 있어서 git
+    // 히스토리에 그대로 남았음(서버 쪽 실제 비밀번호는 별도로 교체 필요). 이제 local.properties
+    // (.gitignore에 이미 있어서 커밋 안 됨)에서 build.gradle.kts가 읽어 BuildConfig로 주입.
+    // local.properties에 값이 없으면 빈 문자열이고, loginWithTestAccount()가 그때는 그냥
+    // 실패 처리함(필수 기능 아님 - 온보딩 건너뛰고 테스트하고 싶을 때만 쓰는 편의 기능).
+    private val TEST_EMAIL get() = BuildConfig.TEST_ACCOUNT_EMAIL
+    private val TEST_PASSWORD get() = BuildConfig.TEST_ACCOUNT_PASSWORD
+
+    private val loggingInterceptor = HttpLoggingInterceptor().apply {
+        // ⚠️ 2026-09-02 1차 반영: release에서 BODY가 그대로 찍히던 건 막았음.
+        // 2026-09-03 리뷰 반영: DEBUG에서도 BODY는 위험함 — 로그인 요청 본문에 팀원
+        // 계정의 평문 비밀번호가 그대로 남음. DEBUG는 BASIC(메서드·URL·응답코드·시간만),
+        // RELEASE는 NONE으로 낮춤.
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
+    }
+
+    private val authInterceptor = AuthInterceptor()
+    private val sessionInterceptor = SessionInterceptor()
+
+    // ⚠️ 2026-09-03 리뷰 반영: CookieJar가 없어서 로그인 응답의 refresh_token 쿠키가
+    // 저장조차 안 되고 있었음(리프레시 흐름 자체가 불가능한 상태였음).
+    // ⚠️ 2026-09-08 반영: InMemoryCookieJar(메모리 전용)에서 PersistentCookieJar(암호화
+    // 저장소)로 교체. 앱을 완전히 종료해도 refresh_token이 남아서, 서버의 14일 수명이
+    // 실제로 "14일 미사용 시 재로그인"으로 동작함.
+    private val cookieJar = PersistentCookieJar
+
+    // refresh 호출 전용 - authenticator를 안 달아서 재시도가 재시도를 부르는 루프가 안 생김.
+    // cookieJar는 메인 클라이언트와 공유해서 같은 refresh_token을 씀.
+    private val refreshOkHttpClient = OkHttpClient.Builder()
+        .cookieJar(cookieJar)
+        .addInterceptor(loggingInterceptor)
+        .build()
+
+    private val tokenAuthenticator = TokenAuthenticator(BASE_URL, refreshOkHttpClient)
+
+    /**
+     * ⚠️ 2026-09-08 QA 반영: 로그아웃·계정 삭제 시 access token과 refresh_token 쿠키를 같이
+     * 비움. 예전엔 TokenHolder만 지우고 쿠키는 남겨둬서, 삭제된 계정의 refresh_token으로
+     * 자동 갱신이 돌 수 있는 상태였음.
+     */
+    fun clearSession() {
+        TokenHolder.clear()
+        cookieJar.clear()
+    }
+
+    private val okHttpClient = OkHttpClient.Builder()
+        .cookieJar(cookieJar)
+        .addInterceptor(authInterceptor)
+        .addInterceptor(sessionInterceptor)
+        .addInterceptor(loggingInterceptor)
+        .authenticator(tokenAuthenticator)
+        .build()
+
+    private val retrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    val missionApi: MissionApi by lazy { retrofit.create(MissionApi::class.java) }
+    val authApi: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
+    val onboardingApi: OnboardingApi by lazy { retrofit.create(OnboardingApi::class.java) }
+    val cardHomeApi: CardHomeApi by lazy { retrofit.create(CardHomeApi::class.java) }
+    val recordApi: RecordApi by lazy { retrofit.create(RecordApi::class.java) }
+    val profileApi: ProfileApi by lazy { retrofit.create(ProfileApi::class.java) }
+    val tuntunScoreApi: TuntunScoreApi by lazy { retrofit.create(TuntunScoreApi::class.java) }
+    val exerciseMissionApi: ExerciseMissionApi by lazy { retrofit.create(ExerciseMissionApi::class.java) }
+    // ⚠️ 2026-09-16 추가 - 초기 습관+실천+건강 종합(틈튼지수) API. 기존 tuntunScoreApi와
+    // 별개 - practice-score는 서버가 직접 조합하는 새 계산이고, tuntunScoreApi는 브릿지
+    // 원본 응답을 그대로 전달하는 기존 vNext.
+    val practiceScoreApi: PracticeScoreApi by lazy { retrofit.create(PracticeScoreApi::class.java) }
+    val debugApi: DebugApi by lazy { retrofit.create(DebugApi::class.java) }
+    /**
+     * 실제 온보딩 화면(A03~A10)이 생겨서, 이제 이 함수는 "온보딩 건너뛰고 바로 기능 테스트"
+     * 하고 싶을 때 쓰는 용도로만 남겨둠. 최초 온보딩 흐름 자체는 OnboardingState가 담당.
+     */
+    suspend fun loginWithTestAccount(): Boolean {
+        if (!BuildConfig.DEBUG || TEST_PASSWORD.isBlank()) return false
+        return try {
+            val response = authApi.login(LoginRequest(email = TEST_EMAIL, password = TEST_PASSWORD))
+            if (response.isSuccessful) {
+                TokenHolder.accessToken = response.body()?.access_token
+                TokenHolder.accessToken != null
+            } else {
+                false
+            }
+        } catch (e: java.io.IOException) {
+            // ⚠️ 2026-09-03 리뷰 반영: catch (e: Exception)로 다 삼키면 네트워크 실패와
+            // 인증 실패가 구분이 안 됨. 여기선 온보딩 건너뛰기용 편의 함수라 어차피 Boolean만
+            // 돌려주지만, 최소한 "네트워크 자체가 안 됐다"는 걸 로그로는 구분해서 남김.
+            android.util.Log.w("ApiClient", "테스트 계정 로그인 실패 - 네트워크 오류", e)
+            false
+        }
+    }
+}

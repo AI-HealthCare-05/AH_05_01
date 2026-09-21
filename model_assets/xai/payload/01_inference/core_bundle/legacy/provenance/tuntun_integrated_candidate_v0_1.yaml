@@ -1,0 +1,51 @@
+name: tuntun_integrated_candidate
+version: v0.1
+authorization: owner_instruction_2026_09_04_develop_integrated_model_while_review_pending
+scope: local_pre_release_candidate
+production_release_gate: BLOCKED
+waist:
+  model: frozen_W2_random_forest_regressor
+  params: {n_estimators: 500, max_depth: 12, min_samples_leaf: 5, max_features: 0.7, criterion: squared_error, bootstrap: true, random_state: 42}
+  n_jobs: 1
+  training_years: [2019, 2020, 2021]
+  training_rows: 16403
+  training_sha256: f6677ef29ab58d848b9341cf5f22c05cf9f75738b5be8edc67dd1592cebf03ba
+  residual_reference: frozen_W2_seed42_cross_fitted_OOF_not_full_refit_training_residuals
+  oof_sha256: 7f633fb30789c1044bf5c0a8dc3f1cfcd7c72f204910537e2cf4787befcfa57a
+physical:
+  new_user_rule: all_reference_residuals_in_same_age_band_and_sex
+  explanation: A new user has no development fold. Use all same-group cross-fitted reference residuals, not a synthetic fold assignment or a seed average.
+  evaluation_rule: do_not_evaluate_development_rows_using_the_full_reference_as_independent_validation
+  probability: (count_residual_greater_equal_cutoff_minus_prediction_plus_0_5)/(reference_n_plus_1)
+  score: 100_times_one_minus_probability
+  minimum_reference_n: 500
+  insufficient_reference: reject_package_no_automatic_group_merge
+  reference_export: sorted_unique_residual_values_and_counts_only_no_keys_or_predictions
+  full_refit_vs_OOF_residual_transfer: unvalidated_on_external_data_release_gate_remains_blocked
+d0:
+  reuse_unchanged_manifest: 1c64e17378da8f82f90fcaf4b20bdcb6797aa5e6101b9520e83347a18107f7c3
+formula:
+  source_contract_sha256: f499c1d96a6c8e16f0465a096fd54ad4e38229ffcab196b9c32f65adccb1a8a4
+  lifestyle: approved_questionnaire_formula_available_subcomponent_mean
+  composite: approved_available_component_equal_mean
+  missing: null_not_zero
+  mission_integration: pending_evidence_no_mission_to_score_conversion
+input:
+  schema: D0_canonical_six_with_nullable_fields_for_partial_scores
+  pregnancy: explicit_nonpregnant_for_three_health_scores
+  no_imputation: true
+  lifestyle_invalid_subcomponent: unavailable_independently
+  unknown_extra_fields: rejected
+v2:
+  health_source_enum_addition: model_inference
+  isMock: false
+  meaning: real_local_candidate_inference_not_live_release_authorization
+  activity_window: supplied_end_date_minus_6_days_to_end_date
+  missing_recorded_days: 0_metadata_only_no_score_effect
+  external_date_responsibility: backend_provides_KST_reference_date_and_truthful_questionnaire_period
+bridge:
+  scope: local_test_only
+  bind: 127.0.0.1
+  model_python: 3.14.7
+  app_python: 3.13
+  live_service_auth_monitoring_and_DB_integration: not_implemented
