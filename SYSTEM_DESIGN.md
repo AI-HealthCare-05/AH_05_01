@@ -7,14 +7,13 @@
 ## 1. 시스템 전체 그림
 
 ```
-[Android 앱]  Kotlin · Compose · kr.tmtn.app
-     │  HTTPS
+[Android 앱]  Kotlin · Compose · com.tmtn.app
+     │  /api/v1 (환경별 API 주소)
      ▼
 [Nginx] → [FastAPI]  ─┬─→ [MySQL 8.0.46]   회원·기록·챌린지·지수 스냅샷
                       ├─→ [Redis 7.2]       캐시 · Stream
-                      └─→ [AI Worker]       모델 추론
-                                │
-                          [모델 아티팩트]  ← tmtn_ai/ 에서 동결해 전달
+                      ├─→ [또래 브릿지]     Python 3.14.7 / loopback 8766
+                      └─→ [개인 SHAP]       Python 3.14.7 / loopback 8776
 ```
 
 ## 2. 모델 세 개를 어디서 돌리나
@@ -23,9 +22,9 @@
 | --- | --- | --- |
 | ① 허리둘레 추정 | **서버 추론 API** | 학습된 sklearn 모델. 버전 관리와 교체가 서버에서 쉬움 |
 | ② 행동 인식 (걸음·계단·활동시간) | **온디바이스** | 센서 데이터는 기기에 있음. 서버 왕복이 불필요하고 개인정보 측면에서도 낫다 |
-| ③ 틈튼지수 | **서버 추론 API** | ①의 결과와 기록을 합쳐 계산. 규칙이 바뀌면 앱 배포 없이 고쳐야 함 |
+| ③ 건강 참고정보·개인 XAI | **서버 API + 별도 모델 프로세스** | 또래 참고정보와 질환별 SHAP를 구분하고, 동의·입력·모델 버전·공개 게이트 확인 |
 
-앱에서 세 슬롯을 갈아끼우는 곳은 `android/.../domain/ml/ModelRegistry.kt` **한 파일**입니다.
+현재 연결은 Android의 `network/`·`sensor/`·`ui/reference/`·`ui/journal/`, 서버의 `app/services/`, 개인 SHAP의 `model_service/`에 있습니다. 과거 `ModelRegistry.kt` 슬롯 설계는 현재 파일 구조가 아닙니다. `ai_worker/`는 별도 Worker 구성으로, 개인 SHAP 실행 경로와 구분합니다. 동결 원본·실행 환경은 [XAI 안내](docs/XAI.md)를 따릅니다.
 
 ## 3. 틈튼지수 — 검증 게이트
 
@@ -92,7 +91,7 @@ uv run ruff check --fix .
 
 ## 9. 배포
 
-- **2026년 9월 14일 APK 배포**가 목표입니다.
-- 배포는 종료 1주일 전에 완료합니다. **마지막 주에 새 기능을 만들지 않습니다** — 평가에 반영되지 않으면서 배포만 흔듭니다.
+- 초기 APK 목표일은 2026년 9월 14일이었습니다. 현재 릴리스는 README와 [통합 기록](docs/INTEGRATION_2026-09-21.md)을 확인합니다.
+- 이미 병합된 코드를 서버에 적용하는 순서는 [EC2 배포](docs/DEPLOYMENT.md)를 따릅니다. Git 병합을 실제 배포 완료로 간주하지 않습니다.
 - 운영에서 mysql·redis 포트를 공인망에 노출하지 않습니다.
 - 이미지 태그는 고정합니다. `latest` 같은 가변 태그를 쓰지 않습니다.
