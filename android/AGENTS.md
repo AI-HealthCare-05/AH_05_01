@@ -1,151 +1,37 @@
-# AGENTS.md — `android/` 안드로이드 앱
+# AGENTS.md — Android 앱
 
-> 저장소 루트의 `AGENTS.md` 가 먼저입니다. 이 파일은 **안드로이드 작업에만** 더해지는 규칙입니다.
-> Android Studio 는 반드시 **`android/` 폴더를 엽니다.** 저장소 루트를 열면 Python `app/` 과 모듈명이 충돌합니다.
+루트 `AGENTS.md`와 `SYSTEM_DESIGN.md`를 먼저 따릅니다. Android Studio에서는 `android/`를 엽니다. 이 문서는 현재 구현과 맞지 않는 오프라인·v5 슬롯 안내를 대체합니다.
 
-## 기술
+## 현재 기술과 빌드
 
-Kotlin · Jetpack Compose · Material3 · 패키지 `kr.tmtn.app` · 단일 `:app` 모듈
+- Kotlin·Compose·Material3, `com.tmtn.app`, 단일 `:app` 모듈입니다.
+- Retrofit·OkHttp로 API에 연결하고 Room·WorkManager를 사용합니다. 현재 의존성과 맞지 않는 “아직 미도입” 안내를 적용하지 않습니다.
+- 버전은 [개발 환경](../docs/DEVELOPMENT_ENVIRONMENT.md)과 실제 Gradle 설정을 함께 확인합니다. API Python과 모델 Python을 혼합하지 않습니다.
+- AGP 8.7.3에서는 기존 `kotlin.android`, `kotlin.compose`, KSP 플러그인을 유지합니다. 과거 AGP 9 전제의 플러그인 제거 지침을 적용하지 않습니다.
+- 빌드·Google 인증·서명·검사용 패키지 절차는 [Android README](README.md)를 따릅니다.
 
-- Retrofit/Ktor 없음 · Hilt/Koin 없음(수동 `AppContainer`) · Room/DataStore 없음(SharedPreferences)
-- 다크모드 없음 (`DESIGN.md` 에 정의가 없어서 의도적으로 뺐습니다)
-- 디자인 원본: Figma `ByGT2uoinUBxAQOBqAK7sM` · 화면 목록 `docs/design-v5/SCREENS.csv` (108화면)
+`local.properties`, 서명키·비밀번호, Google 서비스 비밀 파일, APK/AAB, `build/`, `.gradle/`는 커밋하지 않습니다.
 
-## 빌드
+## UI와 자산
 
-```bash
-cd android
-./gradlew assembleDebug     # → app/build/outputs/apk/debug/app-debug.apk
-```
+- 현재 기준은 [DESIGN.md](DESIGN.md)의 시안 C입니다. 화면 변경은 승인된 Figma 화면과 현재 구현을 먼저 확인합니다. 존재하지 않는 `docs/design-v5/SCREENS.csv`를 기준으로 삼지 않습니다.
+- 색은 `ui/theme/TmtnColor.kt`·`TmtnHomeColor.kt`, Pretendard는 `TmtnType.kt`, 모션은 `TmtnMotion.kt`를 재사용합니다. 화면별 임의 팔레트·글자 크기를 추가하지 않습니다.
+- 큰 제목을 반복하지 않고 시작·쉬어가기 버튼을 미션에 가깝게 묶습니다. 큰 글자에서는 배치를 바꾸며 글자를 줄이거나 중요한 수치를 숨기지 않습니다.
+- 터치 영역은 48dp 이상을 유지합니다. 로딩·실패·빈 상태·권한 거부·복귀를 확인합니다.
+- 실천·쉼·미완료를 색만으로 구분하지 않고 채움·실선·점선을 유지합니다. 주간은 월요일 시작입니다.
+- 폐기된 장식 카드, 걷기 GIF·팔다리 모션, 오래된 HTML 시안을 되살리지 않습니다. 캐릭터 색·형태·투명 배경을 유지합니다.
+- 미션 문구·목표를 UI에 고정하지 않습니다. 서버 콘텐츠 변경은 [콘텐츠 안내](../app/scripts/data/README.md)를 따릅니다.
 
-## 버전 — `docs/DEVELOPMENT_ENVIRONMENT.md` 「Android 기준선」이 단일 기준
+## 상태·모델 연결
 
-`android/gradle/libs.versions.toml` 한 곳에만 버전을 적고, **그 문서와 반드시 일치시킵니다.**
-여기만 고치고 문서를 안 고치면 다음 사람이 다른 버전을 씁니다.
+하단 탭은 **홈 · 기록 · 일보 · 댐 · 내 정보**입니다. 코드 위치는 Android README에서 확인합니다. 새 화면은 실제 `MainActivity.kt`와 해당 상태·흐름을 확인한 뒤 연결하며, 과거 `Routes.kt`·`ModelRegistry.kt`가 있다고 가정하지 않습니다.
 
-| 항목 | 값 |
-| --- | --- |
-| Android Studio | `Quail 2 \| 2026.1.2` stable |
-| JDK / bytecode target | `17` |
-| AGP / Gradle wrapper / Kotlin | `9.1.1` / `9.3.1` / `2.4.10` |
-| SDK Build Tools | `37.0.0` |
-| **`compileSdk`** | **`37`** |
-| `targetSdk` / `minSdk` | `36` / `28` |
-| Compose BOM | `2026.08.00` |
-| Navigation / Lifecycle | `2.9.8` / `2.11.0` |
+- 완료 응원과 틈새운동 횟수는 서버 저장이 확인된 결과만 사용합니다. 저장 중·실패를 완료로 표시하지 않습니다.
+- 센서 인식 여부·일시정지·저장 재시도를 구분하고, 재시도로 보상을 중복 지급하지 않습니다. 권한·기기 미지원 상태에서 움직임을 만들어 내지 않습니다.
+- 개인 XAI는 [표시 계약](../docs/XAI.md)의 동의·입력·모델 버전과 공개 승인 게이트를 유지합니다. 장애 때 임의 점수로 폴백하지 않습니다.
+- 비진단용 참고 정보·허리둘레 추정값 문구는 데모 표시가 아닙니다. 지우지 않습니다.
+- 검토 화면의 예시 데이터와 실제 계정·서버 데이터 흐름을 구분합니다. 검사용 init 스크립트를 일반 전달 APK에 넣지 않습니다.
 
-> **`compileSdk 37` 과 `targetSdk 36` 이 다른 게 정상입니다.** 오타로 보고 맞추지 마세요.
-> `compileSdk` 는 *어떤 API 로 컴파일하나*, `targetSdk` 는 *어떤 런타임 동작에 동의하나*, `minSdk` 는 *어떤 기기에 설치되나* 입니다. 셋은 따로 올립니다.
-> Compose BOM `2026.08.00` 이 끌어오는 Compose `1.12.0` 이 컴파일 시 SDK 37 을 요구해 `compileSdk` 만 37 로 올렸고(2026-08-27), `targetSdk` 는 Google Play 신규 앱 기준을 맞추려고 36 으로 둡니다.
+## 완료 전 확인
 
-**아직 프로젝트에 넣지 않은 라이브러리**(넣게 되면 이 버전으로 고정):
-Firebase Android BOM `34.16.0` · Health Connect `1.1.0` · DataStore `1.2.1` · Room `2.8.4` · WorkManager `2.11.2`
-
-`coreKtx = 1.18.0` 과 `activityCompose = 1.12.0` 은 **팀 문서에 고정값이 없는 잠정값**입니다. Gradle sync 가 "Failed to resolve" 라고 하면 Android Studio 가 제안하는 최신 stable 로 바꾸고, **그 값을 `DEVELOPMENT_ENVIRONMENT.md` 에도 적으세요.**
-
-네트워크 클라이언트(Retrofit/Ktor)와 DI(Hilt/Koin)는 **아직 결정이 없습니다.** ADR 로 하나를 고르기 전에 개인 취향으로 추가하지 마세요.
-
-## 커밋할 것 / 안 할 것
-
-**커밋합니다** — `gradlew` · `gradlew.bat` · `gradle/wrapper/gradle-wrapper.properties` · 모든 `build.gradle.kts` · `settings.gradle.kts` · `gradle/libs.versions.toml` · 비밀 없는 `gradle.properties` · `AndroidManifest.xml` · ProGuard/R8 공통 규칙
-
-**커밋하지 않습니다** — `local.properties` · `.gradle/` · 모든 `build/` · `google-services.json` · FCM service account key · `.jks` / `.keystore` / signing password · APK · AAB · APKS
-
----
-
-# 하지 말 것
-
-## 디자인 토큰 — 어기면 화면이 다시 시끄러워집니다
-
-- **하드코딩 색을 쓰지 마세요.** `Color(0xFF...)` 를 화면 코드에 쓰면 안 됩니다. 반드시 `TmtnColor.*` 를 거칩니다. 현재 하드코딩 색은 **0개**입니다. 이 숫자를 지키세요.
-- **하드코딩 글자 크기를 쓰지 마세요.** `TmtnText.*` 만 씁니다. 타입은 **7단계뿐**입니다 — Display 40 / Headline 32 / Title 24 / BodyLarge 19 / Body 16 / Label 14 Bold / Caption 14 Medium.
-- **주황 `#FF7A1A` 은 "오늘"처럼 의미가 있는 작은 표시에 사용합니다.** 2026-09-17 사용자 승인 B안에 따라 주요 버튼·선택은 기존 숲색 `#3F5D4B`, 큰 배경은 흰색·무채색입니다. 베이지·세이지·연한 살구색 면을 추가하지 마세요. 현재 토큰과 역할은 `android/DESIGN.md` 및 `ui/theme/TmtnColor.kt`를 따릅니다.
-- **폐기된 초록 팔레트 `#0C3B2E` `#6D9773` 를 쓰지 마세요.** 코드에 남아 있으면 지웁니다.
-- **`Display` 를 한 화면에 두 번 쓰지 마세요.**
-- **글자를 다시 줄이지 마세요.** v5에서 의도적으로 키웠습니다. 넘치면 여백을 줄이세요.
-- **누를 수 있는 것을 48dp 미만으로 만들지 마세요.** `TmtnTarget` 을 씁니다.
-
-토큰 파일: `designsystem/TmtnColor.kt` · `TmtnType.kt` · `TmtnDimens.kt`
-간격·모서리는 `TmtnSpace` / `TmtnRadius`.
-
-## 기록 달력 — 색만으로 구분하지 마세요
-
-| 상태 | 표시 |
-| --- | --- |
-| 실천 | 먹색 꽉 찬 원 + 흰 숫자 |
-| 쉼 | 먹색 **실선** 테두리 1.5dp + 바탕 `#EFEAE0` |
-| 미완료 | 회색 `#B8B2A6` **점선** 테두리 1.5dp (`dash 2.5 / gap 2.5`) |
-| 오늘 | 주황 실선 테두리 2dp |
-
-**실선 = 쉼(내가 고른 것), 점선 = 미완료(빠진 것).** 색만이 아니라 **선 종류로** 구분합니다. 이 대비를 없애지 마세요. 색약 사용자에게 이게 유일한 단서입니다.
-
-주간·월간 달력 모두 **월요일 시작**입니다.
-
-## 데모 표시
-
-코드에 마커가 두 종류 있습니다. **섞지 마세요.**
-
-```bash
-grep -rn "\[DEMO" android/app/src/main/java/
-```
-
-- **`[DEMO]`** — 서버가 붙으면 **사실과 달라지는** 문장입니다. 연동 즉시 **지워야** 합니다.
-  (`ui/auth/LoginScreen.kt` 의 "서버 없이 이 기기 안에서만", `ui/tabs/TabScreens.kt` 의 "데모 데이터 초기화")
-- **`[DEMO-MODEL]`** — 모델이 임시 구현이라 뜨는 안내입니다. **코드를 건드리지 마세요.** `domain/ml/ModelSlot.kt` 의 `isPlaceholder` 를 `false` 로 두면 저절로 사라집니다.
-
-**틈튼지수 탭의 "비진단용 참고 정보입니다" 문구는 데모 표시가 아닙니다. 절대 지우지 마세요.**
-
-## 그 밖
-
-- **화면을 새로 만들기 전에 Figma 를 열지 않고 시작하지 마세요.** `docs/design-v5/SCREENS.csv` 에 화면별 링크가 있습니다.
-- **일러스트를 기다리며 화면을 비워 두지 마세요.** `TmtnComponents.kt` 의 `ImageSlot(tag, title, desc, height)` 으로 자리를 잡고 파일 이름만 미리 정합니다.
-- **`missions.json` 을 직접 고치지 마세요.** CSV 를 고치고 `python android/tools/build_missions_json.py <csv>` 를 다시 돌립니다.
-- **`alias(libs.plugins.kotlin.android)` 를 되살리지 마세요.** AGP 9.0 부터 Kotlin 이 내장이라 빌드가 깨집니다. 단 **`org.jetbrains.kotlin.plugin.compose` 는 계속 필요합니다** — 지우면 안 됩니다.
-- **최상위 `kotlin { compilerOptions { jvmTarget ... } }` 블록을 넣지 마세요.** `android.compileOptions.targetCompatibility`(17)를 자동으로 따라갑니다.
-- **`kotlin-kapt` 를 쓰지 마세요.** AGP 9 비호환입니다. 필요하면 KSP 를 씁니다.
-
----
-
-# 할 것
-
-## 화면 추가
-
-`ui/nav/Routes.kt` 와 `TmtnApp.kt` **두 곳만** 고치면 됩니다.
-
-## 모델 교체
-
-`domain/ml/ModelRegistry.kt` **한 파일**에서 합니다. 화면 코드는 한 줄도 안 고쳐도 됩니다.
-
-| 모델 | 인터페이스 | 지금 |
-| --- | --- | --- |
-| 허리둘레 | `WaistEstimator.estimate(WaistInput)` | `PlaceholderWaistEstimator` |
-| 행동 인식 | `ActivityRecognizer.measure(MeasureRequest)` | `SensorActivityRecognizer` / 센서 없으면 `SimulatedActivityRecognizer` |
-| 틈튼지수 | `TmtnIndexScorer.score(TmtnIndexInput)` | `PlaceholderTmtnIndexScorer` |
-
-세 슬롯은 **각각 따로** 내릴 수 있습니다. 서버 구현으로 바꿀 때는 **서버가 죽었을 때 임시 구현으로 떨어지는 폴백을 반드시 같이 넣으세요.** 실배포에서 서버 장애는 반드시 일어납니다.
-
-`.tflite` 는 `android/app/src/main/assets/models/` 에 둡니다.
-
-## 미션 실행이 두 갈래인 이유
-
-`MissionType.isModelMeasured` 가 분기 기준입니다.
-
-- **자가 수행형** → `SelfMissionScreen`. 앱이 무조건 시간을 셉니다 → **일시정지가 필요**하고, 완료는 사용자가 눌러야 기록됩니다.
-- **모델 측정형** → `MissionIntroScreen`(무엇을 읽고 안 읽는지 고지) → `ModelMissionScreen`. 모델이 `moving=false` 인 동안 `activeSeconds` 를 안 올리므로 **일시정지가 불필요**하고, 목표 도달 시 자동 기록됩니다.
-- 센서 불가 기기 → `MissionRunViewModel(card, forceManual=true)`
-
-## 화면 높이 예산
-
-390×844 기준 상태바 44 + 앱바 64 + 하단탭 104 를 빼면 **본문 632dp** 입니다. 스크롤 없는 화면은 이 안에 들어와야 합니다.
-
-## 하단 탭
-
-**홈 · 기록 · 틈튼지수 · 댐 · 내 정보** 5개. 틈튼지수가 이 앱의 핵심이라 자기 탭을 가집니다(`E01`). 카드첩은 댐 탭 안(`G06`)입니다.
-
----
-
-# 확인 방법
-
-빌드가 통과한다고 화면이 맞는 건 아닙니다. **글자가 커져 넘치는 것은 빌드로 안 잡힙니다.** 화면을 고쳤으면 에뮬레이터나 실기기로 직접 보세요.
-
-"완료"라고 적을 때는 무엇으로 확인했는지 함께 적습니다 — 컴파일 통과인지, 실기기 확인인지.
+컴파일·단위 검사·lint를 수행하고 결과와 남은 한계를 기록합니다. UI 변경은 에뮬레이터나 기기에서 실제로 확인합니다. 큰 글자, 좁은 화면, 뒤로가기·탭 복귀, 네트워크 실패는 빌드만으로 확인되지 않습니다.

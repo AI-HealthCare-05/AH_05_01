@@ -171,7 +171,7 @@ APK·AAB 파일은 Git에 직접 commit하지 않고 CI artifact 또는 GitHub R
 - `main` 삭제 금지, `develop`도 삭제 제한
 - linear history는 `develop`의 squash 정책과 함께 적용하되 release merge commit 정책과 충돌하지 않게 ruleset을 분리
 
-저장소에는 현재 원격 `main`만 있으므로, 팀 합의 후 `develop`을 만들고 두 브랜치 보호 규칙을 먼저 설정한 다음 기능 개발을 시작합니다.
+현재 `main`과 `develop`을 함께 사용합니다. 위 보호 규칙은 팀의 설정 기준이며, 실제 GitHub에 적용된 규칙과 필수 검사 목록은 저장소 설정에서 확인합니다.
 
 ## 금지 사항
 

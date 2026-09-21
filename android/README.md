@@ -1,70 +1,59 @@
-# 틈튼(TMTN) Android
+# 틈튼 · Android
 
-Jetpack Compose 앱. **Android Studio 로 이 `android/` 폴더를 연다.** 저장소 루트를 열면 안 된다.
-(루트에는 Python `app/` 이 있어서 Android `app` 모듈과 이름이 겹친다.)
+Android Studio에서 저장소 루트 대신 **`android/` 폴더**를 엽니다. 실제 API에 연결되는 Kotlin·Jetpack Compose 앱이며 패키지는 `com.tmtn.app`, 버전은 **1.0.3 / 4**입니다. 화면 흐름은 [현재 앱 안내](../docs/APP_GUIDE.md), 공통 설치는 [개발 환경](../docs/DEVELOPMENT_ENVIRONMENT.md)을 확인합니다.
 
-> **처음 넘겨받았다면 [`docs/ANDROID_인수인계.md`](../docs/ANDROID_인수인계.md) 부터 읽으세요.**
-> 어디까지 됐고 다음에 뭘 해야 하는지, 코드만 봐서는 안 보이는 함정이 정리돼 있습니다.
+## APK 빌드
 
-## 5분 만에 APK 만들기
-
-1. Android Studio → **Open** → 이 `android` 폴더 선택
-2. 오른쪽 아래에 뜨는 Gradle sync 를 기다린다 (첫 실행은 Gradle 9.3.1 을 받느라 몇 분 걸린다)
-3. 상단 메뉴 **Build → Build App Bundle(s) / APK(s) → Build APK(s)**
-4. 다 되면 나오는 알림의 **locate** 클릭 →
-   `android/app/build/outputs/apk/debug/app-debug.apk`
-5. 이 파일을 폰에 옮겨 설치 (설정에서 "출처를 알 수 없는 앱" 허용 필요)
-
-터미널파: `cd android && ./gradlew assembleDebug` (Windows PowerShell 은 `.\gradlew.bat assembleDebug`)
-
-## 지금 동작하는 것
-
-로그인 → 온보딩 → 홈 → 오늘의 카드 3장 → 확정 → 미션 실행 → 완료 → 기록·댐·참고·마이
-
-서버 없이 이 기기 안에서만 돈다. 카드 200장은 `app/src/main/assets/missions.json` 에서 읽는다.
-
-## 미션 화면이 두 개인 이유
-
-| | 자가 수행형 | 모델 측정형 |
-|---|---|---|
-| 유형 | `SELF_CHECK` `SELF_TIMER` | `MODEL_ACTIVE_TIME` `MODEL_DISTANCE` `MODEL_STAIR_COUNT` |
-| 장수 | 167장 | 33장 |
-| 화면 | `SelfMissionScreen` | `MissionIntroScreen` → `ModelMissionScreen` |
-| 시간을 세는 주체 | 앱이 무조건 센다 | 모델이 "움직였다" 고 한 동안만 센다 |
-| 일시정지 | **필요하다** (안 누르면 계속 흐른다) | 없어도 된다 (멈추면 자동으로 안 센다) |
-| 완료 | 사용자가 눌러야 기록 | 목표에 닿으면 자동 기록 |
-| 추가로 보여 주는 것 | — | 전체 경과 · 자동으로 쉰 시간 · 제외된 구간 · 측정 품질 |
-
-센서를 못 쓰는 기기에서는 모델형 카드도 "직접 체크로 진행하기" 로 내려간다.
-
-## 디자인 시스템 (v5, 2026-08-30)
-
-토큰은 `app/src/main/java/kr/tmtn/app/designsystem/` 세 파일에만 있다.
-`docs/design-v5/designsystem/` 의 핸드오프 원본과 바이트 단위로 같다.
-
-| 파일 | 무엇 |
-|---|---|
-| `TmtnColor.kt` | 순백 바탕 + 먹색. 재료 5색·`Shadow`·`OnSurfaceFaint` 포함 |
-| `TmtnType.kt` | 7단계 (Display 40 / Headline 32 / Title 24 / BodyLarge 19 / Body 16 / Label·Caption 14) |
-| `TmtnDimens.kt` | `TmtnSpace` `TmtnRadius` `TmtnTarget` `TmtnCalendar` `TmtnLayout` |
-
-깨면 안 되는 것 세 가지:
-
-- 색은 `TmtnColor.*`, 글자는 `TmtnText.*` 로만. **하드코딩 금지.**
-- **주황 `#FF7A1A` 은 "오늘"에만.** 완료·실천·주 버튼은 먹색 `#16181C` 다.
-- **Display 는 화면당 하나만.** 글자 크기는 만성질환 사용자 기준이라 임의로 줄이지 않는다.
-
-자세한 규칙은 저장소 루트 [`CLAUDE.md`](../CLAUDE.md) 에 있다.
-
-## 모델 3개를 넣는 곳
-
-`app/src/main/java/kr/tmtn/app/domain/ml/` 하나만 보면 된다.
-자세한 건 [`docs/TMTN_ANDROID_GUIDE.md`](../docs/TMTN_ANDROID_GUIDE.md).
-
-## 카드 문구를 고칠 때
-
-앱 코드를 고치지 않는다. CSV 를 고치고 다시 만든다.
+JDK 17과 Android SDK 35를 설치하고 `android/`에서 실행합니다. Gradle wrapper가 지정한 9.5.0을 사용하며 시스템 Gradle로 대체하지 않습니다.
 
 ```bash
-python android/tools/build_missions_json.py TMTN_오늘의운세_200카드.csv
+./gradlew assembleDebug
 ```
+
+PowerShell: `.\gradlew.bat assembleDebug`. 결과는 `app/build/outputs/apk/debug/app-debug.apk`입니다. 기존 앱을 업데이트하려면 같은 서명키가 필요합니다. 서명 불일치를 해결하려고 앱 데이터를 삭제하지 않습니다.
+
+`local.properties`에는 로컬 SDK 위치를 설정합니다. Google 로그인을 쓴다면 `GOOGLE_WEB_CLIENT_ID`가 서버의 `GOOGLE_CLIENT_ID`와 같아야 합니다. 값이 없으면 Google 인증을 사용할 수 없습니다. `TEST_ACCOUNT_EMAIL`·`TEST_ACCOUNT_PASSWORD`는 선택적인 개발 편의 설정이며 배포 APK에 넣지 않습니다. 이 파일과 서명키는 커밋하지 않습니다.
+
+현재 API 주소는 [ApiClient.kt](app/src/main/java/com/tmtn/app/network/ApiClient.kt)의 `BASE_URL`입니다. 서버 주소를 바꿀 때 API 경로 `/api/v1/`와 통신 설정을 함께 확인하고 다시 빌드합니다. 이 주소는 빌드 시 자동으로 EC2 설정을 읽는 값이 아닙니다.
+
+## 현재 코드 위치
+
+아래 경로는 `app/src/main/java/com/tmtn/app/` 기준입니다.
+
+| 경로 | 역할 |
+| --- | --- |
+| `MainActivity.kt` | 최상위 상태·인증·온보딩·탭 연결 |
+| `ui/cardhome/` | 시안 C 홈, 실제 카드, 완료 응원, 틈새운동, 센서 진행 |
+| `ui/onboarding/` | 정보 입력과 첫 재료 온보딩 |
+| `ui/journal/` | 월요일 기준 일보, 개인 XAI, 주간 이력 |
+| `ui/reference/` | 참고정보와 허리둘레 상태·설명 |
+| `ui/theme/` | 색·Pretendard·모션 토큰 |
+| `network/` | Retrofit·OkHttp API와 응답 모델 |
+| `sensor/` | 움직임 인식·권한·측정 서비스·저장 재시도 |
+| `data/local/` | Room 기반 로컬 기록 |
+
+하단 탭은 **홈 · 기록 · 일보 · 댐 · 내 정보**입니다. 카드·보상·기록은 서버 상태를 사용합니다. 과거의 오프라인 앱, `kr.tmtn.app`, `ModelRegistry.kt` 기반 안내를 현재 구조에 적용하지 않습니다.
+
+## 콘텐츠와 디자인
+
+- [디자인 기준](DESIGN.md)을 따릅니다. 홈의 역할별 색은 `ui/theme/TmtnHomeColor.kt`, 공통 색·강도는 `TmtnColor.kt`, 글자는 `TmtnType.kt`에 있습니다.
+- 홈과 카드 상세는 `ui/cardhome/TmtnMissionCard.kt`의 현재 카드 표현을 사용합니다. 폐기된 장식 프레임이나 전달본 HTML을 제품 화면에 다시 넣지 않습니다.
+- 서버 카드 문구·목표·행동은 [콘텐츠 적재 안내](../app/scripts/data/README.md)를 따릅니다. 현재 저장소에 없는 옛 `build_missions_json.py` 명령을 사용하지 않습니다.
+- 운동 캐릭터는 응원·일시정지·목표 달성 정지 이미지입니다. 폐기된 걷기 GIF·분리된 팔다리 모션을 복원하지 않습니다.
+- 개인 XAI는 서버가 계산합니다. [XAI 표시 계약](../docs/XAI.md)의 동의·입력·실패 상태와 실제 저장된 주간 이력만 표시합니다. 공개 운영 승인이 없는 결과를 release 빌드에서 임의로 켜지 않습니다.
+
+## 검사와 검사용 앱
+
+```bash
+./gradlew assembleDebug testDebugUnitTest compileDebugAndroidTestKotlin lintDebug --no-configuration-cache --console=plain
+```
+
+기기 UI 검사는 `connectedDebugAndroidTest`입니다. 제품 앱과 별개 패키지로 검사해야 할 때만 `challenge-preview.init.gradle`을 지정합니다.
+
+```bash
+./gradlew --init-script challenge-preview.init.gradle assembleDebug connectedDebugAndroidTest --no-configuration-cache --console=plain
+```
+
+이 설정은 `.challengeqa` 패키지와 검토 진입점을 사용합니다. 화면 검토 진입점의 예시 데이터와 일반 로그인 후 서버 흐름을 구분해야 합니다. **서버 담당자에게 전달할 일반 APK에는 이 init 스크립트를 적용하지 않습니다.**
+
+통합 당시 실제 기기 검사 범위와 기존 lint·타입 오류는 [검증 기록](../docs/INTEGRATION_2026-09-21.md)에 있습니다. 빌드 통과와 실제 서버 배포 완료를 같은 의미로 쓰지 않습니다.

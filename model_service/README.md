@@ -1,6 +1,6 @@
 # 개인 XAI · EC2 내부 시연
 
-현재 전달 안내는 [시안 C / EC2 적용 가이드](../docs/home-c-handoff-2026-09-20/README.md)를 사용합니다.
+실행 순서는 [EC2 배포 가이드](../docs/DEPLOYMENT.md), 앱의 표시 조건과 주간 이력은 [XAI 안내](../docs/XAI.md)를 사용합니다.
 
 - API Python 3.13.15와 XAI Python 3.14.7을 분리합니다.
 - Linux 의존성은 requirements-linux.txt이며 원본 Windows 검증 모델과 동일한 패키지 버전입니다.

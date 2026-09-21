@@ -18,7 +18,7 @@
 
 승인 항목의 필드: `id`, `revision`, `content_sha256`, `source_id`, `source_edition`, `status="approved"`, `reviewer`, `approval_id`, `rights_status="cleared_for_app_summary"`, `rights_review_id`, `expires_on`.
 
-최신 프롬프트는 `xai_workbench/prompts/`의 v6.2이며 초안 작성·검토 이력은 로컬 작업실에 남긴다. `python -m xai_workbench.export_app_catalog`로 확인된 추가 메모를 앱 카탈로그·검토용 앱 자료에 동기화할 수 있다. 이 명령은 공개 승인을 생성하지 않는다. 운영 요청에서는 LLM이 건강 문장을 새로 쓰지 않는다. 승인된 고정 문장을 주제별로 섞어 날짜별로 제공한다.
+운영 요청에서는 LLM이 건강 문장을 새로 쓰지 않는다. 이 폴더에 저장된 고정 문장 중 승인 조건을 통과한 글을 선택한다. 초안 작성용 로컬 작업실은 배포 의존성이 아니며, 외부 작성 도구의 결과도 위 내용 해시·출처·검수 절차를 거쳐야 한다.
 
 `related_readings`에는 선택 지표와 관련된 일반 지식이 최대 두 편 들어간다. 본문 지면과 같은 승인·연령·유효기간 검사를 거친다. 개인의 SHAP 결과를 해당 식습관의 증거로 사용하지 않는다.
 
@@ -26,4 +26,4 @@
 
 ## 2026-09-20 내부 시연 승인
 
-사용자가 현재 승인 대기 자료를 모두 승인 처리하도록 요청했다. 기존에 명시한 팀 내부 검토·시연 서버 범위에서 40건의 내용 해시·출처 버전을 `internal_approvals.json`에 기록했다. `ENV=local/dev`만 이를 읽으며 `prod`는 읽지 않는다. `knowledge.json`의 `review_status=approved`는 `review_scope=team_internal_demo`와 함께 해석한다. 출처 `rights_status`와 `production_publishable=false`는 그대로이며 실제로 확인하지 않은 권리/임상 검수 기록을 만들지 않았다. 날짜별로 각 지면 1편씩 순환한다.
+팀 내부 검토·시연 서버 범위에서 40건의 내용 해시·출처 버전을 `internal_approvals.json`에 기록했다. `ENV=local/dev`만 이를 읽으며 `prod`는 읽지 않는다. `knowledge.json`의 `review_status=approved`는 `review_scope=team_internal_demo`와 함께 해석한다. 출처 `rights_status`와 `production_publishable=false`는 그대로이며 실제로 확인하지 않은 권리/임상 검수 기록을 만들지 않았다. 일간 호는 1편, 주간 호는 서로 다른 주제의 2편을 선택한다. 같은 호의 순서는 고정되고 승인 조건을 통과한 글이 부족하면 그만큼만 제공한다. 개인 SHAP와의 구분은 [XAI 안내](../../../docs/XAI.md)를 따른다.

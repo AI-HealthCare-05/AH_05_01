@@ -1,4 +1,6 @@
-# PR #21 · develop 통합 확인
+# PR #21 · #24 main 통합 검증 기록
+
+2026-09-21 병합 완료: PR #21 → `develop` (`5835f826`), PR #24 → `main` (`3746f2c2`). 병합 직후 두 브랜치의 소스 트리는 같았으며, [main CI 전체 검사](https://github.com/AI-HealthCare-05/AH_05_01/actions/runs/35554112069)가 통과했습니다. 이 문서는 해당 통합 시점의 검사 기록입니다.
 
 PR #21의 `719d6b3`과 develop의 `c3e6917`을 합쳤습니다. 최신 시안 C·완료 응원·현재 댐 단계·정지 센서 이미지·런치 GIF·XAI를 유지하고, develop의 첫 재료 온보딩 복귀·동의 문서·주간 기사 선택을 함께 반영합니다.
 
@@ -19,7 +21,7 @@ PR #21의 `719d6b3`과 develop의 `c3e6917`을 합쳤습니다. 최신 시안 C�
 - Linux의 고정 Python 3.14.7 모델 런타임에서 실제 SHAP 계산 및 인증 API→주간 이력 연결 검사 통과. 합성 회원 저장소로 검증했으며 실제 EC2 회원 DB를 검사한 결과는 아닙니다.
 - XAI 원본 124개 해시 모두 일치.
 - Mypy는 기존 PR의 109개 오류에서 통합본 104개 오류로 감소했고 새 오류 메시지는 없습니다. **타입 검사 전체 통과는 아닙니다.**
-- GitHub MySQL 8.0.46에서 API 검사 75개와 독립 검사 52개, 빈 DB 마이그레이션 적용 및 두 번째 실행 검사를 통과했습니다. AI 의존성 환경 검사도 별도 CI에서 11개 통과했습니다. 실행 기록: https://github.com/AI-HealthCare-05/AH_05_01/actions/runs/35553134824 (이 실행의 Android SDK 준비 오류는 후속 커밋에서 수정하며, 모든 작업 통과 전에는 병합하지 않습니다).
+- GitHub MySQL 8.0.46에서 API 검사 75개와 독립 검사 52개, 빈 DB 마이그레이션 적용 및 두 번째 실행 검사를 통과했습니다. AI 의존성 환경 검사도 별도 CI에서 11개 통과했습니다. Android SDK 준비 오류를 수정한 뒤 [통합 PR 검사](https://github.com/AI-HealthCare-05/AH_05_01/actions/runs/35553298615)와 위 main 검사를 모두 통과했습니다.
 
 ## 서버 담당자 적용
 
@@ -28,8 +30,8 @@ PR #21의 `719d6b3`과 develop의 `c3e6917`을 합쳤습니다. 최신 시안 C�
 1. 기존 배포 커밋을 기록하고 DB 백업을 완료합니다.
 2. 병합된 main을 `git pull --ff-only`로 받습니다. 로컬 수정 때문에 거절되면 덮어쓰지 말고 차이를 확인합니다.
 3. `python3 tools/check_xai_assets.py`로 124개 원본 검사를 통과시킵니다.
-4. [EC2 내부 XAI 실행 절차](home-c-handoff-2026-09-20/README.md#3-서버-담당자--ec2-linux-x86_64)의 `prepare-xai-ec2.py`, Compose 빌드, `aerich upgrade`, 서비스 재생성 순서로 실행합니다. 모델은 Python 3.14.7, API는 3.13.15입니다.
+4. [EC2 내부 XAI 실행 절차](DEPLOYMENT.md)의 `prepare-xai-ec2.py`, Compose 빌드, `aerich upgrade`, 서비스 재생성 순서로 실행합니다. 모델은 Python 3.14.7, API는 3.13.15입니다.
 5. 동일 문서의 모델 단독 확인과 로그인·분석 동의·운동 정보 저장·주간 이력 확인을 수행합니다. Git 병합만으로 이미 실행 중인 EC2가 갱신되지는 않습니다.
-6. Android 담당자는 기존 서명키로 `android/gradlew assembleDebug`를 실행합니다. 검사용 init 스크립트는 일반 앱 빌드에 적용하지 않습니다.
+6. Android 담당자는 `android/`에서 기존 서명키로 `./gradlew assembleDebug`를 실행합니다. 검사용 init 스크립트는 일반 앱 빌드에 적용하지 않습니다.
 
 일보의 개인 계산 설명은 실제 SHAP 결과이고, 일반 읽을거리는 출처를 확인하고 내부 시연용으로 승인한 기사 목록에서 선택합니다. 기사 전체를 XAI가 새로 작성하는 방식은 아닙니다. 이번 작업에는 EC2 배포나 공개 운영 승인 변경이 포함되지 않습니다.
