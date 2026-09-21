@@ -2,39 +2,64 @@ package com.tmtn.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// 2026-09-17 승인된 B안: 기존 숲색을 주요 행동에 사용하고 넓은 면은 흰색·무채색으로 유지한다.
+// Supplied splash_v1/design.json. Reserved for launch/brand artwork.
 val ColorBrandForest = Color(0xFF3F5D4B)
+
+// ⚠️ 2026-08-31 팀장님이 준 새 Figma 자료("TMTN_Final_App_UI", 107개 화면 PNG)의
+// 실제 픽셀에서 직접 뽑은 색상값. 예전 tokens.css 기준(진한 초록 계열) 팔레트를 완전히
+// 교체함 — 초록은 이제 어디에도 안 쓰임. A/B/D/G 여러 화면에서 교차 확인해서 일관됨.
+// ⚠️ 2026-09-18 재변경(UI/UX 핸드오프 NH01~11) - 위 결정을 다시 뒤집음. 최신 APK 실측
+// 기준 브랜드 색이 #3F5D4B(ColorBrandForest, 포레스트 그린)로 확인돼서 ColorPrimary를
+// 여기로 되돌림. "초록은 어디에도 안 쓰임"이라는 위 주석은 더 이상 사실이 아님.
+
+// 색 · 기본
+// ⚠️ 2026-09-04 희주조교님 피드백(P2 ⑧) 반영: 순수 검정에 가까운 #16181C가 "너무
+// 새까맣다"는 의견이라 #2C2C2C로 올림. 순백(#FFFFFF) 배경 대비 14.0:1로 WCAG AA
+// 기준(4.5:1)을 여유 있게 넘음. 하드코딩된 색이 없어서 이 토큰 두 줄만 바꾸면 전체 반영됨.
+// ⚠️ 2026-09-18 - 위 #2C2C2C 조정은 검정 계열 안에서의 미세 조정이었는데, 이제 브랜드
+// 색 자체가 바뀌어서 이 주석의 전제(ColorPrimary가 검정 계열)가 더 이상 안 맞음.
 val ColorPrimary = ColorBrandForest
-val ColorOnForest = Color(0xFFFFFFFF)
-val ColorOnForestSecondary = Color(0xFFE8E8E8)
 val ColorOnSurface = Color(0xFF2C2C2C)
 val ColorOnSurfaceVariant = Color(0xFF666A71)
 val ColorBackground = Color(0xFFFFFFFF)
-val ColorSurface = Color(0xFFF5F5F5)
-val ColorArtworkPaper = ColorBackground
-val ColorOutline = Color(0xFF858585)
-val ColorOutlineVariant = Color(0xFFD9D9D9)
+val ColorSurface = Color(0xFFF7F4EE)
+val ColorOutline = Color(0xFF9C9E9F)
+val ColorOutlineVariant = Color(0xFFE5E0D6)
 
-// 주황은 오늘 표시처럼 의미가 있는 작은 표시에만 사용한다. 연한 유채색 면을 만들지 않는다.
+// 색 · 보조(강조) - 예전엔 연두색이었는데 이제 주황
 val ColorSecondary = Color(0xFFFF7A1A)
-val ColorSecondaryContainer = ColorSurface
-val ColorWood = Color(0xFFBB8A52)
-val ColorWoodContainer = ColorSurface
-val ColorReward = Color(0xFFFFBA00)
-val ColorRewardContainer = ColorSurface
-val ColorError = Color(0xFFC92A2A)
-val ColorErrorContainer = ColorSurface
-val ColorDisabledContainer = Color(0xFFE8E8E8)
-val ColorOnDisabled = Color(0xFF777777)
+// ⚠️ 이 값은 스크린샷에서 별도로 뽑은 "옅은 주황"이 없어서 secondary를 흰색 쪽으로
+// 옅게 섞어 만든 추정값. 정확한 값이 필요하면 팀에 확인 요청할 것.
+val ColorSecondaryContainer = Color(0xFFFFE8D6)
+// 센서형 미션 라벨: 옅은 살구 바탕에서도 읽히는 짙은 주황.
+val ColorSensorLabel = Color(0xFF9A4310)
 
+// 색 · 댐 재료(나무) - 이번 캡처엔 댐 화면 재료색이 뚜렷하게 안 보여서 기존값 유지(추정)
+val ColorWood = Color(0xFFBB8A52)
+val ColorWoodContainer = Color(0xFFF4ECE3)
+
+// 색 · 보상 - 이번 캡처에서 확인 안 됨, 기존값 유지(추정)
+val ColorReward = Color(0xFFFFBA00)
+val ColorRewardContainer = Color(0xFFFFF4D6)
+
+// 색 · 오류
+val ColorError = Color(0xFFC92A2A)
+val ColorErrorContainer = Color(0xFFFDECEC)
+
+// 색 · 비활성 - 이번 캡처에서 확인 안 됨, 기존 톤 유지(추정)
+val ColorDisabledContainer = Color(0xFFE5E0D6)
+val ColorOnDisabled = Color(0xFF9C9E9F)
+
+// ⚠️ 2026-09-11 추가 - V17 디자인 핸드오프: 차콜 #16181C(주 버튼), 선택면 #F2F4F6(하단 탭 선택 표시).
 val ColorCharcoal = Color(0xFF16181C)
-// 선택지는 흰 바탕·숲색 외곽선·체크를 함께 사용한다.
-val ColorSelectedSurface = ColorBackground
+val ColorSelectedSurface = Color(0xFFF2F4F6)
+// Delivered controls use the same existing selected-surface token.
 val ColorSelectionSurface = ColorSelectedSurface
 
+// 버튼
 val ButtonPrimaryContainer = ColorPrimary
-val ButtonPrimaryLabel = ColorOnForest
-val ButtonTonalContainer = ColorSurface
+val ButtonPrimaryLabel = Color(0xFFFFFFFF)
+val ButtonTonalContainer = ColorSecondaryContainer
 val ButtonTonalLabel = ColorPrimary
 val ButtonOutlinedOutline = ColorOutline
 val ButtonOutlinedLabel = ColorPrimary
@@ -42,9 +67,29 @@ val ButtonTextLabel = ColorPrimary
 val ButtonDangerOutline = ColorError
 val ButtonDangerLabel = ColorError
 
+// 하단 내비게이션
 val NavigationContainer = ColorBackground
-val NavigationIndicator = ColorBrandForest
-val NavigationIconActive = ColorOnForest
+val NavigationIndicator = ColorOutlineVariant
+val NavigationIconActive = ColorPrimary
 val NavigationIconInactive = ColorOnSurfaceVariant
-val NavigationLabelActive = ColorBrandForest
+val NavigationLabelActive = ColorPrimary
 val NavigationLabelInactive = ColorOnSurfaceVariant
+
+// 강도와 홈의 역할별 색. 강도는 색뿐 아니라 이름·막대 개수로 구분한다.
+object TmtnFeatureColor {
+    val Low = Color(0xFF62683D)
+    val Moderate = ColorBrandForest
+    val High = Color(0xFF684B3C)
+    val Mission = Color(0xFF234E3E)
+    val OnMission = Color(0xFFFFFFFF)
+    val OnMissionMuted = Color(0xFFDBEAE2)
+    val Extra = ColorBrandForest
+    val Journal = Color(0xFF77563A)
+    val JournalInk = ColorBackground
+    val Waist = Color(0xFF293E45)
+    val OnFeature = ColorBackground
+    val OnFeatureMuted = Color(0xFFE5E7DF)
+    val TapeSurface = ColorSurface
+    val TapeInk = ColorOnSurface
+    val TapeMarker = ColorBrandForest
+}

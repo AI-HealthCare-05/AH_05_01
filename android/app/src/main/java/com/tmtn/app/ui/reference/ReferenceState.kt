@@ -4,6 +4,7 @@ import com.tmtn.app.ui.common.failWithMessage
 import com.tmtn.app.ui.common.userMessageOr
 import androidx.compose.runtime.mutableStateOf
 import com.tmtn.app.network.ApiClient
+import com.tmtn.app.network.model.PracticeScoreResponse
 import com.tmtn.app.network.model.ScoreInputsResponse
 import com.tmtn.app.network.model.TuntunScorePeerV2Response
 
@@ -32,6 +33,11 @@ class ReferenceState(private val peerScoreEnabled: Boolean = com.tmtn.app.BuildC
     val step = mutableStateOf(backStack.last())
 
     val score = mutableStateOf<TuntunScorePeerV2Response?>(null)
+    // ⚠️ 2026-09-16 추가 - 초기 습관 반영된 종합(틈튼지수) 계산. tuntunScoreApi(기존
+    // 브릿지 원본)와 별개 API - 실패해도 위 score는 그대로 쓸 수 있어야 하니 독립적으로
+    // null 허용. composite_score/lifestyle_score가 null이면 "아직 계산 전"(초기 습관
+    // 정책 미확정 등)이지 오류가 아님 - composite_blocked_reason으로 구분.
+    val practiceScore = mutableStateOf<PracticeScoreResponse?>(null)
     val eligibleRecordedDaysLabel = mutableStateOf("")
     val eligibleRequiredDaysLabel = mutableStateOf("")
     val scoreInputs = mutableStateOf<ScoreInputsResponse?>(null)
@@ -75,6 +81,7 @@ class ReferenceState(private val peerScoreEnabled: Boolean = com.tmtn.app.BuildC
             if (result.scoreAvailable) {
                 score.value = result
                 replaceRoot(ReferenceStep.SUMMARY)
+                loadPracticeScore()
             } else {
                 score.value = null
                 eligibleRecordedDaysLabel.value = ""
@@ -91,10 +98,28 @@ class ReferenceState(private val peerScoreEnabled: Boolean = com.tmtn.app.BuildC
         isLoading.value = false
     }
 
+    // ⚠️ 2026-09-16 추가 - practice-score는 별도로 실패해도 위 틈튼지수(브릿지) 화면
+    // 자체는 정상 표시돼야 하므로, 여기서 조용히 실패함(errorMessage를 안 건드림).
+    // 미션 완료 화면들(CardHomeState.completeChallenge/completeExerciseMission)이
+    // 이 화면으로 돌아올 때 다시 loadScore()를 부르면 자동으로 재조회됨.
+    suspend fun loadPracticeScore() {
+        runCatching {
+            val response = ApiClient.practiceScoreApi.getPracticeScore()
+            if (!response.isSuccessful) return@runCatching
+            practiceScore.value = response.body()
+        }
+    }
+
     private fun replaceRoot(rootStep: ReferenceStep) {
         backStack.clear()
         backStack.add(rootStep)
         step.value = rootStep
+    }
+
+    /** 홈·기록의 일보 바로가기는 이전 상세 페이지나 일간면 대신 주간면을 연다. */
+    fun openWeeklyJournal() {
+        journal.requestedEdition = 0
+        replaceRoot(ReferenceStep.SUMMARY)
     }
 
     // E01 "자세히 >" -> E02

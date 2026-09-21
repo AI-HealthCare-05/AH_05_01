@@ -9,6 +9,9 @@ import retrofit2.Response
 import retrofit2.http.GET
 
 interface TuntunScoreApi {
+    @GET("tuntun-score/personal/history")
+    suspend fun getWeeklyXaiHistory(): Response<com.tmtn.app.network.model.WeeklyXaiHistoryResponse>
+
     @GET("tuntun-score/personal")
     suspend fun getPersonalXai(): Response<com.tmtn.app.network.model.PersonalXaiResponse>
 

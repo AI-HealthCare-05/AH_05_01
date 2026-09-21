@@ -1,7 +1,5 @@
 package com.tmtn.app.ui.record
 
-import com.tmtn.app.ui.common.tmtnMaterialName
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -29,7 +27,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
     val colors = LocalTmtnColors.current
     val report = state.weeklyReport.value
     Column(Modifier.fillMaxSize()) {
-        TmtnTopBar("최근 7일", { state.tab.value = RecordTab.MONTHLY })
+        TmtnTopBar("이번 주 · 월요일 시작", { state.tab.value = RecordTab.MONTHLY })
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Text("나의 일주일을\n한눈에.", style = TmtnType.headline, color = colors.onSurface)
             when {
@@ -39,7 +37,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                 }
                 report == null -> Text("실천한 날들을 모으고 있어요.", style = TmtnType.body, color = colors.onSurfaceVariant)
                 else -> {
-                    Text("${shortRecordDate(report.start_date)} ~ ${shortRecordDate(report.end_date)}", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                    Text("${shortRecordDate(report.start_date)} – ${shortRecordDate(report.end_date)}", style = TmtnType.caption, color = colors.onSurfaceVariant)
                     Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(20.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         val dateScale = androidx.compose.ui.platform.LocalDensity.current.fontScale * LocalTmtnTextScale.current
                         BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -49,7 +47,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                                 val date = runCatching { LocalDate.parse(day.date) }.getOrNull()
                                 if (date != null) Column(Modifier.width(cellWidth), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.KOREAN), style = TmtnType.caption, color = colors.onSurfaceVariant)
-                                    DayCell(date.dayOfMonth, day.status, date == LocalDate.now(), date.isAfter(LocalDate.now())) {
+                                    DayCell(date.dayOfMonth, day.status, date == LocalDate.now(), day.status == "FUTURE" || date.isAfter(LocalDate.now(java.time.ZoneId.of("Asia/Seoul")))) {
                                         scope.launch { state.openDayDetail(day.date) }
                                     }
                                 }
@@ -65,7 +63,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                         Text("실천 ${report.completed_count}일 · 쉼 ${report.days.count { it.status == "REST" }}일", style = TmtnType.label, color = colors.onSurface)
                     }
                     val previous = state.previousWeek.value
-                    if (previous != null && report.days.size == 7 && report.days.none { it.status == "BEFORE_SIGNUP" }) {
+                    if (previous != null && report.days.size == 7 && report.days.none { it.status == "BEFORE_SIGNUP" || it.status == "FUTURE" }) {
                         val before = previous.count { it.status == "COMPLETED" }
                         val difference = report.completed_count - before
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -74,15 +72,11 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                                 difference == 0 -> "이번에도 ${report.completed_count}일, 나의 속도로."
                                 else -> "이번에 남긴 ${report.completed_count}일도 소중해요."
                             }, style = TmtnType.title, color = colors.onSurface)
-                            Column(Modifier.fillMaxWidth()) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                                    ComparisonBar("이전 7일", before, false, Modifier.weight(1f))
-                                    ComparisonBar("최근 7일", report.completed_count, true, Modifier.weight(1f))
-                                }
-                                // A shared baseline so the two bars read as one chart instead of two floating blocks.
-                                Box(Modifier.fillMaxWidth().height(1.dp).background(colors.outlineVariant))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                                ComparisonBar("지난주", before, false, Modifier.weight(1f))
+                                ComparisonBar("이번 주", report.completed_count, true, Modifier.weight(1f))
                             }
-                            Text("이전 7일은 ${shortRecordDate(previous.first().date)}부터, 최근 7일은 ${shortRecordDate(report.start_date)}부터 세었어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+                            Text("각 기간 7일 기준 · ${shortRecordDate(previous.first().date)}부터 / ${shortRecordDate(report.start_date)}부터", style = TmtnType.caption, color = colors.onSurfaceVariant)
                         }
                     }
                     if (report.materials_this_week.isNotEmpty()) Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(20.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -90,7 +84,7 @@ fun WeeklyReportScreen(state: RecordState, scope: CoroutineScope, onGoPickCard: 
                         report.materials_this_week.forEach { material ->
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 MaterialIcon(material.element, 44.dp)
-                                Text(tmtnMaterialName(material.element, material.material_name), style = TmtnType.body, color = colors.onSurface, modifier = Modifier.weight(1f))
+                                Text(material.material_name, style = TmtnType.body, color = colors.onSurface, modifier = Modifier.weight(1f))
                                 Text("${material.count}개", style = TmtnType.label, color = colors.onSurface)
                             }
                         }
@@ -111,10 +105,10 @@ private fun ComparisonBar(label: String, days: Int, current: Boolean, modifier: 
     val colors = LocalTmtnColors.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(label, style = TmtnType.caption, color = colors.onSurfaceVariant)
-        Text("${days}일", style = TmtnType.display, color = if (current) colors.primary else colors.onSurface)
+        Text("${days}일", style = TmtnType.display, color = if (current) colors.secondary else colors.onSurface)
         Box(Modifier.fillMaxWidth().height(96.dp), contentAlignment = Alignment.BottomCenter) {
             Box(Modifier.fillMaxWidth().height((96 * days.coerceIn(0, 7) / 7f).dp)
-                .background(if (current) colors.primary else colors.outline, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)))
+                .background(if (current) colors.secondary else colors.outline, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)))
         }
     }
 }

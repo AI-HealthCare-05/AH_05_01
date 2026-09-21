@@ -20,6 +20,7 @@ TORTOISE_APP_MODELS = [
     "app.models.records",
     "app.models.inquiries",
     "app.models.exercise_missions",
+    "app.models.personal_xai",
 ]
 
 TORTOISE_ORM = {

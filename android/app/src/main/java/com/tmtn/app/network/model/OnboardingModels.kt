@@ -73,7 +73,8 @@ data class ExerciseHabitsRequest(
     val strength_intensity: String?,     // "LIGHT" / "MODERATE" / "HARD", count=0이면 null
     val aerobic_low_minutes: Int,
     val aerobic_moderate_minutes: Int,
-    val aerobic_high_minutes: Int
+    val aerobic_high_minutes: Int,
+    val strength_frequency_unit: String = "days",
 )
 
 data class ExerciseHabitsResponse(
@@ -83,7 +84,8 @@ data class ExerciseHabitsResponse(
     val aerobic_low_minutes: Int,
     val aerobic_moderate_minutes: Int,
     val aerobic_high_minutes: Int,
-    val recorded_at: String
+    val recorded_at: String,
+    val strength_frequency_unit: String? = null,
 )
 
 // ===== A09~A10: 생활시간 =====
@@ -99,5 +101,9 @@ data class NotificationSettingResponse(
     val weekdays: List<String>,
     val quiet_hours: Map<String, String>?,
     val enabled: Boolean,
-    val updated_at: String
+    val updated_at: String,
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 P01~03) - 원본 기상/점심/취침 재조회용.
+    val wake_time: String? = null,
+    val lunch_time: String? = null,
+    val sleep_time: String? = null,
 )

@@ -21,6 +21,13 @@ class NotificationSetting(models.Model):
     weekdays = fields.JSONField(default=list)  # 예: ["MON", "TUE", "WED", "THU", "FRI"]
     quiet_hours = fields.JSONField(null=True)  # 예: {"start": "22:00", "end": "07:00"}
     enabled = fields.BooleanField(default=True)
+    # ⚠️ 2026-09-18 추가(UI/UX 핸드오프 P01~03) - 예전엔 기상/점심/취침 "원본 입력값"을
+    # 저장 안 하고 계산된 slots만 저장해서, "내 정보 → 생활시간"에서 사용자가 입력했던
+    # 원본 시각을 다시 보여줄 방법이 없었음(계약: "원본 생활시간 재조회는 계약 보완이
+    # 필요하다"). slots(파생 알림시간)와 별개로 원본 시각 3개를 그대로 보존.
+    wake_time = fields.CharField(max_length=5, null=True)  # "07:00"
+    lunch_time = fields.CharField(max_length=5, null=True)  # "12:00"
+    sleep_time = fields.CharField(max_length=5, null=True)  # "23:00"
     updated_at = fields.DatetimeField(auto_now=True)
 
     class Meta:

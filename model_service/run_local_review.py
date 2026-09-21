@@ -1,7 +1,6 @@
 """Start the real API and pinned personal model together for local review.
 
-Requires the final UI application's existing configured database.
-The confirmed strength-days contract is reused; no extra migration is required.
+Requires the configured application's MySQL database and PR21 migration 23 first.
 No database migrations, account changes or source approvals are performed here.
 """
 
@@ -68,3 +67,5 @@ finally:
         api.wait(timeout=15)
     worker.terminate()
     worker.wait(timeout=15)
+if api is not None:
+    sys.exit(api.returncode)

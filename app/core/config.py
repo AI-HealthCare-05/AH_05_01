@@ -44,8 +44,7 @@ class Config(BaseSettings):
     # legacy 계약, /score)과는 별개 - v0.2는 완전히 다른 계약(/score/peer/v2, X-Tuntun-Schema
     # 헤더)을 쓰므로 설정도 분리함. 운영에는 절대 채우지 않음(LOCAL_REVIEW_CANDIDATE 상태).
     TUNTUN_PEER_BRIDGE_URL: str | None = None
-
-    # 개인 SHAP 작업 서버 연결. 비밀 값은 실행 환경에서만 주입합니다.
+    # 개인별 SHAP 작업 서버. 기존 점수 브릿지와 별도로 연결한다.
     TUNTUN_XAI_URL: str | None = None
     TUNTUN_XAI_TOKEN: str | None = None
     # ⚠️ 2026-09-10 추가 - 허리둘레(cm) 전용 보조 서버(tuntun_peer_bridge/waist_addon/

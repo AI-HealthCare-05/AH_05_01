@@ -56,9 +56,13 @@ async def patch_exercise_mission_session(
     user: Annotated[User, Depends(get_request_user)],
     service: Annotated[ExerciseMissionService, Depends(ExerciseMissionService)],
 ) -> ExerciseMissionSessionResponse:
-    """action=pause/resume. 센서 진행값을 동기화하려면 accumulated_count도 같이 보냄."""
+    """action=pause/resume/sync. 센서 진행값을 동기화하려면 accumulated_count도 같이 보냄.
+    ⚠️ 2026-09-16 추가(QA F05) - 시간형은 accumulated_duration_seconds도 같이 보냄.
+    ⚠️ 2026-09-17 추가(QA #3) - sync는 상태를 안 바꾸고(ACTIVE 유지) 측정 중 누적값만 주기적으로 반영."""
 
-    return await service.patch_session(user, session_id, request.action, request.accumulated_count)
+    return await service.patch_session(
+        user, session_id, request.action, request.accumulated_count, request.accumulated_duration_seconds
+    )
 
 
 @exercise_mission_router.post(
@@ -76,7 +80,12 @@ async def complete_exercise_mission_session(
     동일 결과를 그대로 반환함(중복 지급 없음)."""
 
     return await service.complete_session(
-        user, session_id, request.idempotency_key, request.manual_check, request.accumulated_count
+        user,
+        session_id,
+        request.idempotency_key,
+        request.manual_check,
+        request.accumulated_count,
+        request.accumulated_duration_seconds,
     )
 
 

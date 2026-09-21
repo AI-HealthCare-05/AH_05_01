@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "backgroundMembershipInPinnedDevelopmentSource": 300,
+  "sourceUnchanged": true,
+  "exportColumnsExactlySix": true,
+  "coalitionEnumerationSamples": 2,
+  "coalitionsPerSample": 64,
+  "directShapMaxAbsDifferenceCm": 6.389333506717776e-14,
+  "rawParticipantKeysOrLabelsExported": false,
+  "allFilesPinVerified": true
+}

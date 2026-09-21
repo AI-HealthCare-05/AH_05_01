@@ -1,4 +1,4 @@
-"""Per-user computation jobs. No client-supplied health inputs and no DB writes."""
+"""저장된 건강 입력으로 사용자별 계산을 요청하고 준비된 결과를 주간 이력으로 보관한다."""
 
 import asyncio
 import hashlib
@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import httpx
+from tortoise.exceptions import BaseORMException
 
 from app.core import config
 from app.core.config import Env
@@ -18,6 +19,7 @@ from app.dtos.personal_xai import ActivityComparison, PersonalXaiResponse, Perso
 from app.repositories.consent_repository import ConsentRepository
 from app.repositories.exercise_habit_repository import ExerciseHabitRepository
 from app.repositories.health_repository import HealthInputRepository
+from app.repositories.weekly_xai_repository import WeeklyXaiRepository
 from app.services.journal_editorial_service import age_bounds
 from model_service.activity_reference import build_comparison, group_key
 
@@ -69,7 +71,7 @@ def model_request(user, health, habit, today):
         "heightCm": values.get("height_cm"),
         "weightKg": values.get("weight_kg"),
         "strengthWeeklyCount": habit.strength_weekly_count,
-        "strengthFrequencyUnit": "days" if habit.strength_weekly_count is not None else None,
+        "strengthFrequencyUnit": getattr(habit, "strength_frequency_unit", None),
         "strengthIntensity": str(habit.strength_intensity).lower() if habit.strength_intensity else None,
         "aerobicLowMinutes": habit.aerobic_low_minutes,
         "aerobicModerateMinutes": habit.aerobic_moderate_minutes,
@@ -166,6 +168,7 @@ class PersonalXaiService:
         self.health_repo = HealthInputRepository()
         self.habit_repo = ExerciseHabitRepository()
         self.consent_repo = ConsentRepository()
+        self.history_repo = WeeklyXaiRepository()
 
     async def get_personal(self, user):
         if config.ENV == Env.PROD:
@@ -185,6 +188,8 @@ class PersonalXaiService:
             or user.gender is None
         ):
             return PersonalXaiResponse(status="unavailable", reason="input_required")
+        if habit.strength_weekly_count > 0 and getattr(habit, "strength_frequency_unit", None) != "days":
+            return PersonalXaiResponse(status="unavailable", reason="strength_days_unconfirmed")
         try:
             today = service_today(user.id)
             request = model_request(user, health, habit, today)
@@ -204,4 +209,12 @@ class PersonalXaiService:
                 response = response.model_copy(
                     update={"snapshot": response.snapshot.model_copy(update={"activity_comparison": activity})}
                 )
+            await self._save_history(user.id, response.snapshot)
         return PersonalXaiResponse.model_validate({**response.model_dump(), "activity_comparison": activity})
+
+    async def _save_history(self, user_id, snapshot):
+        try:
+            await self.history_repo.save(user_id, snapshot)
+        except BaseORMException:
+            # 마이그레이션 전 서버라도 최신 설명을 가리지 않는다. 이력 API는 실패를 명시한다.
+            logger.warning("주간 XAI 기록 저장 실패. DB 마이그레이션과 연결 상태를 확인하세요.")

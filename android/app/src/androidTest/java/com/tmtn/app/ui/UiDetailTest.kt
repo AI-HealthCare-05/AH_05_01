@@ -197,7 +197,7 @@ class UiDetailTest {
             if (editing) HealthEditScreen(state, rememberCoroutineScope(), { editing = false })
             else ProfileHomeScreen(state, {}, {})
         } }
-        compose.onNodeWithText("생년월").assertIsDisplayed()
+        compose.onNodeWithText("태어난 연·월").assertIsDisplayed()
         compose.onNodeWithText("1993년 7월").assertIsDisplayed()
         capture("11-body-information")
         compose.onNodeWithContentDescription("뒤로").performClick()

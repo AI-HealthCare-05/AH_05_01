@@ -26,6 +26,15 @@ import com.tmtn.app.ui.theme.ColorBrandForest
 import com.tmtn.app.ui.theme.TmtnMotion
 import com.tmtn.app.ui.theme.rememberTmtnReducedMotion
 import org.json.JSONObject
+import android.graphics.ImageDecoder
+import android.graphics.drawable.Animatable2
+import android.graphics.drawable.AnimatedImageDrawable
+import android.graphics.drawable.Drawable
+import android.widget.ImageView
+import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 
 private class LaunchTracks(json: String) {
     private val source = JSONObject(json).getJSONObject("tracks")
@@ -47,9 +56,7 @@ private class LaunchTracks(json: String) {
     }
 }
 
-/** The full character greeting, started only after the system splash is removed.
- * The caller composes the destination underneath, so completion never exposes an empty window.
- */
+/** 사용자 제공 2.2초 GIF를 한 번 재생한 뒤 준비된 로그인/홈 화면으로 넘어간다. */
 @Composable
 fun TmtnLaunchOverlay(
     ready: Boolean,
@@ -59,11 +66,17 @@ fun TmtnLaunchOverlay(
 ) {
     val latestFinished by rememberUpdatedState(onFinished)
     val latestExitStarted by rememberUpdatedState(onExitStarted)
-    // Frame 43 is the resting pose (scale 1, no tilt, eyes open), the cleanest handoff from the static system mark.
-    // It skips the opening bob, blink and idle hold; frames past 126 change nothing.
-    val frame = remember { Animatable(43f) }
+    val resources = LocalContext.current.resources
+    val animation = remember(resources) {
+        runCatching {
+            ImageDecoder.decodeDrawable(ImageDecoder.createSource(resources, R.drawable.tmtn_launch_preview)) as? AnimatedImageDrawable
+        }.getOrNull()
+    }
     val opacity = remember { Animatable(1f) }
     var finished by remember { mutableStateOf(false) }
+    DisposableEffect(animation) {
+        onDispose { animation?.clearAnimationCallbacks(); animation?.stop() }
+    }
     LaunchedEffect(ready, reducedMotion) {
         if (!ready || finished) return@LaunchedEffect
         // Anchor playback to a visible frame, not Activity creation or a fixed navigation timer.
@@ -73,8 +86,23 @@ fun TmtnLaunchOverlay(
             withFrameNanos { }
             opacity.animateTo(0f, tween(TmtnMotion.PressMillis, easing = TmtnMotion.EaseOut))
         } else {
-            // Nod, smile and exit at the designed speed (60fps, about 1.4s). Home data loads underneath.
-            frame.animateTo(126f, tween(((126f - frame.value) / 60f * 1000).toInt(), easing = LinearEasing))
+            if (animation != null) {
+                // GIF 자체의 반복 설정과 무관하게 한 번만 재생한다. 오류에도 시작 화면에 갇히지 않는다.
+                withTimeoutOrNull(4500) {
+                    suspendCancellableCoroutine<Unit> { continuation ->
+                        val callback = object : Animatable2.AnimationCallback() {
+                            override fun onAnimationEnd(drawable: Drawable?) {
+                                animation.clearAnimationCallbacks()
+                                if (continuation.isActive) continuation.resume(Unit)
+                            }
+                        }
+                        animation.repeatCount = 0
+                        animation.registerAnimationCallback(callback)
+                        animation.start()
+                        continuation.invokeOnCancellation { animation.clearAnimationCallbacks(); animation.stop() }
+                    }
+                }
+            }
             latestExitStarted()
             withFrameNanos { }
             opacity.animateTo(0f, tween(120, easing = TmtnMotion.EaseOut))
@@ -90,7 +118,13 @@ fun TmtnLaunchOverlay(
             .pointerInput(Unit) { detectTapGestures { } }
             .semantics { contentDescription = "틈튼 시작 화면" },
     ) {
-        TmtnLaunchFrame(frame = { frame.value })
+        if (!reducedMotion && animation != null) {
+            AndroidView(factory = { context -> ImageView(context).apply {
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                setImageDrawable(animation)
+            } }, modifier = Modifier.fillMaxSize().testTag("launch-gif-artwork"))
+        } else TmtnLaunchFrame(frame = { 132f })
     }
 }
 

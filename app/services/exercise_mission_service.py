@@ -14,6 +14,7 @@ from tortoise.exceptions import IntegrityError
 from tortoise.transactions import in_transaction
 
 from app.core import config
+from app.core.logger import default_logger
 from app.core.time_utils import service_today
 from app.dtos.companion import MATERIAL_INFO
 from app.dtos.exercise_missions import (
@@ -35,6 +36,23 @@ DAILY_LIMIT = 2  # ⚠️ 문서: "하루 추가 보상은 최대 2회다."
 NO_VALIDATION_EXEC_TYPES = {"CHECK"}
 
 
+def _available_reward_count(sessions):
+    used = sum(1 for session in sessions if session.reward_slot is not None)
+    if used >= DAILY_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="오늘 받을 수 있는 틈새 운동 보상을 다 받았어요."
+        )
+    return used
+
+
+def _confirmed_progress(count, duration):
+    return {
+        key: value
+        for key, value in (("accumulated_count", count), ("accumulated_duration_seconds", duration))
+        if value is not None
+    }
+
+
 def _target_duration_seconds(session) -> int | None:
     """challenge_service._target_duration_seconds와 동일한 로직 - ExerciseMissionSession도
     같은 필드명(target_duration_seconds/exec_type)을 쓰도록 설계해서 그대로 재사용 가능."""
@@ -42,12 +60,26 @@ def _target_duration_seconds(session) -> int | None:
     return session.target_duration_seconds
 
 
+# ⚠️ 2026-09-16 추가(QA F05) - 센서로 실제 측정하는 타입은 "서버 시각 경과"로 대신
+# 계산하면 안 됨(원인분석 문서: 센서 누적 0초인 걷기 세션도 180초 지나면 목표 달성으로
+# 잘못 계산됨). 이 타입들은 클라이언트가 보낸 확정값(accumulated_duration_seconds)만
+# 신뢰하고, ACTIVE 상태의 경과 시각을 절대 안 더함.
+SENSOR_MEASURED_DURATION_EXEC_TYPES = {"SENSOR_WALKING_DURATION", "SENSOR_RUNNING_DURATION"}
+
+
 def _effective_duration_seconds(session) -> int:
-    """challenge_service._effective_duration_seconds와 동일 - ACTIVE면 지금까지 쌓인 것 +
-    (지금 - started_at)까지 더해서 실제 경과 시간을 계산."""
+    """challenge_service._effective_duration_seconds와 달리, exec_type이 센서 실측
+    시간형이면 경과 시각을 더하지 않음(QA F05) - TIMER(직접 카운트다운)만 기존처럼
+    "지금까지 쌓인 것 + (지금 - started_at)"으로 계산."""
 
     base = session.accumulated_duration_seconds
-    if session.state == ExerciseMissionSessionState.ACTIVE and session.started_at is not None:
+    exec_type = session.template_snapshot.get("exec_type")
+    is_sensor_measured = exec_type in SENSOR_MEASURED_DURATION_EXEC_TYPES
+    if (
+        not is_sensor_measured
+        and session.state == ExerciseMissionSessionState.ACTIVE
+        and session.started_at is not None
+    ):
         now = datetime.now(config.TIMEZONE)
         elapsed = int((now - session.started_at).total_seconds())
         base += max(elapsed, 0)
@@ -90,6 +122,25 @@ class ExerciseMissionService:
         used = sum(1 for s in sessions_today if s.reward_slot is not None)
         remaining = max(DAILY_LIMIT - used, 0)
 
+        # ⚠️ 2026-09-16 추가(QA) - 진행 중(ACTIVE)이거나 일시정지(PAUSED)된 세션이 있으면
+        # 그대로 알려줘서, 프론트가 새로 시작하는 대신 이어서 하게 함. 오늘의 카드
+        # Challenge가 뒤로가기해도 취소 안 하고 "미션 이어하기"로 돌아오는 것과 같은 원칙 -
+        # 틈새 운동만 이 패턴이 빠져 있어서, 화면을 나갔다 오면 "이미 진행 중"이라고만
+        # 뜨고 다시 시작할 방법이 없던 게 QA에서 재현된 버그의 실제 원인이었음.
+        active = next(
+            (
+                s
+                for s in sessions_today
+                if s.state
+                in (
+                    ExerciseMissionSessionState.ACTIVE,
+                    ExerciseMissionSessionState.PAUSED,
+                )
+            ),
+            None,
+        )
+        active_session = self._to_session_response(active, active.template_snapshot) if active else None
+
         catalog = await self.repo.get_active_catalog()
         options = []
         for entry in catalog:
@@ -109,12 +160,27 @@ class ExerciseMissionService:
                 )
             )
         return ExerciseMissionsTodayResponse(
-            card_completed=card_completed, used=used, limit=DAILY_LIMIT, remaining=remaining, options=options
+            card_completed=card_completed,
+            used=used,
+            limit=DAILY_LIMIT,
+            remaining=remaining,
+            options=options,
+            active_session=active_session,
         )
 
     async def create_session(
         self, user: User, catalog_entry_id, idempotency_key: str
     ) -> ExerciseMissionSessionResponse:
+        # ⚠️ 2026-09-16 버그 수정(QA F09) - "생성 요청이 서버에서는 성공했는데 응답만
+        # 못 받은 경우" 재시도하면, 예전엔 idempotency_key를 안 보고 그냥 새로 만들려다
+        # "이미 ACTIVE 있음"(409)으로 막혔음 - 클라이언트 입장에선 "방금 내가 만든 세션"
+        # 인지 "다른 오래된 세션과 충돌"인지 구분이 안 됐음. 이제 먼저 같은 키로 기존
+        # 세션이 있는지 확인해서, 있으면 그대로 반환함(중복 생성 없이 원래 응답을
+        # 그대로 복구).
+        existing = await self.repo.get_session_by_idempotency_key(idempotency_key, user.id)
+        if existing is not None:
+            return self._to_session_response(existing, existing.template_snapshot)
+
         today = service_today(user.id)
 
         if not await self._is_card_completed_today(user, today):
@@ -123,11 +189,7 @@ class ExerciseMissionService:
             )
 
         sessions_today = await self.repo.get_sessions_for_date(user.id, today)
-        used = sum(1 for s in sessions_today if s.reward_slot is not None)
-        if used >= DAILY_LIMIT:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail="오늘 받을 수 있는 틈새 운동 보상을 다 받았어요."
-            )
+        _available_reward_count(sessions_today)
         if any(s.state == ExerciseMissionSessionState.ACTIVE for s in sessions_today):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 진행 중인 틈새 운동이 있어요.")
 
@@ -172,8 +234,15 @@ class ExerciseMissionService:
                 target_duration_seconds=target_duration,
                 target_count=target_count,
                 started_at=now,
+                idempotency_key=idempotency_key,
             )
         except IntegrityError as exc:
+            # ⚠️ 2026-09-16 개선(QA F09) - unique(idempotency_key) 위반이면 "동시에 같은
+            # 요청이 두 번 들어온 것"이니 그 결과를 그대로 돌려주고, 그게 아니면(다른
+            # 세션이 이미 ACTIVE) 기존처럼 충돌로 안내함 - 두 원인을 구분해서 처리.
+            retry = await self.repo.get_session_by_idempotency_key(idempotency_key, user.id)
+            if retry is not None:
+                return self._to_session_response(retry, retry.template_snapshot)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="이미 진행 중인 틈새 운동이 있어요."
             ) from exc
@@ -187,7 +256,12 @@ class ExerciseMissionService:
         return session
 
     async def patch_session(
-        self, user: User, session_id, action: str, accumulated_count: int | None
+        self,
+        user: User,
+        session_id,
+        action: str,
+        accumulated_count: int | None,
+        accumulated_duration_seconds: int | None = None,
     ) -> ExerciseMissionSessionResponse:
         session = await self._get_owned_active_session(user, session_id)
         now = datetime.now(config.TIMEZONE)
@@ -195,7 +269,14 @@ class ExerciseMissionService:
         if action == "pause":
             if session.state != ExerciseMissionSessionState.ACTIVE:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="진행 중이 아니에요.")
-            elapsed = _effective_duration_seconds(session)
+            # ⚠️ 2026-09-16 수정(QA F05) - 센서 실측 시간형은 _effective_duration_seconds()가
+            # 이제 경과 시각을 안 더하니(위 함수 참고), 클라이언트가 보낸 확정값을 우선 씀 -
+            # 안 보내면 기존 저장값 그대로 유지(TIMER는 여전히 정확한 경과 계산값이 나옴).
+            elapsed = (
+                accumulated_duration_seconds
+                if accumulated_duration_seconds is not None
+                else _effective_duration_seconds(session)
+            )
             extra = {"accumulated_duration_seconds": elapsed, "last_paused_at": now, "started_at": None}
             if accumulated_count is not None:
                 extra["accumulated_count"] = accumulated_count
@@ -215,6 +296,24 @@ class ExerciseMissionService:
                 to_state=ExerciseMissionSessionState.ACTIVE,
                 extra_fields=extra,
             )
+        elif action == "sync":
+            # ⚠️ 2026-09-17 추가(QA #3) - 측정 중(ACTIVE) 세션에 주기적으로 누적값만
+            # 반영. pause/resume과 달리 상태를 바꾸지 않는다(ACTIVE 유지) - 그래야 화면이
+            # 다른 탭으로 갔다 돌아와도 이 세션이 계속 진행 중으로 남아있음. 이미
+            # 일시정지·완료된 세션에 뒤늦게 도착한 동기화 요청(레이스 컨디션)은 오류로
+            # 보여줄 일이 아니라 조용히 무시하고 지금 상태를 그대로 돌려준다 - 어차피
+            # 다음 주기 동기화가 다시 시도되거나, 이미 완료됐으면 더 보낼 값이 없다.
+            if session.state == ExerciseMissionSessionState.ACTIVE:
+                extra = _confirmed_progress(accumulated_count, accumulated_duration_seconds)
+                if extra:
+                    await self.repo.try_transition(
+                        session,
+                        from_states=[ExerciseMissionSessionState.ACTIVE],
+                        to_state=ExerciseMissionSessionState.ACTIVE,
+                        extra_fields=extra,
+                    )
+            session = await self.repo.get_owned_session(user.id, session_id)
+            return self._to_session_response(session, session.template_snapshot)
         else:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="알 수 없는 action이에요.")
 
@@ -233,20 +332,53 @@ class ExerciseMissionService:
         idempotency_key: str,
         manual_check: bool,
         accumulated_count: int | None,
+        accumulated_duration_seconds: int | None = None,
     ) -> CompleteExerciseMissionSessionResponse:
+        # ⚠️ 2026-09-17 추가(QA F14, 홍주님 회신) - 원인 확인용 로그. 인증 토큰·설문
+        # 원문 등 민감정보는 남기지 않고, 세션 식별·판정에 필요한 값만 남긴다.
+        default_logger.info(
+            "exercise_mission.complete start: user_id=%s session_id=%s manual_check=%s "
+            "accumulated_count=%s accumulated_duration_seconds=%s",
+            user.id,
+            session_id,
+            manual_check,
+            accumulated_count,
+            accumulated_duration_seconds,
+        )
         existing = await self.repo.get_session_by_idempotency_key(idempotency_key, user.id)
         if existing is not None:
             if existing.id != session_id:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT, detail="Idempotency-Key가 다른 세션에 이미 사용됐어요."
                 )
+            default_logger.info(
+                "exercise_mission.complete idempotent replay: user_id=%s session_id=%s",
+                user.id,
+                session_id,
+            )
             return await self._build_complete_response(user, existing)
 
         session = await self._get_owned_active_session(user, session_id)
         if accumulated_count is not None:
             session.accumulated_count = accumulated_count
+        # ⚠️ 2026-09-16 추가(QA F05) - 완료 순간의 확정 시간을 세션 필드에 직접 반영해서,
+        # _is_goal_achieved()의 판정과 아래 트랜잭션에 저장되는 최종값이 같은 걸 쓰게 함.
+        # 예전엔 이 반영 자체가 없어서 완료 후에도 accumulated_duration_seconds가 0으로
+        # 남을 수 있었음(문서 지적 사항).
+        if accumulated_duration_seconds is not None:
+            session.accumulated_duration_seconds = accumulated_duration_seconds
 
         if not manual_check and not _is_goal_achieved(session):
+            default_logger.warning(
+                "exercise_mission.complete rejected(goal not met): user_id=%s session_id=%s "
+                "accumulated_count=%s accumulated_duration_seconds=%s target_count=%s target_duration_seconds=%s",
+                user.id,
+                session_id,
+                session.accumulated_count,
+                session.accumulated_duration_seconds,
+                session.target_count,
+                session.target_duration_seconds,
+            )
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="아직 목표에 도달하지 못했어요.")
 
         today = session.service_date
@@ -258,15 +390,12 @@ class ExerciseMissionService:
                 # ⚠️ reward_slot 배정: 오늘 이미 지급된 개수를 세서 다음 슬롯(1 또는 2) 결정.
                 # UNIQUE(user, service_date, reward_slot)가 동시 요청 경합을 최종 방어.
                 sessions_today = await self.repo.get_sessions_for_date(user.id, today)
-                used = sum(1 for s in sessions_today if s.reward_slot is not None)
-                if used >= DAILY_LIMIT:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT, detail="오늘 받을 수 있는 틈새 운동 보상을 다 받았어요."
-                    )
+                used = _available_reward_count(sessions_today)
                 next_slot = used + 1
 
                 extra = {
                     "accumulated_count": session.accumulated_count,
+                    "accumulated_duration_seconds": session.accumulated_duration_seconds,
                     "completed_at": now,
                     "awarded_at": now,
                     "reward_slot": next_slot,
@@ -286,6 +415,12 @@ class ExerciseMissionService:
         except HTTPException:
             raise
         except IntegrityError as exc:
+            default_logger.warning(
+                "exercise_mission.complete integrity conflict: user_id=%s session_id=%s error=%s",
+                user.id,
+                session_id,
+                exc,
+            )
             existing = await self.repo.get_session_by_idempotency_key(idempotency_key, user.id)
             if existing is not None:
                 return await self._build_complete_response(user, existing)
@@ -293,6 +428,12 @@ class ExerciseMissionService:
                 status_code=status.HTTP_409_CONFLICT, detail="중복 요청이거나 이미 오늘 보상을 다 받았어요."
             ) from exc
 
+        default_logger.info(
+            "exercise_mission.complete success: user_id=%s session_id=%s reward_slot=%s",
+            user.id,
+            session_id,
+            next_slot,
+        )
         session = await self.repo.get_owned_session(user.id, session_id)
         return await self._build_complete_response(user, session)
 
@@ -322,7 +463,11 @@ class ExerciseMissionService:
             from_states=[ExerciseMissionSessionState.ACTIVE, ExerciseMissionSessionState.PAUSED],
             to_state=ExerciseMissionSessionState.CANCELLED,
         )
-        if not ok:
+        # ⚠️ 2026-09-17 추가(QA F08/F14) - 종료(취소) 처리 결과 확인용 로그.
+        if ok:
+            default_logger.info("exercise_mission.cancel success: user_id=%s session_id=%s", user.id, session_id)
+        else:
+            default_logger.warning("exercise_mission.cancel rejected: user_id=%s session_id=%s", user.id, session_id)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="이미 완료되었거나 취소할 수 없는 상태예요."
             )

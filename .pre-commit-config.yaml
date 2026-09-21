@@ -22,6 +22,8 @@ exclude: |
       android/.*/build/.*|
       android/gradle/wrapper/.*|
       tmtn_ai/artifacts/.*|
+      model_assets/xai/payload/.*|
+      tuntun_peer_bridge/.*|
       .*\.lock
   )$
 

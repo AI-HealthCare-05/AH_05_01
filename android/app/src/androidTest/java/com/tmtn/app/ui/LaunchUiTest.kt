@@ -34,15 +34,19 @@ class LaunchUiTest {
             onExitStarted = { exits++; assertEquals(0, completions) }) } }
         compose.mainClock.advanceTimeBy(3000)
         compose.runOnIdle { assertEquals(0, completions); ready = true }
-        // Frames 43..126 at 60fps: the nod and smile run for about 1.4s before the exit starts.
-        compose.mainClock.advanceTimeBy(1000)
+        compose.mainClock.advanceTimeBy(64)
+        compose.onNodeWithTag("launch-gif-artwork").assertIsDisplayed()
+        // AnimatedImageDrawable는 Compose 가상 시계가 아닌 Android 재생 시계를 따른다.
+        val started = android.os.SystemClock.elapsedRealtime()
+        android.os.SystemClock.sleep(700)
         compose.runOnIdle {
-            assertEquals("Must not cut the nod/smile short", 0, completions)
-            assertEquals("Destination stays hidden during the character animation", 0, exits)
+            assertEquals("GIF가 끝나기 전에 화면을 닫지 않는다", 0, completions)
+            assertEquals("재생 중에는 다음 화면이 가려져 있어야 한다", 0, exits)
         }
-        compose.mainClock.advanceTimeBy(450)
-        compose.runOnIdle { assertEquals("Finish only after the forest exit fades", 0, completions); assertEquals(1, exits) }
-        compose.mainClock.advanceTimeBy(300)
+        compose.waitUntil(6000) { exits == 1 }
+        assertTrue("원본 2.2초 재생을 잘라내지 않는다", android.os.SystemClock.elapsedRealtime() - started >= 1800)
+        compose.runOnIdle { assertEquals("재생 종료 뒤 화면 전환이 끝나야 한다", 0, completions) }
+        compose.mainClock.advanceTimeBy(500)
         compose.runOnIdle { assertEquals(1, completions); assertEquals(1, exits) }
         compose.mainClock.advanceTimeBy(3000)
         compose.runOnIdle { assertEquals("No looping", 1, completions) }

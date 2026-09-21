@@ -24,6 +24,13 @@ import java.util.UUID
 import kotlin.math.roundToInt
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import com.tmtn.app.data.local.AppDatabase
+import com.tmtn.app.data.local.PendingExerciseAction
+import com.tmtn.app.network.AccountKey
+import com.tmtn.app.sensor.PendingExerciseSyncManager
+
+// ⚠️ 2026-09-17 추가(QA F13) - 틈새 운동 완료 저장 상태.
+enum class ExerciseSaveState { IDLE, SAVING, FAILED }
 
 enum class CardHomeStep {
     LOADING,       // B08
@@ -65,6 +72,7 @@ class CardHomeState(
     private val serviceDateProvider: suspend () -> String = { currentServiceDateString() },
     val waist: com.tmtn.app.ui.reference.WaistEstimateState = com.tmtn.app.ui.reference.WaistEstimateState(),
     private val peerScoreEnabled: Boolean = com.tmtn.app.BuildConfig.PEER_SCORE_ENABLED,
+    private val exerciseApiProvider: () -> com.tmtn.app.network.ExerciseMissionApi = { ApiClient.exerciseMissionApi },
     private val missionApiProvider: () -> com.tmtn.app.network.CardHomeApi = { ApiClient.cardHomeApi },
 ) {
     var step = mutableStateOf(CardHomeStep.LOADING)
@@ -75,7 +83,10 @@ class CardHomeState(
     // 오늘의 카드 세트
     var setId = mutableStateOf<String?>(null)
     var cardServiceDate = mutableStateOf<String?>(null)
-    private var homeReturnRefreshRunning = false
+    // 2026-09-17 수정(QA H01) - private Boolean이라 화면이 "지금 후속 조회 중"인지
+    // 전혀 구독할 수 없었음(저장 성공 직후와 조회 중 상태를 화면이 구분 못 함). Compose
+    // State로 바꿔서 관찰 가능하게 함 - 재진입 방지 용도(homeCanRefresh와 같이 씀)는 그대로.
+    var isHomeRefreshing = mutableStateOf(false)
     var optionIds = mutableStateOf<List<String>>(emptyList())
     var drawState = mutableStateOf<String?>(null) // "AWAITING_SELECTION" / "SELECTED"
     var todayChallengeState = mutableStateOf<String?>(null) // "READY"/"ACTIVE"/"PAUSED"/"COMPLETED"/"SKIPPED"
@@ -126,21 +137,9 @@ class CardHomeState(
     // 항상 똑같은 예시 패턴만 보여줬음. 기록 탭의 주간 리포트 API(최근 7일 실제 상태)를 그대로 씀.
     var recentWeek = mutableStateOf<List<CalendarDayItem>>(emptyList())
 
-    // ⚠️ 테스트 전용 - "다음 날로" 눌렀을 때 서버가 지금 인식하는 시뮬레이션 날짜 표시용.
-    var debugSimulatedToday = mutableStateOf<String?>(null)
-
-    // ⚠️ 2026-09-08 QA(N11) 반영: 화면 상단 날짜 캡션이 전부 LocalDate.now()(기기의 진짜
-    // 오늘)를 그대로 썼음 - 시뮬레이션으로 날짜를 밀어도 상단은 계속 원래 날짜로 남아서,
-    // 서버는 미래를 보고 있는데 화면은 다른 날을 보여주는 모순이 있었음(디버그 기능
-    // 전용이지만 QA 중 계속 혼란을 줌). 시뮬레이션 값이 있으면 그걸 파싱해서 쓰고, 없으면
-    // (null 또는 "-") 기존처럼 기기 오늘을 씀.
     fun displayDateLabel(): java.time.LocalDate {
         cardServiceDate.value?.let { date ->
             runCatching { java.time.LocalDate.parse(date) }.getOrNull()?.let { return it }
-        }
-        val simulated = debugSimulatedToday.value
-        if (simulated != null && simulated != "-") {
-            runCatching { java.time.LocalDate.parse(simulated) }.getOrNull()?.let { return it }
         }
         return java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul"))
     }
@@ -269,6 +268,7 @@ class CardHomeState(
             // "연속 기록"이 항상 초기값 0으로만 보이고, 기록 탭·내 정보 탭(각자 따로 조회)과
             // 어긋났음. 홈 로드 시에도 정확한 값을 받아오게 함.
             launch { loadStreak() }
+            if (todayChallengeState.value == "COMPLETED") launch { refreshHomeExerciseProgress() }
         }
     }
 
@@ -298,6 +298,10 @@ class CardHomeState(
     }
 
     private fun applyHomeWindow(window: com.tmtn.app.network.model.CardWindowResponse) {
+        if (cardServiceDate.value != window.service_date) {
+            homeExerciseProgress.value = null
+            exerciseProgressRevision++
+        }
         if (setId.value != window.set_id) hasMemoToday.value = null
         setId.value = window.set_id
         cardServiceDate.value = window.service_date
@@ -320,8 +324,8 @@ class CardHomeState(
 
     /** Keep the visible home and its scroll while checking the existing daily-card endpoint. */
     suspend fun refreshHomeOnReturn() {
-        if (homeReturnRefreshRunning || !homeCanRefresh()) return
-        homeReturnRefreshRunning = true
+        if (isHomeRefreshing.value || !homeCanRefresh()) return
+        isHomeRefreshing.value = true
         val previousSet = setId.value
         try {
             val api = missionApiProvider()
@@ -340,43 +344,42 @@ class CardHomeState(
             applyHomeWindow(window)
             if (card != null) revealedCard.value = card
             errorMessage.value = null
+            // ⚠️ 2026-09-17 추가(QA 3번) - 미션 완료 후 홈으로 돌아오면 오늘의 카드만
+            // 다시 불러오고 댐(재료)·틈튼지수·연속 기록은 완료 전 값 그대로 남아있던
+            // 문제 수정. loadHome() 초기 로드와 같은 항목을 병렬로 함께 새로 불러온다.
+            coroutineScope {
+                launch { loadCompanion() }
+                launch { loadTuntunIndexSummary() }
+                launch { loadStreak() }
+                if (todayChallengeState.value == "COMPLETED") launch { refreshHomeExerciseProgress() }
+            }
         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (_: Exception) {
             if (homeCanRefresh() && setId.value == previousSet) {
                 errorMessage.value = "오늘의 소식을 새로 가져오지 못했어요. 다시 돌아오면 확인할게요."
             }
-        } finally { homeReturnRefreshRunning = false }
+        } finally { isHomeRefreshing.value = false }
     }
+
+    // 2026-09-17 수정(QA H02) - "실패한 조회만 재시도. complete 재호출 금지" 대응.
+    // 실패 여부를 별도 플래그로 남겨서, 화면이 이 함수 하나만(전체 refreshHomeOnReturn이나
+    // completeExerciseMission/completeChallenge 같은 완료 API 재호출 없이) 다시 불러
+    // 재시도할 수 있게 한다 - tuntunIndexLoadFailed와 같은 패턴.
+    var streakLoadFailed = mutableStateOf(false)
 
     suspend fun loadStreak() {
-        runCatching {
+        val body = runCatching {
             val response = ApiClient.cardHomeApi.getStreak()
             if (response.isSuccessful) response.body() else null
-        }.getOrNull()?.let { streak ->
-            restDaysUsedThisWeek.value = streak.rest_days_used_this_week
-            restDaysRemainingThisWeek.value = streak.rest_days_remaining_this_week
-            currentStreak.value = streak.current_streak
+        }.getOrNull()
+        if (body == null) {
+            streakLoadFailed.value = true
+            return
         }
-    }
-
-    // ⚠️ 테스트 전용 - 하루 미션 1개 제한 때문에 미션 10개를 이어서 테스트하려면 실제로
-    // 10일이 걸림. 서버가 인식하는 "오늘"을 하루 앞당겨서, 오늘 카드를 다시 뽑아 바로
-    // 다음 미션으로 이어갈 수 있게 함. 서버(PROD면 404)·클라이언트(디버그 빌드에서만
-    // 버튼 노출) 이중으로 막아둬서 실제 서비스에는 영향 없음.
-    suspend fun advanceDebugDay() {
-        runCatching {
-            val response = ApiClient.debugApi.advanceDay()
-            if (response.isSuccessful) response.body() else null
-        }.getOrNull()?.let { body -> debugSimulatedToday.value = body["simulated_today"]?.toString() }
-        loadToday()
-    }
-
-    suspend fun resetDebugDay() {
-        runCatching {
-            val response = ApiClient.debugApi.resetDay()
-            if (response.isSuccessful) response.body() else null
-        }.getOrNull()?.let { body -> debugSimulatedToday.value = body["simulated_today"]?.toString() }
-        loadToday()
+        streakLoadFailed.value = false
+        restDaysUsedThisWeek.value = body.rest_days_used_this_week
+        restDaysRemainingThisWeek.value = body.rest_days_remaining_this_week
+        currentStreak.value = body.current_streak
     }
 
     // B01b: "미션 이어하기" - 이미 확정된 오늘 챌린지의 카드 내용을 다시 불러와서 B06으로.
@@ -768,48 +771,37 @@ class CardHomeState(
     // 중 무엇이든 정확한 화면으로 보내야 해서, 성공 후 revealChallenge()로 최신 카드를
     // 다시 받아와 stepForRevealedCard()로 이동함(startTimer()처럼 무조건 한 화면으로
     // 고정하면 CHECK·SENSOR형이 잘못된 화면으로 감).
-    suspend fun restartFromGiveUp() {
-        val challengeId = revealedCard.value?.challenge_id ?: return
-        isLoading.value = true
-        errorMessage.value = null
-        runCatching {
-            val response = ApiClient.cardHomeApi.startChallenge(challengeId)
-            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
-            val revealResponse = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!revealResponse.isSuccessful) failWithMessage(parseErrorMessage(revealResponse))
-            revealResponse.body()!!
-        }.onSuccess { card ->
-            revealedCard.value = card
-            isTodayGivenUp.value = false
-            step.value = stepForRevealedCard(card)
-        }.onFailure { e ->
-            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
-            errorMessage.value = e.userMessageOr("다시 시작하지 못했어요.")
-        }
-        isLoading.value = false
-    }
+    suspend fun restartFromGiveUp() = enterInProgressMission(restartSkipped = true)
 
     // B22(중단)의 "미션 이어서 하기" · C25의 "쉬어가기 취소하고 도전하기"(이미 카드를
     // 확정한 날) 전용 - 홈 화면에서 직접 호출되므로 revealedCard가 아직 비어있을 수 있어
     // todayChallengeId를 기준으로 씀(continueTodayMission()과 fetch는 같지만, REVEALED가
     // 아니라 stepForRevealedCard()로 곧장 진행 화면까지 들어가는 게 다름 -
     // refreshAndEnterInProgressMission()과 같은 목적, 소스만 다름).
-    suspend fun enterInProgressMission() {
-        val challengeId = todayChallengeId.value ?: return
-        isLoading.value = true
-        errorMessage.value = null
-        runCatching {
-            val response = ApiClient.cardHomeApi.revealChallenge(challengeId)
-            if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
-            response.body()!!
-        }.onSuccess { card ->
+    suspend fun enterInProgressMission(restartSkipped: Boolean = false) {
+        val challengeId = todayChallengeId.value ?: revealedCard.value?.challenge_id ?: return
+        transitionMission("미션 정보를 가져오지 못했어요. 다시 눌러 주세요.") {
+            val api = missionApiProvider()
+            suspend fun fetchCard(): CardRevealResponse {
+                val response = api.revealChallenge(challengeId)
+                if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
+                return response.body() ?: failWithMessage("카드 내용을 확인하지 못했어요.")
+            }
+            var card = fetchCard()
+            // 쉼 취소는 REST 기록만 지운다. 명시적으로 재도전한 경우에만 SKIPPED를 재시작한다.
+            // 재시작 뒤 조회가 실패해도 재시도 때 최신 상태를 먼저 읽어 중복 시작을 피한다.
+            if (restartSkipped && card.state == "SKIPPED") {
+                val started = api.startChallenge(challengeId)
+                if (!started.isSuccessful) failWithMessage(parseErrorMessage(started))
+                isTodayGivenUp.value = false
+                todayChallengeState.value = "ACTIVE"
+                card = fetchCard()
+            }
             revealedCard.value = card
+            todayChallengeState.value = card.state
+            if (card.state != "SKIPPED") isTodayGivenUp.value = false
             step.value = stepForRevealedCard(card)
-        }.onFailure { e ->
-            if (e is kotlinx.coroutines.CancellationException) { isLoading.value = false; throw e }
-            errorMessage.value = e.userMessageOr("미션 정보를 가져오지 못했어요.")
         }
-        isLoading.value = false
     }
 
     // ===== C그룹: 챌린지 진행 (타이머형) =====
@@ -986,18 +978,89 @@ class CardHomeState(
     // 시작 가능하지만, 목록 자체는 항상 조회 가능(card_completed=false면 화면에서
     // "카드부터 완료해 주세요" 안내로 대체 - B17 카드 완료 화면 안내와 일관되게).
     var exerciseMissionsToday = mutableStateOf<ExerciseMissionsTodayResponse?>(null)
+    var exerciseListError = mutableStateOf<String?>(null)
     var selectedExerciseOption = mutableStateOf<ExerciseMissionOption?>(null)
     var activeExerciseSession = mutableStateOf<ExerciseMissionSessionResponse?>(null)
-    var exerciseRewardResult = mutableStateOf<CompleteExerciseMissionSessionResponse?>(null)
+    val homeExerciseProgress = mutableStateOf<HomeExerciseProgress?>(null)
+    private var exerciseProgressRevision = 0L
 
-    suspend fun loadExerciseMissionsToday() {
-        runCatching {
-            val response = ApiClient.exerciseMissionApi.getToday()
-            if (response.isSuccessful) response.body() else null
-        }.onSuccess { exerciseMissionsToday.value = it }
+    /** 홈의 응원에 필요한 서버 완료 횟수만 읽는다. 운동 화면으로 자동 이동하지 않는다. */
+    suspend fun refreshHomeExerciseProgress() {
+        val date = cardServiceDate.value ?: return
+        val revision = ++exerciseProgressRevision
+        try {
+            val response = exerciseApiProvider().getToday()
+            val today = response.body()?.takeIf { response.isSuccessful } ?: return
+            if (revision != exerciseProgressRevision || cardServiceDate.value != date) return
+            if (today.card_completed) confirmHomeExerciseProgress(date, today.used, today.remaining)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (_: Exception) { /* 조회 실패는 완료로 추측하지 않고 같은 날의 마지막 확인값만 유지한다. */ }
     }
 
+    internal fun confirmHomeExerciseProgress(date: String?, used: Int, remaining: Int) {
+        if (date == null || date != cardServiceDate.value || used < 0 || remaining < 0) return
+        exerciseProgressRevision++
+        homeExerciseProgress.value = HomeExerciseProgress(date, used, remaining)
+    }
+
+    // ⚠️ 2026-09-17 추가(QA F13, 홍주님 회신) - "저장 중/저장 실패/저장 완료"를 구분해서
+    // 화면이 참고할 수 있게 함. 저장 완료는 별도 값 없이 exerciseRewardResult가 채워지고
+    // step이 EXTRA_REWARD로 넘어가는 것 자체로 표현한다(서버가 확인해준 결과만 완료로 침).
+    var exerciseSaveState = mutableStateOf(ExerciseSaveState.IDLE)
+    var exerciseRewardResult = mutableStateOf<CompleteExerciseMissionSessionResponse?>(null)
+
+    // ⚠️ 2026-09-17 추가(QA 리뷰 #2) - 완료/취소 요청이 CardHomeFlow의 rememberCoroutineScope()
+    // (화면 컴포저블 생명주기에 묶임)에서 실행되고 있어서, 저장 중(SAVING)에 다른 탭으로
+    // 이동하면 코루틴이 취소되고 SAVING 상태가 영영 안 풀렸음(완료·그만두기 버튼이 계속
+    // 비활성으로 남음). CardHomeState 자신은 탭을 오가도 살아있으니(MainActivity에서
+    // 유지), 그 생명주기를 따르는 별도 스코프를 두고 여기서 직접 launch한다 - 어느
+    // 화면(혹은 화면이 없는 상태)에서 호출해도 요청 자체는 끝까지 간다.
+    private val exerciseScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate,
+    )
+
+    suspend fun loadExerciseMissionsToday() {
+        val requestedFrom = step.value
+        val requestedDate = cardServiceDate.value
+        val progressRevision = ++exerciseProgressRevision
+        exerciseListError.value = null
+        // ⚠️ 2026-09-17 추가(QA #3 후속 - PR #21 M07 "앱 재실행 후 기록 복원") - 목록을
+        // 새로 불러오기 전에, 프로세스 종료로 못 끝낸 완료·그만두기 요청이 있으면 먼저
+        // 정리한다. 그래야 아래 active_session 판단이 서버의 최신 진실을 반영함(예: 저장
+        // 대기 중이던 완료가 실은 서버에 이미 반영돼 있었으면, 여기서 결론이 나고 나서
+        // active_session이 비어있는 최신 상태로 내려옴 - 자동 재개나 빈 측정 공백 없이).
+        runCatching {
+            PendingExerciseSyncManager.replayPending(com.tmtn.app.TmtnApplication.appContext)
+        }
+        runCatching {
+            val response = exerciseApiProvider().getToday()
+            if (response.isSuccessful) response.body() else null
+        }.onSuccess { body ->
+            exerciseMissionsToday.value = body
+            if (body?.card_completed == true && progressRevision == exerciseProgressRevision) {
+                confirmHomeExerciseProgress(requestedDate, body.used, body.remaining)
+            }
+            if (body == null) exerciseListError.value = "운동을 불러오지 못했어요. 연결을 확인하고 다시 시도해 주세요."
+            // ⚠️ 2026-09-16 추가(QA) - 진행 중(ACTIVE/PAUSED)인 세션이 있으면 목록 대신
+            // 바로 진행 화면으로 이어줌. 오늘의 카드 Challenge의 "미션 이어하기"와 같은
+            // 원칙 - 뒤로가기·홈 버튼으로 화면을 나가도 세션을 취소하지 않으니(더 이상
+            // 자동 취소 안 함), 다음에 들어올 때 여기서 이어서 하게 해줘야 함.
+            val active = body?.active_session
+            if (active != null) {
+                activeExerciseSession.value = active
+                // 조회가 끝나기 전에 홈으로 나간 사용자를 다시 측정 화면으로 보내지 않는다.
+                if (step.value == requestedFrom) step.value = CardHomeStep.EXTRA_RUNNING
+            }
+        }.onFailure { error ->
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            exerciseListError.value = "운동을 불러오지 못했어요. 연결을 확인하고 다시 시도해 주세요."
+        }
+    }
+
+    val extraListOrigin = mutableStateOf(CardHomeStep.HOME)
+
     fun openExerciseMissionList() {
+        extraListOrigin.value = if (step.value == CardHomeStep.COMPLETED) CardHomeStep.COMPLETED else CardHomeStep.HOME
         step.value = CardHomeStep.EXTRA_LIST
     }
 
@@ -1025,44 +1088,234 @@ class CardHomeState(
         } ?: false
     }
 
-    suspend fun pauseExerciseMission() {
+    // ⚠️ 2026-09-16 - accumulatedDurationSeconds 파라미터 추가(QA F05, 같은 이유).
+    // ⚠️ 2026-09-17 수정(QA 리뷰 #2/#3) - 화면 수명과 분리된 exerciseScope에서 직접
+    // launch하므로 suspend가 아니다(화면이 사라져도 요청은 끝까지 감). 아직 실제 화면
+    // 훅업은 없음(리뷰 #3) - 일시정지/이어하기 UI가 이 함수를 호출하게 연결 예정.
+    // ⚠️ 2026-09-17 수정(QA 리뷰 #3) - accumulatedCount 파라미터 추가. 카운터형(제자리걸음
+    // 등)도 일시정지 시점의 확정값을 같이 보내야 "이어하기"가 그 지점부터 정확히
+    // 시작된다(전에는 시간형만 지원해서 카운터형 일시정지는 값이 안 실려 갔음).
+    fun pauseExerciseMission(accumulatedCount: Int? = null, accumulatedDurationSeconds: Int? = null) {
         val session = activeExerciseSession.value ?: return
-        runCatching {
-            ApiClient.exerciseMissionApi.patchSession(session.id, ExerciseMissionActionRequest(action = "pause"))
-        }.onSuccess { response -> if (response.isSuccessful) activeExerciseSession.value = response.body() }
+        exerciseScope.launch {
+            runCatching {
+                ApiClient.exerciseMissionApi.patchSession(
+                    session.id,
+                    ExerciseMissionActionRequest(
+                        action = "pause",
+                        accumulated_count = accumulatedCount,
+                        accumulated_duration_seconds = accumulatedDurationSeconds,
+                    ),
+                )
+            }.onSuccess { response -> if (response.isSuccessful) activeExerciseSession.value = response.body() }
+        }
     }
 
-    suspend fun resumeExerciseMission() {
+    fun resumeExerciseMission() {
         val session = activeExerciseSession.value ?: return
-        runCatching {
-            ApiClient.exerciseMissionApi.patchSession(session.id, ExerciseMissionActionRequest(action = "resume"))
-        }.onSuccess { response -> if (response.isSuccessful) activeExerciseSession.value = response.body() }
+        exerciseScope.launch {
+            runCatching {
+                ApiClient.exerciseMissionApi.patchSession(session.id, ExerciseMissionActionRequest(action = "resume"))
+            }.onSuccess { response -> if (response.isSuccessful) activeExerciseSession.value = response.body() }
+        }
     }
 
-    suspend fun completeExerciseMission(manualCheck: Boolean = false, accumulatedCount: Int? = null) {
+    // ⚠️ 2026-09-16 추가(QA F05) - accumulatedDurationSeconds 파라미터 신규. 시간형
+    // (걷기/달리기) 완료 시 화면이 실제로 표시 중이던 확정 시간(liveWalkingSeconds 등)을
+    // 실어 보내야, 서버가 더 이상 "경과 시각"으로 대신 계산 안 하고 이 값을 그대로 씀.
+    // ⚠️ 2026-09-17 수정(QA 리뷰 #1/#2) - (1) suspend를 버리고 exerciseScope에서 직접
+    // launch: 호출한 화면이 탭 이동으로 사라져도(rememberCoroutineScope 취소) 요청은
+    // 끝까지 진행되고 SAVING이 영영 안 풀리는 일이 없다. (2) 실패 응답을 전부 "목표
+    // 미달"로 뭉개지 않고 원인별로 구분한다 - 목표를 채웠는데 서버가 500/503을 줘도
+    // "아직 목표에 도달하지 못했어요"로 잘못 보이던 문제(리뷰 #1) 대응.
+    fun completeExerciseMission(
+        manualCheck: Boolean = false, accumulatedCount: Int? = null, accumulatedDurationSeconds: Int? = null,
+    ) {
         val session = activeExerciseSession.value ?: return
-        val idempotencyKey = UUID.randomUUID().toString()
-        runCatching {
-            ApiClient.exerciseMissionApi.completeSession(
-                session.id,
-                CompleteExerciseMissionSessionRequest(
-                    idempotency_key = idempotencyKey, manual_check = manualCheck, accumulated_count = accumulatedCount,
-                ),
-            )
-        }.onSuccess { response ->
-            if (response.isSuccessful) {
-                exerciseRewardResult.value = response.body()
-                step.value = CardHomeStep.EXTRA_REWARD
-            } else {
-                errorMessage.value = "아직 목표에 도달하지 못했어요."
+        val submittedDate = cardServiceDate.value
+        if (exerciseSaveState.value == ExerciseSaveState.SAVING) return
+        // ⚠️ 2026-09-16 버그 수정(QA F09) - 예전엔 매번 새 UUID.randomUUID()를 써서,
+        // 완료가 서버에서는 성공했는데 응답만 못 받고 실패로 보여서 사용자가 다시
+        // 누르면, 서버 입장에선 "새 요청"이라 이미 COMPLETED인 세션을 다시 트랜지션
+        // 못 해서 거절함(멱등키를 쓴 의미가 없었음) - 세션 ID 기반 결정론적 키로
+        // 바꿔서, 같은 세션에 대한 재시도는 항상 같은 키가 나오게 함(서버가 그 키로
+        // 기존 결과를 그대로 복구해서 돌려줌).
+        val idempotencyKey = UUID.nameUUIDFromBytes("exercise-complete:${session.id}".toByteArray()).toString()
+        // ⚠️ 2026-09-17 추가(QA F13/F14) - "저장 중" 표시 + 원인 확인용 로그. 같은
+        // idempotencyKey로 재시도해도(F09에서 이미 결정론적 키로 바꿔둠) 중복 지급은
+        // 안 되고, 서버가 이미 처리했으면 그 결과를 그대로 돌려받는다.
+        exerciseSaveState.value = ExerciseSaveState.SAVING
+        errorMessage.value = null
+        android.util.Log.i(
+            "ExerciseMissionSave",
+            "complete start: sessionId=${session.id} manualCheck=$manualCheck " +
+                "accumulatedCount=$accumulatedCount accumulatedDurationSeconds=$accumulatedDurationSeconds " +
+                "appVersion=${com.tmtn.app.BuildConfig.VERSION_NAME}",
+        )
+        // ⚠️ 2026-09-17 추가(QA #3 후속 - "저장 대기") - 요청을 보내기 전에 먼저
+        // Room에 대기 레코드를 남긴다. 이 아래 exerciseScope.launch가 프로세스 종료로
+        // 끝까지 못 가더라도(메모리에서만 사는 코루틴이라 죽으면 그냥 사라짐), 다음 앱
+        // 실행 때 PendingExerciseSyncManager가 같은 idempotency_key로 재시도한다.
+        // accountKey가 없으면(로그인 안 된 상태로는 애초에 여기 올 일이 없지만 방어적으로)
+        // 대기 레코드를 남기지 않는다 - 어느 계정 것인지 모르는 레코드를 만들지 않기 위함.
+        val pendingAccountKey = AccountKey.current()
+        if (pendingAccountKey != null) {
+            exerciseScope.launch {
+                runCatching {
+                    AppDatabase.getInstance(com.tmtn.app.TmtnApplication.appContext).pendingExerciseActionDao().upsert(
+                        PendingExerciseAction(
+                            sessionId = session.id.toString(),
+                            actionType = "complete",
+                            accountKey = pendingAccountKey,
+                            idempotencyKey = idempotencyKey,
+                            accumulatedCount = accumulatedCount,
+                            accumulatedDurationSeconds = accumulatedDurationSeconds,
+                            manualCheck = manualCheck,
+                            createdAt = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+            }
+        }
+        exerciseScope.launch {
+            runCatching {
+                ApiClient.exerciseMissionApi.completeSession(
+                    session.id,
+                    CompleteExerciseMissionSessionRequest(
+                        idempotency_key = idempotencyKey, manual_check = manualCheck,
+                        accumulated_count = accumulatedCount,
+                        accumulated_duration_seconds = accumulatedDurationSeconds,
+                    ),
+                )
+            }.onSuccess { response ->
+                // 2026-09-17 수정(QA #3 후속) - 서버가 응답을 줬다는 것 자체가 결론이
+                // 났다는 뜻(성공이든 영구 거절이든)이라 대기 레코드를 지우는 게 맞지만,
+                // 401만은 예외로 남겨둔다: TokenAuthenticator가 이미 갱신을 시도하고도
+                // 실패했다는 뜻이라 재로그인이 필요한데, 다음에 같은 계정으로 다시
+                // 로그인하면 PendingExerciseSyncManager가 그 레코드로 재시도해야 한다
+                // (PendingExerciseSyncManager.resolveOrRetry와 같은 분류 기준).
+                if (response.code() != 401) {
+                    runCatching {
+                        AppDatabase.getInstance(com.tmtn.app.TmtnApplication.appContext).pendingExerciseActionDao()
+                            .deleteBySession(session.id.toString())
+                    }
+                }
+                if (response.isSuccessful) {
+                    android.util.Log.i("ExerciseMissionSave", "complete success: sessionId=${session.id} rewardSlot=${response.body()?.reward_slot}")
+                    exerciseSaveState.value = ExerciseSaveState.IDLE
+                    exerciseRewardResult.value = response.body()
+                    response.body()?.let { confirmHomeExerciseProgress(submittedDate, it.used, it.remaining) }
+                    step.value = CardHomeStep.EXTRA_REWARD
+                    // ⚠️ 2026-09-17 추가(QA 리뷰 #3) - 세션이 끝났으니 서비스의 주기
+                    // 동기화 대상에서 뺀다(화면이 이미 다른 탭에 있어 STOP 액션을 못
+                    // 받았더라도, 최소한 더 이상 완료된 세션에 동기화 요청을 쏘지 않게).
+                    com.tmtn.app.sensor.CurrentExerciseSessionHolder.clear()
+                } else {
+                    val code = response.code()
+                    val bodyText = runCatching { response.errorBody()?.string() }.getOrNull()
+                    val detailText = runCatching {
+                        bodyText?.let {
+                            com.google.gson.JsonParser.parseString(it).asJsonObject.get("detail")
+                                ?.takeIf { d -> d.isJsonPrimitive }?.asString
+                        }
+                    }.getOrNull()
+                    android.util.Log.w(
+                        "ExerciseMissionSave",
+                        "complete rejected: sessionId=${session.id} httpCode=$code detail=$detailText",
+                    )
+                    if (code == 409 && detailText == "아직 목표에 도달하지 못했어요.") {
+                        // ⚠️ 목표 미달성은 "저장 실패"가 아니라 정상적인 검증 결과라
+                        // FAILED로 두지 않는다 - "다시 저장하기"가 아니라 운동을 더 해야 함.
+                        exerciseSaveState.value = ExerciseSaveState.IDLE
+                        errorMessage.value = "아직 목표에 도달하지 못했어요."
+                    } else {
+                        // ⚠️ 리뷰 #1 대응 - 그 외 사유(인증 만료, 이미 완료/오늘 보상
+                        // 소진 같은 다른 409, 404, 5xx 등)는 목표 미달과 구분해서
+                        // "저장 오류"로 취급한다. 확정 측정값(activeExerciseSession)은
+                        // 건드리지 않아 같은 요청으로 재시도할 수 있다.
+                        exerciseSaveState.value = ExerciseSaveState.FAILED
+                        errorMessage.value = when (code) {
+                            401, 403 -> "로그인이 만료됐어요. 다시 로그인한 뒤 다시 저장해 주세요."
+                            else -> "운동은 마쳤어요. 기록 저장을 다시 시도해주세요."
+                        }
+                    }
+                }
+            }.onFailure { e ->
+                // ⚠️ 2026-09-16 추가(QA F09) - 예전엔 네트워크 예외(타임아웃 등) 시 아무
+                // 처리가 없어서 "완료 버튼을 눌러도 반응 없음"처럼 보였음. exerciseScope는
+                // 화면과 분리돼 있어 화면 이탈로는 더 이상 취소되지 않지만, 프로세스
+                // 종료 등 다른 취소 경로를 대비해 취소 예외는 그대로 전파한다.
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                // ⚠️ 2026-09-17 수정(QA F13, 홍주님 지정 문구) - "저장 실패"를 화면에 명확히
+                // 남기고, 운동 기록(activeExerciseSession)은 건드리지 않아 재시도해도 유지되게 함.
+                android.util.Log.e("ExerciseMissionSave", "complete failed: sessionId=${session.id} error=${e::class.simpleName}: ${e.message}")
+                exerciseSaveState.value = ExerciseSaveState.FAILED
+                errorMessage.value = "운동은 마쳤어요. 기록 저장을 다시 시도해주세요."
             }
         }
     }
 
-    suspend fun cancelExerciseMission() {
+    // ⚠️ 2026-09-16 버그 수정(QA F09) - 예전엔 API 성공/실패와 무관하게 무조건 로컬
+    // 세션을 null로 지우고 COMPLETED로 넘어갔음 - 취소가 실제로 실패하면 서버엔 그
+    // 세션이 여전히 ACTIVE로 남아있는데, 앱에서는 사라져서 다음에 같은 운동을 다시
+    // 시작하려 하면 "이미 진행 중"으로 막히는 고립 상태가 됨(F02와 같은 근본 원인).
+    // 이제 성공했을 때만 로컬 상태를 정리하고, 실패하면 에러를 보여주고 세션을 그대로
+    // 유지함 - 다음 홈 진입 때(F06 수정) 서버 상태로 다시 맞춰지거나, 사용자가 다시
+    // 시도할 수 있음.
+    // ⚠️ 2026-09-17 수정(QA 리뷰 #2/#4) - completeExerciseMission과 같은 이유로
+    // exerciseScope에서 직접 launch(화면 생명주기와 분리). 로컬 센서 중지 자체는
+    // 호출하는 화면(ExerciseMissionRunningScreen)이 버튼을 누른 그 즉시 별도로
+    // 수행한다(리뷰 #4 - "확정하면 로컬 측정은 즉시 중지") - 서버 취소는 실패해도
+    // 사용자를 기다리게 하지 않는다.
+    fun cancelExerciseMission() {
         val session = activeExerciseSession.value ?: return
-        runCatching { ApiClient.exerciseMissionApi.cancelSession(session.id) }
-        activeExerciseSession.value = null
-        step.value = CardHomeStep.COMPLETED
+        // 2026-09-17 추가(QA #3 후속 - "cancel_pending") - 로컬 측정은 호출하는 화면이
+        // 이미 즉시 멈췄으니(위 주석), 서버 취소 요청만 프로세스 종료에도 안전하게
+        // 재시도되도록 대기 레코드를 먼저 남긴다. cancel은 idempotency_key가 없지만
+        // 서버가 상태 전이(ACTIVE/PAUSED -> CANCELLED)로 이미 멱등이라(이미 취소된
+        // 세션에 다시 취소를 보내면 409) 별도 키 없이도 안전하다.
+        val pendingAccountKey = AccountKey.current()
+        if (pendingAccountKey != null) {
+            exerciseScope.launch {
+                runCatching {
+                    AppDatabase.getInstance(com.tmtn.app.TmtnApplication.appContext).pendingExerciseActionDao().upsert(
+                        PendingExerciseAction(
+                            sessionId = session.id.toString(),
+                            actionType = "cancel",
+                            accountKey = pendingAccountKey,
+                            idempotencyKey = null,
+                            accumulatedCount = null,
+                            accumulatedDurationSeconds = null,
+                            createdAt = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+            }
+        }
+        exerciseScope.launch {
+            runCatching { ApiClient.exerciseMissionApi.cancelSession(session.id) }
+                .onSuccess { response ->
+                    // completeExerciseMission과 같은 기준: 401만 남겨두고 나머지 응답은
+                    // (성공이든 "이미 취소·완료된 상태"라는 409든) 결론이 난 것으로 본다.
+                    if (response.code() != 401) {
+                        runCatching {
+                            AppDatabase.getInstance(com.tmtn.app.TmtnApplication.appContext).pendingExerciseActionDao()
+                                .deleteBySession(session.id.toString())
+                        }
+                    }
+                    if (response.isSuccessful) {
+                        activeExerciseSession.value = null
+                        step.value = CardHomeStep.COMPLETED
+                        com.tmtn.app.sensor.CurrentExerciseSessionHolder.clear()
+                    } else {
+                        errorMessage.value = "그만두기를 처리하지 못했어요. 다시 시도해 주세요."
+                    }
+                }.onFailure { e ->
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    // 대기 레코드는 지우지 않는다 - 다음 앱 실행 때 PendingExerciseSyncManager가
+                    // 재시도한다(네트워크 예외는 서버 도달 여부를 모르는 경우라 안전하게 재시도).
+                    errorMessage.value = "연결이 원활하지 않아요. 다시 시도해 주세요."
+                }
+        }
     }
 }

@@ -42,7 +42,13 @@ class ExerciseMissionRepository:
         target_duration_seconds: int | None,
         target_count: int | None,
         started_at,
+        idempotency_key: str,
     ) -> ExerciseMissionSession:
+        # ⚠️ 2026-09-16 버그 수정(QA F09) - idempotency_key를 이제 생성 시점에도 저장함.
+        # unique 제약이 이미 모델에 있으니(원래는 완료 때만 쓰였음), 같은 키로 재시도가
+        # 오면 서비스 레이어가 먼저 조회해서 기존 세션을 그대로 돌려주게 됨(아래
+        # ExerciseMissionService.create_session 참고) - "생성 요청 성공 후 응답만
+        # 유실된 경우" 재시도해도 새 세션이 중복 생성되지 않음.
         return await self._session_model.create(
             user_id=user_id,
             service_date=service_date,
@@ -51,6 +57,7 @@ class ExerciseMissionRepository:
             target_duration_seconds=target_duration_seconds,
             target_count=target_count,
             started_at=started_at,
+            idempotency_key=idempotency_key,
         )
 
     async def try_transition(

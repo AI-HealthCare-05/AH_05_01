@@ -10,6 +10,7 @@ internal fun computeSensorDisplay(
     runningSeconds: Int, walkingSeconds: Int, isRunningDetectedNow: Boolean,
     isWalkingDetectedNow: Boolean, isFloorsClimbedDetectedNow: Boolean, isStepDetectedNow: Boolean,
     stepsInPlace: Int = 0,
+    durationTargetSeconds: Int? = null,
 ): SensorDisplay {
     fun progress(value: Float, goal: Float): Float =
         if (goal <= 0f || !value.isFinite()) 0f else (value.coerceAtLeast(0f) / goal).coerceIn(0f, 1f)
@@ -19,7 +20,8 @@ internal fun computeSensorDisplay(
         "SENSOR_WALKING_DURATION", "SENSOR_RUNNING_DURATION" -> {
             val value = if (execType == "SENSOR_WALKING_DURATION") walkingSeconds else runningSeconds
             val active = if (execType == "SENSOR_WALKING_DURATION") isWalkingDetectedNow else isRunningDetectedNow
-            val seconds = target.toLong().times(60).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            val seconds = durationTargetSeconds?.coerceAtLeast(0)
+                ?: target.toLong().times(60).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
             SensorDisplay(clock(value), "목표 ${clock(seconds)}", progress(value.toFloat(), seconds.toFloat()), active)
         }
         "SENSOR_RUNNING_DISTANCE" -> {

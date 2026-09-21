@@ -42,32 +42,49 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 
-/** The newspaper entry borrows its own masthead rules and paper tone so it reads as print, not as another panel. */
+/** 확정 시안 C: Pretendard 제호, 한 장의 신문, 원본 비버를 사용한다. */
 @Composable
 internal fun TmtnIndexSummaryCard(state: CardHomeState, onOpenTuntunScore: () -> Unit = {}) {
-    val colors = LocalTmtnColors.current
-    val paper = colors.background
-    val large = LocalTmtnTextScale.current * LocalDensity.current.fontScale > 1.25f
-    val shape = RoundedCornerShape(20.dp)
-    Column(Modifier.fillMaxWidth().clip(shape).background(paper)
-        .border(TmtnLayout.Hairline, colors.outlineVariant, shape)
-        .tmtnClickable(onClick = onOpenTuntunScore)
-        .padding(horizontal = 18.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("TMTN DAILY", style = TmtnType.label, color = ColorBrandForest)
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Box(Modifier.fillMaxWidth().height(2.dp).background(colors.onSurface))
-            Box(Modifier.fillMaxWidth().height(1.dp).background(colors.onSurface))
-        }
-        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("틈튼일보", style = TmtnType.editorialHeadline, color = colors.onSurface)
-                Text("나의 일주일이 한 장의 소식으로", style = TmtnType.caption, color = colors.onSurfaceVariant)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                    Text("이번 호 펼치기", style = TmtnType.label, color = ColorBrandForest, modifier = Modifier.weight(1f, fill = false))
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp), tint = ColorBrandForest)
-                }
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(TmtnHomeColor.Newspaper)
+        .border(1.dp, TmtnHomeColor.Border, RoundedCornerShape(20.dp))
+        .tmtnClickable(onClick = onOpenTuntunScore).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("틈튼일보", style = TmtnType.editorialHeadline, color = TmtnHomeColor.Forest,
+            modifier = Modifier.fillMaxWidth().semantics { heading() }, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        androidx.compose.material3.HorizontalDivider(color = TmtnHomeColor.Forest)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HomeNewspaperBeaver()
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("내가 쌓은 한 주", style = TmtnType.missionName, color = ColorOnSurface)
+                Text("실천 기록과 지난주 비교", style = TmtnType.caption, color = ColorOnSurfaceVariant)
+                Text("이번 호 읽기", style = TmtnType.label, color = TmtnHomeColor.Forest,
+                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
             }
-            Image(painterResource(R.drawable.beaver_newspaper_white), null, Modifier.size(if (large) 64.dp else 100.dp), contentScale = ContentScale.Fit)
+        }
+    }
+}
+
+/** 원본 beaver_card의 색/몸체를 그대로 사용하고 손에 든 카드 위에 작은 신문만 얹는다. */
+@Composable
+private fun HomeNewspaperBeaver() {
+    Box(Modifier.size(84.dp)) {
+        Image(painterResource(R.drawable.beaver_card), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val unit = size.width / 84f
+            val x = 26f * unit
+            val y = 47.5f * unit
+            val w = 19f * unit
+            val h = 11.5f * unit
+            drawRect(TmtnHomeColor.Paper, androidx.compose.ui.geometry.Offset(x, y), androidx.compose.ui.geometry.Size(w, h))
+            drawLine(TmtnHomeColor.Forest, androidx.compose.ui.geometry.Offset(x + 2*unit, y + 2*unit),
+                androidx.compose.ui.geometry.Offset(x + w - 2*unit, y + 2*unit), unit)
+            for (row in 0..3) {
+                val lineY = y + (4f + row * 1.6f) * unit
+                drawLine(TmtnHomeColor.PaperMuted, androidx.compose.ui.geometry.Offset(x + 2*unit, lineY),
+                    androidx.compose.ui.geometry.Offset(x + 8*unit, lineY), .45f * unit)
+                drawLine(TmtnHomeColor.PaperMuted, androidx.compose.ui.geometry.Offset(x + 10*unit, lineY),
+                    androidx.compose.ui.geometry.Offset(x + 17*unit, lineY), .45f * unit)
+            }
         }
     }
 }
@@ -88,13 +105,13 @@ internal fun RecentSummaryListCard(state: CardHomeState) {
                 failed -> Text("기록을 불러오지 못했어요", style = TmtnType.body, color = colors.onSurfaceVariant)
                 records.isEmpty() -> Text("기록을 불러오는 중이에요", style = TmtnType.body, color = colors.onSurfaceVariant)
                 else -> Text(buildAnnotatedString {
-                    withStyle(SpanStyle(color = colors.primary, fontSize = TmtnType.headline.fontSize, fontWeight = FontWeight.Bold)) {
+                    withStyle(SpanStyle(color = colors.secondary, fontSize = TmtnType.headline.fontSize, fontWeight = FontWeight.Bold)) {
                         append("${completedCount}일")
                     }
                     append(" 실천했어요")
                 }, style = TmtnType.bodyLarge, color = colors.onSurface)
             }
-            Text("${days.first().monthValue}월 ${days.first().dayOfMonth}일 ~ ${today.monthValue}월 ${today.dayOfMonth}일",
+            Text("${days.first().monthValue}월 ${days.first().dayOfMonth}일 – ${today.monthValue}월 ${today.dayOfMonth}일",
                 style = TmtnType.caption, color = colors.onSurfaceVariant)
             Column(Modifier.fillMaxWidth().tmtnSurface(TmtnSurfaceRole.Panel, outlined = false)
                 .padding(horizontal = 12.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -149,3 +166,5 @@ private fun HomeRecordDate(date: LocalDate, status: String?, isToday: Boolean, m
         }
     }
 }
+
+

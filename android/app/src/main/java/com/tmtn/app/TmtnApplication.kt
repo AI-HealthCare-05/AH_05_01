@@ -1,6 +1,7 @@
 package com.tmtn.app
 
 import android.app.Application
+import android.content.Context
 
 /**
  * ⚠️ 2026-08-31 수정: 예전에 온보딩 화면 만들기 전, 테스트용으로 넣어뒀던
@@ -17,8 +18,20 @@ import android.app.Application
  * 있어도 정상.
  */
 class TmtnApplication : Application() {
+
+    companion object {
+        // ⚠️ 2026-09-17 추가(QA #3 후속 - 저장 대기 복원) - CardHomeState는 Context를 갖고
+        // 있지 않아서(순수 상태 클래스), 프로세스 종료 후에도 남아있어야 하는 로컬 대기
+        // 요청(PendingExerciseAction, Room DB)에 접근하려면 앱 전역 Context가 필요함.
+        // 여기 Application.onCreate에서 한 번만 채워두고 AppDatabase.getInstance() 호출에
+        // 재사용한다. TmtnAudio가 하던 것과 같은 패턴.
+        lateinit var appContext: Context
+            private set
+    }
+
     override fun onCreate() {
         super.onCreate()
+        appContext = applicationContext
         com.tmtn.app.audio.TmtnAudio.initialize(this)
     }
 }

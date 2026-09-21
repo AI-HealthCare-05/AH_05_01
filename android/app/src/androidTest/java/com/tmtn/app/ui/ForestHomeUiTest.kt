@@ -73,71 +73,52 @@ class ForestHomeUiTest {
     }
     @Test fun proposedHomeKeepsRealContextAndExpandCollapseFlow() {
         showHome()
-        capture("04-proposed-home-top")
-        compose.onNodeWithText("허리둘레 자세히 보기").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("약 32.4 인치").assertIsDisplayed()
-        capture("05-proposed-home-bottom")
-        compose.onNodeWithText("허리둘레 자세히 보기").performClick()
+        compose.onNodeWithTag("home-waist").performScrollTo().performClick()
         compose.onNodeWithText("설명 접기").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("바지 고를 때 참고해 주세요").assertIsDisplayed()
-        capture("06-proposed-home-expanded")
-        compose.onNodeWithText("설명 접기").performClick()
-        compose.onNodeWithText("허리둘레 자세히 보기").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("약 32.4 인치").assertIsDisplayed()
+        compose.onNodeWithContentDescription(estimate.readingDescription).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("설명 접기").performScrollTo().performClick()
+        compose.onNodeWithTag("home-waist").performScrollTo().assertHasClickAction()
     }
     @Test fun proposedLargeTypeRemainsReadable() {
         showHome(compact = true)
-        compose.onNodeWithText("허리둘레 자세히 보기").performScrollTo()
-        compose.onNodeWithText("약 32.4 인치").assertIsDisplayed()
-        capture("07-proposed-320-large-summary")
-        compose.onNodeWithText("허리둘레 자세히 보기").performClick()
-        compose.onNodeWithContentDescription("모델이 추정한 허리둘레 약 82.4 센티미터, 약 32.4 인치").performScrollTo().assertIsDisplayed()
-        capture("08-proposed-320-large-value")
+        compose.onNodeWithTag("home-waist").performScrollTo().performClick()
+        compose.onNodeWithContentDescription(estimate.readingDescription).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("설명 접기").performScrollTo().assertIsDisplayed()
-        capture("09-proposed-320-large-explanation")
     }
     @Test fun unselectedHomeKeepsItsOwnHero() {
         showHome(selected = false)
-        capture("10-proposed-unselected-top")
-        compose.onNodeWithText("허리둘레 자세히 보기").performScrollTo()
-        capture("11-proposed-unselected-bottom")
+        compose.onNodeWithText("오늘도\n한 틈씩.").assertIsDisplayed()
+        compose.onNodeWithTag("home-extra").performScrollTo().assertHasNoClickAction()
     }
-
     @Test fun extraExerciseIsAnAvailableActionAfterCompletion() {
-        val state = state()
-        var used by mutableIntStateOf(0)
+        val state = state().apply { todayChallengeState.value = "COMPLETED" }
         compose.setContent { Page {
-            Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                ExtraExerciseCard(true, used, 2) { state.openExerciseMissionList() }
-                TmtnIndexSummaryCard(state)
-                HomeWaistCard(estimate, false, {}, {})
-            }
+            Column(Modifier.fillMaxWidth().padding(20.dp)) { ExtraExerciseHomeEntry(state) }
         } }
-        compose.onNodeWithText("0 / 2회").assertIsDisplayed()
-        capture("12-extra-unlocked-home-bottom")
-        compose.onNodeWithTag("extra-exercise-entry").performClick()
-        compose.runOnIdle { assertEquals(CardHomeStep.EXTRA_LIST, state.step.value); used = 2 }
-        compose.onNodeWithText("오늘 받을 수 있는 추가 재료를 모두 모았어요.").assertIsDisplayed()
-        compose.onNodeWithTag("extra-exercise-entry").assertHasClickAction()
-        capture("13-extra-limit-home-bottom")
+        compose.onNodeWithText("오늘의 운동 5가지 보기").assertIsDisplayed()
+        compose.onNodeWithTag("home-extra").performClick()
+        compose.runOnIdle {
+            assertEquals(CardHomeStep.EXTRA_LIST, state.step.value)
+            state.homeExerciseProgress.value = HomeExerciseProgress("2026-09-17", 2, 0)
+        }
+        compose.onNodeWithText("오늘 두 번 완료 · 운동 목록 보기").assertIsDisplayed()
+        compose.onNodeWithTag("home-extra").assertHasClickAction()
     }
-
     @Test fun lockedExtraDoesNotOfferADisabledTap() {
         showHome()
-        compose.onNodeWithTag("extra-exercise-entry").performScrollTo().assertHasNoClickAction()
-        compose.onNodeWithContentDescription("오늘 카드 완료 후 이용 가능").assertIsDisplayed()
+        compose.onNodeWithTag("home-extra").performScrollTo().assertHasNoClickAction()
+        compose.onNodeWithText("잠김", useUnmergedTree = true).assertIsDisplayed()
     }
-
     @Test fun completedCardKeepsItsRewardAndReadableContent() {
-        val card = state().revealedCard.value!!.copy(state = "COMPLETED")
+        val state = state().apply { todayChallengeState.value = "COMPLETED" }
+        var viewed = false
         compose.setContent { Page {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
-                NoteCard(card, java.time.LocalDate.of(2026, 9, 17))
+                HomeCompletionPanel(state, { viewed = true }, {})
             }
         } }
-        compose.onNodeWithText("오늘의 틈").assertIsDisplayed()
-        capture("14-completed-card-top")
-        compose.onNodeWithText("실천 완료, 나뭇가지 1개를 받았어요").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("밝은 곳까지 걷기").assertExists()
+        compose.onNodeWithText("완료한 카드 보기").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(true, viewed) }
+        compose.onNodeWithText("오늘의 틈").assertDoesNotExist()
     }
 }

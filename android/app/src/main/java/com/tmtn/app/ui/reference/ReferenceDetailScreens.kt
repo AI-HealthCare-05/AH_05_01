@@ -94,7 +94,7 @@ fun ReferenceInputsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     ScoreActionRow("신체 정보", onClick = onOpenHealthInfo)
                     ScoreRule()
-                    InfoRow("생년월", inputs.birth_month_label ?: "입력 필요")
+                    InfoRow("태어난 연·월", inputs.birth_month_label ?: "입력 필요")
                     InfoRow("성별", inputs.sex_label ?: "입력 필요")
                     InfoRow("키", inputs.height_cm?.let { readableNumber(it) + " cm" } ?: "입력 필요")
                     InfoRow("몸무게", inputs.weight_kg?.let { readableNumber(it) + " kg" } ?: "입력 필요")

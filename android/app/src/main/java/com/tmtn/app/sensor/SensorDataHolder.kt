@@ -55,6 +55,14 @@ object SensorDataHolder {
     private val _runningDistanceM = MutableStateFlow(0f)
     val runningDistanceM: StateFlow<Float> = _runningDistanceM
 
+    // ⚠️ 2026-09-17 추가(QA Q06) - "권한 있음·GPS 켜짐"과 "실제 위치 신호(첫 GPS 픽스)를
+    // 받았음"은 다른 상태라 구분해서 안내해야 함(리뷰 지적: "신호를 못 받는 상태의
+    // 안내" 누락). RunningManager가 정확도 기준을 통과한 위치를 한 번이라도 받으면
+    // true - MissionSensorService의 주기 갱신 루프에서 runningDistanceM과 같이 반영됨.
+    private val _runningSignalAcquired = MutableStateFlow(false)
+    val runningSignalAcquired: StateFlow<Boolean> = _runningSignalAcquired
+    fun setRunningSignalAcquired(acquired: Boolean) { _runningSignalAcquired.value = acquired }
+
     // ── 달리기(시간) — 사용자가 시작/종료, 케이던스 ──
     private val _runningSeconds = MutableStateFlow(0)
     val runningSeconds: StateFlow<Int> = _runningSeconds

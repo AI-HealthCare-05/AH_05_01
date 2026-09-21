@@ -116,11 +116,14 @@ class RecordService:
 
     async def get_weekly_report(self, user: User) -> WeeklyReportResponse:
         today = service_today(user.id)  # ⚠️ 2026-09-08: 계정별 오프셋 적용
-        start = today - timedelta(days=6)
+        start, end = _week_boundaries(today)
         signup_date = user.created_at.date()
 
         status_map = await self._build_status_map(user.id, start, today, signup_date=signup_date)
         days = [CalendarDayItem(date=d, status=s) for d, (s, _) in sorted(status_map.items())]
+        days.extend(
+            CalendarDayItem(date=today + timedelta(days=i), status="FUTURE") for i in range(1, (end - today).days + 1)
+        )
         completed_count = sum(1 for _, (s, _) in status_map.items() if s == "COMPLETED")
 
         # 이번 주 완료된 챌린지들의 오행 집계 + 완료 시간대 집계
@@ -154,7 +157,7 @@ class RecordService:
 
         return WeeklyReportResponse(
             start_date=start,
-            end_date=today,
+            end_date=end,
             days=days,
             completed_count=completed_count,
             total_days=7,

@@ -124,7 +124,7 @@ fun MonthlyCalendarScreen(
                 EmptyRecordCard(onGoPickCard)
             } else StreakCard(state)
         }
-        com.tmtn.app.ui.onboarding.TmtnTonalButton("최근 7일 돌아보기", {
+        com.tmtn.app.ui.onboarding.TmtnTonalButton("이번 주 돌아보기", {
             if (onPeriodSelected != null) onPeriodSelected(RecordTab.WEEKLY) else {
                 state.tab.value = RecordTab.WEEKLY
                 scope.launch { state.loadWeekly() }

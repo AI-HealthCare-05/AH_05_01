@@ -40,17 +40,21 @@ fun ReferenceFlow(
 ) {
     val scope = rememberCoroutineScope()
     val waist = state.waist
+    DisposableEffect(state) { onDispose { state.journal.invalidatePersonal() } }
     LaunchedEffect(Unit) { waist.load() }
     LaunchedEffect(Unit) { state.journal.refresh() }
-    DisposableEffect(state) { onDispose { state.journal.invalidatePersonal() } }
-    LaunchedEffect(state.step.value) {
-        if (state.step.value == ReferenceStep.SUMMARY) state.journal.refreshPersonal()
+    com.tmtn.app.ui.common.OnAppForeground { scope.launch { state.journal.refreshCompanion() } }
+    LaunchedEffect(state.journal.personal) {
+        val result = (state.journal.personal as? com.tmtn.app.ui.journal.JournalLoad.Ready)?.value
+        if (result?.status == "ready") state.journal.refreshHistory()
+        if (result?.reason == "consent_required") state.journal.refreshHistory()
     }
     LaunchedEffect(Unit) {
         // Returning from an editor keeps the reading stack; the inputs page reloads its own values.
         if (state.step.value in setOf(ReferenceStep.LOADING, ReferenceStep.SUMMARY, ReferenceStep.INELIGIBLE)) state.loadScore()
     }
     LaunchedEffect(state.step.value) {
+        if (state.step.value == ReferenceStep.SUMMARY) state.journal.refreshPersonal()
         if (state.step.value in setOf(ReferenceStep.DETAIL, ReferenceStep.FACTORS)) state.editorial.load()
     }
     var focusedArea by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
@@ -74,8 +78,8 @@ fun ReferenceFlow(
                 refreshing = state.journal.refreshing || state.isLoading.value,
                 onRefresh = {
                     scope.launch { state.journal.refresh() }
-                    scope.launch { state.loadScore() }
                     scope.launch { state.journal.refreshPersonal() }
+                    scope.launch { state.loadScore() }
                     scope.launch { waist.load() }
                 },
                 onGoPickCard = onGoPickCard, onEditInformation = { state.journal.invalidatePersonal(); state.openInputs() },
@@ -83,8 +87,14 @@ fun ReferenceFlow(
                 requestedEdition = state.journal.requestedEdition,
                 onEditionOpened = { state.journal.requestedEdition = null },
                 exercises = state.journal.exercises,
-                editorial = state.journal.editorial, personal = state.journal.personal,
+                practiceScore = state.journal.practiceScore,
+                editorial = state.journal.editorial,
+                personal = state.journal.personal,
+                history = state.journal.history,
+                onRetryHistory = { scope.launch { state.journal.refreshHistory() } },
                 onRetryPersonal = { scope.launch { state.journal.refreshPersonal() } },
+                companion = state.journal.companion,
+                onRetryCompanion = { scope.launch { state.journal.refreshCompanion() } },
             )
             ReferenceStep.INELIGIBLE -> ReferenceIneligibleScreen(state, onOpenMyInfo, waist.ui.value)
             ReferenceStep.DETAIL -> ReferenceDetailScreen(state, waist = waist.ui.value,
@@ -137,6 +147,7 @@ fun ReferenceIneligibleScreen(state: ReferenceState, onOpenMyInfo: () -> Unit, w
         Text("정보가 없는 영역은 비교에서 제외해요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
         TmtnPrimaryButton("정보 입력하기", onOpenMyInfo)
         ScoreRule()
+        WaistEstimateSummary(waist, onOpen = { state.openWaist() })
         Text("비진단용 참고 정보", style = TmtnType.caption, color = colors.onSurfaceVariant)
     }
 }
@@ -156,7 +167,7 @@ fun ReferenceLoadingScreen(error: String?, onRetry: () -> Unit) {
             TmtnMascot(R.drawable.beaver_waiting, null, Modifier.size(152.dp), greet = false)
             Text("지수를 불러오지 못했어요", style = TmtnType.title, color = colors.onSurface)
             Text("연결 상태를 확인하고 다시 시도해 주세요.", style = TmtnType.body, color = colors.onSurfaceVariant)
-            TmtnPrimaryButton("다시 불러오기", onRetry)
+            TmtnPrimaryButton("다시 시도", onRetry)
         }
     }
 }

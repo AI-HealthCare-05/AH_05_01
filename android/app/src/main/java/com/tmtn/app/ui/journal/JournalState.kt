@@ -36,7 +36,11 @@ class JournalState(
     private val personalPause: suspend (Long) -> Unit = { delay(it) },
     private val editorialRequest: suspend () -> Response<JournalEditorialResponse> = { ApiClient.tuntunScoreApi.getJournalEditorial() },
     private val extraRequest: suspend () -> Response<ExerciseMissionsTodayResponse> = { ApiClient.exerciseMissionApi.getToday() },
+    private val companionRequest: suspend () -> Response<CompanionResponse> = { ApiClient.cardHomeApi.getCompanionStatus() },
 ) {
+    var companion by mutableStateOf<JournalLoad<CompanionResponse>>(JournalLoad.Loading)
+        private set
+    private var companionGeneration = 0
     var requestedEdition by mutableStateOf<Int?>(null)
     var weekly by mutableStateOf<JournalLoad<WeeklyReportResponse>>(JournalLoad.Loading)
         private set
@@ -50,13 +54,37 @@ class JournalState(
         private set
     var personal by mutableStateOf<JournalLoad<PersonalXaiResponse>?>(null)
         private set
+    var history by mutableStateOf<JournalLoad<WeeklyXaiHistoryResponse>?>(null)
+        private set
+    private var historyGeneration = 0
     private var personalGeneration = 0
+    var practiceScore by mutableStateOf<JournalLoad<PracticeScoreResponse>>(JournalLoad.Loading)
+        private set
     var refreshing by mutableStateOf(false)
         private set
 
     fun invalidatePersonal() {
         ++personalGeneration
         personal = null
+        ++historyGeneration
+        history = null
+    }
+
+    suspend fun refreshHistory() {
+        val generation = ++historyGeneration
+        history = JournalLoad.Loading
+        val result = read { ApiClient.tuntunScoreApi.getWeeklyXaiHistory() }
+        if (generation == historyGeneration) history = result
+    }
+
+    /** 댐은 주간 기록과 별개인 현재 누적 상태다. 이전 응답이나 임의의 0단계로 대체하지 않는다. */
+    suspend fun refreshCompanion() {
+        val generation = ++companionGeneration
+        companion = JournalLoad.Loading
+        val result = read(companionRequest)
+        if (generation != companionGeneration) return
+        companion = if (result is JournalLoad.Ready &&
+            (result.value.current_stage !in 0..5 || result.value.total_materials < 0)) JournalLoad.Failed else result
     }
 
     private fun personalFailure(generation: Int, retainCurrentComparison: Boolean) {
@@ -94,6 +122,9 @@ class JournalState(
         editorial = JournalLoad.Loading
         try {
             coroutineScope {
+                launch { refreshCompanion() }
+                launch { refreshHistory() }
+                launch { practiceScore = read { ApiClient.practiceScoreApi.getPracticeScore() } }
                 launch {
                     editorial = try {
                         val response = editorialRequest()

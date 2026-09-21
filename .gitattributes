@@ -20,6 +20,9 @@ tuntun_peer_bridge/** -text
 tuntun_peer_bridge/**/*.json -text
 tuntun_peer_bridge/**/*.md   -text
 tuntun_peer_bridge/**/*.txt  -text
+# ⚠️ 2026-09-21 추가(PR21_REVIEW.md 지적 반영) - model_assets/xai/payload/도 원본
+# 바이트(해시)가 그대로 보존돼야 하는 외부 전달 모델 배포물. eol=lf 자동 변환에서 제외.
+model_assets/xai/payload/** -text
 
 # 줄바꿈을 건드리면 안 되는 것들
 *.sh   text eol=lf

@@ -8,7 +8,6 @@ import com.tmtn.app.R
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.sp
 
 /** User-approved Pretendard; Figma's Noto is its documented editor fallback (DESIGN.md). */
@@ -20,30 +19,32 @@ val TmtnFontFamily = FontFamily(
 )
 
 object TmtnType {
-    // 2026-09-16 승인된 첫 복구 화면: 본문과 제목의 역할을 분리한다.
-    val firstRepairHeadline: TextStyle @Composable get() = scaled(28.sp, 36.sp, FontWeight.SemiBold, LineBreak.Heading)
-    val firstRepairBody: TextStyle @Composable get() = scaled(15.sp, 24.sp, FontWeight.Normal)
-    val firstRepairEyebrow: TextStyle @Composable get() = scaled(13.sp, 20.sp, FontWeight.SemiBold)
     // Figma 1314:4840, 1314:3813: 32/42 headline, 16/26 body, 14/20 label.
-    val actionLabel: TextStyle @Composable get() = scaled(16.sp, 24.sp, FontWeight.Bold, LineBreak.Simple)
-    val choiceLabel: TextStyle @Composable get() = scaled(15.sp, 21.sp, FontWeight.Bold, LineBreak.Simple)
-    val display: TextStyle @Composable get() = scaled(36.sp, 44.sp, FontWeight.Bold, LineBreak.Heading)
-    val headline: TextStyle @Composable get() = scaled(32.sp, 42.sp, FontWeight.Bold, LineBreak.Heading)
-    val editorialHeadline: TextStyle @Composable get() = scaled(28.sp, 36.sp, FontWeight.Bold, LineBreak.Heading)
-    val sectionHeading: TextStyle @Composable get() = scaled(20.sp, 28.sp, FontWeight.SemiBold, LineBreak.Heading)
-    val inputHeadline: TextStyle @Composable get() = scaled(24.sp, 34.sp, FontWeight.Bold, LineBreak.Heading)
-    val missionName: TextStyle @Composable get() = scaled(18.sp, 26.sp, FontWeight.SemiBold, LineBreak.Heading)
-    val cardMessage: TextStyle @Composable get() = scaled(24.sp, 34.sp, FontWeight.Medium, LineBreak.Heading)
-    val title: TextStyle @Composable get() = scaled(22.sp, 30.sp, FontWeight.SemiBold, LineBreak.Heading)
+    val actionLabel: TextStyle @Composable get() = scaled(16.sp, 24.sp, FontWeight.Bold)
+    val choiceLabel: TextStyle @Composable get() = scaled(15.sp, 21.sp, FontWeight.Bold)
+    val display: TextStyle @Composable get() = scaled(36.sp, 44.sp, FontWeight.Bold)
+    val headline: TextStyle @Composable get() = scaled(32.sp, 42.sp, FontWeight.Bold)
+    val editorialHeadline: TextStyle @Composable get() = scaled(28.sp, 36.sp, FontWeight.Bold)
+    val sectionHeading: TextStyle @Composable get() = scaled(20.sp, 28.sp, FontWeight.SemiBold)
+    val inputHeadline: TextStyle @Composable get() = scaled(24.sp, 34.sp, FontWeight.Bold)
+    val missionName: TextStyle @Composable get() = scaled(18.sp, 26.sp, FontWeight.SemiBold)
+    val cardMessage: TextStyle @Composable get() = scaled(24.sp, 34.sp, FontWeight.Medium)
+    val title: TextStyle @Composable get() = scaled(22.sp, 30.sp, FontWeight.SemiBold)
     val bodyLarge: TextStyle @Composable get() = scaled(18.sp, 28.sp, FontWeight.Medium)
     val body: TextStyle @Composable get() = scaled(16.sp, 26.sp, FontWeight.Normal)
     val label: TextStyle @Composable get() = scaled(14.sp, 20.sp, FontWeight.Bold)
     val caption: TextStyle @Composable get() = scaled(14.sp, 20.sp, FontWeight.Medium)
-    val navigationLabel: TextStyle @Composable get() = scaled(12.sp, 20.sp, FontWeight.Medium, LineBreak.Simple)
+    val navigationLabel: TextStyle @Composable get() = scaled(12.sp, 20.sp, FontWeight.Medium)
+
+    // ⚠️ 2026-09-18 추가(UI/UX 핸드오프 FR01~08 "첫 복구") - 새 시각 언어를 발명하지
+    // 않고 기존 스타일을 그대로 재사용(별칭). eyebrow=작은 라벨이라 caption과, headline은
+    // editorialHeadline과, body는 그대로 body와 크기가 같음.
+    val firstRepairEyebrow: TextStyle @Composable get() = caption
+    val firstRepairHeadline: TextStyle @Composable get() = editorialHeadline
+    val firstRepairBody: TextStyle @Composable get() = body
 
     @Composable
-    // Headlines break Korean by phrase (API 33+), body copy by paragraph; button labels keep simple breaks.
-    private fun scaled(baseSize: androidx.compose.ui.unit.TextUnit, baseLineHeight: androidx.compose.ui.unit.TextUnit, weight: FontWeight, lineBreak: LineBreak = LineBreak.Paragraph): TextStyle {
+    private fun scaled(baseSize: androidx.compose.ui.unit.TextUnit, baseLineHeight: androidx.compose.ui.unit.TextUnit, weight: FontWeight): TextStyle {
         val scale = LocalTmtnTextScale.current
         return TextStyle(
             fontFamily = TmtnFontFamily,
@@ -53,7 +54,6 @@ object TmtnType {
             letterSpacing = if (baseSize.value >= 22f) (-0.4).sp else 0.sp,
             fontFeatureSettings = "tnum",
             platformStyle = PlatformTextStyle(includeFontPadding = false),
-            lineBreak = lineBreak,
         )
     }
 }

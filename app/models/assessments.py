@@ -113,26 +113,54 @@ class TmtnIndexResult(models.Model):
 
 
 class InitialHabitSnapshot(models.Model):
-    """⚠️ 2026-09-15 신규 - 강호님(모델) "초기습관_고정과_신규실천_시작값_확정" 반영.
-    가입 설문(신체정보+운동습관) 기준 "초기 습관 점수"를 최초 1회만 계산해서 고정한다.
-    이후 미션 완료·추가 운동·일상적인 재조회로 이 값을 절대 덮어쓰지 않음(user
-    OneToOneField로 "사용자당 1개, 재생성 시도하면 UNIQUE 위반"을 DB 레벨에서 강제).
+    """⚠️ 2026-09-15 신규, 2026-09-16 갱신 - 강호님(모델) "초기습관_산식과_모델표시_확정_v1"
+    반영. 가입 설문(신체정보+운동습관) 기준 "초기 습관 점수"를 최초 1회만 계산해서
+    고정한다. 이후 미션 완료·추가 운동·일상적인 재조회로 이 값을 절대 덮어쓰지 않음
+    (user OneToOneField로 "사용자당 1개, 재생성 시도하면 UNIQUE 위반"을 DB 레벨에서 강제).
 
-    ⚠️ score가 항상 채워지는 게 아님 - 세부 배점(저강도/중강도/근력 일수별 배점)은
-    아직 "검토안"이고 확정된 정책이 아니라서(composition_formula.py의
-    InitialHabitSnapshot.__post_init__이 policy_status='pending'이면 score!=None을
-    거부함), 지금은 policy_status='pending', score=None으로만 저장함 - 나중에 배점
-    정책이 확정되면 실제 계산 로직을 추가해서 채울 것. 이 스냅샷 자체(존재 여부,
-    input_revision)는 세부 배점과 무관하게 지금 만들어도 안전함(정책이 나중에 확정돼도
-    "가입 시점 입력"이라는 사실 자체는 안 바뀌니까)."""
+    ⚠️ 세부 배점(저강도20·중고강도50·근력30)은 확정돼서 계산 자체는 준비됐지만, "가입
+    당시 완성 설문"을 정확히 식별하는 방법(온보딩이 신체정보+운동습관을 어떻게
+    저장하는지)이 아직 확인 전이라 policy_status는 계속 'pending'으로 유지 중 - 확인
+    되는 대로 practice_score_service.py의 계산 호출부만 마저 연결하면 됨(모델 필드는
+    이미 준비). "서로 무관한 가장 오래된 두 행을 가입 당시로 단정하지 말라"는 원칙
+    때문에, 확인 전까지는 절대 policy_status='approved'로 실제 점수를 채우지 않음."""
 
     id = fields.UUIDField(primary_key=True, default=uuid.uuid4)
     user = fields.OneToOneField("models.User", related_name="initial_habit_snapshot")
     input_revision = fields.CharField(max_length=140)  # 가입 시점 신체정보+운동습관 스냅샷 조합
-    formula_version = fields.CharField(max_length=60)  # 'pending-selection' - 배점 정책 확정 전
+    # ⚠️ 2026-09-16 추가 - initial_habit.py의 DEFINITION('leisure_bouts10_strength_days_v1')
+    # 과 일치해야 계산이 통과함. 이 정의(10분 이상 지속 활동 기준)가 실제 온보딩 설문
+    # 문항과 일치하는지는 별도 확인 필요 - 확인 전까지는 이 필드도 비워둠(null).
+    input_definition = fields.CharField(max_length=60, null=True)
+    formula_version = fields.CharField(max_length=60)  # 'pending-selection' - 확인 전
     policy_status = fields.CharField(max_length=20)  # 'pending' | 'approved'
     score = fields.FloatField(null=True)
+    # ⚠️ 2026-09-16 추가 - 항목별 기여도(low/moderate_vigorous/strength) 보존. 화면에서
+    # "왜 이 점수인지" 보여줄 때, 그리고 나중에 배점 정책이 바뀔 때 감사 근거로 씀.
+    contributions = fields.JSONField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
         table = "initial_habit_snapshots"
+
+
+class InitialHabitConversionAudit(models.Model):
+    """⚠️ 2026-09-16 신규 - 기존 pending 사용자를 일괄 전환할 때의 감사 기록. 강호님
+    문서 §5 요구사항: "이전 pending/새 점수/산식/변경 시각/이유를 감사 기록으로
+    남기고 트랜잭션과 유일 제약으로 이중 생성을 막는다." InitialHabitSnapshot 자체는
+    user당 1개뿐이라(OneToOne) 전환 이력이 그 안에 안 남으니, 별도 테이블로 보존."""
+
+    id = fields.UUIDField(primary_key=True, default=uuid.uuid4)
+    user = fields.ForeignKeyField("models.User", related_name="initial_habit_conversion_audits")
+    previous_policy_status = fields.CharField(max_length=20)
+    previous_score = fields.FloatField(null=True)
+    previous_formula_version = fields.CharField(max_length=60)
+    new_policy_status = fields.CharField(max_length=20)
+    new_score = fields.FloatField(null=True)
+    new_formula_version = fields.CharField(max_length=60)
+    new_contributions = fields.JSONField(null=True)
+    reason = fields.CharField(max_length=60)  # 예: 'SIGNUP_SOURCE_CONFIRMED_BACKFILL'
+    converted_at = fields.DatetimeField(auto_now_add=True)
+
+    class Meta:
+        table = "initial_habit_conversion_audits"

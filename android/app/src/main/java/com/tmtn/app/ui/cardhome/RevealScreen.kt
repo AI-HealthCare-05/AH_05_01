@@ -1,41 +1,26 @@
 package com.tmtn.app.ui.cardhome
 
-import com.tmtn.app.ui.common.toKoreanDateLabel
-import java.time.LocalDate
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.tmtn.app.network.model.CardRevealResponse
 import com.tmtn.app.ui.onboarding.TmtnPrimaryButton
 import com.tmtn.app.ui.onboarding.TmtnTopBar
 import com.tmtn.app.ui.theme.LocalTmtnColors
-import com.tmtn.app.ui.theme.ColorBrandForest
-import com.tmtn.app.ui.theme.ColorBackground
-import com.tmtn.app.ui.theme.ColorReward
-import com.tmtn.app.ui.theme.ColorWood
-import com.tmtn.app.ui.theme.ColorOnSurface
-import com.tmtn.app.ui.theme.ColorOnSurfaceVariant
-import com.tmtn.app.ui.theme.ColorSurface
 import com.tmtn.app.ui.theme.TmtnType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -72,12 +57,6 @@ fun MaterialIcon(element: String, size: androidx.compose.ui.unit.Dp, modifier: M
         )
     }
 }
-
-// Figma B06 카드는 앱 전역 테마(검정/주황)와 별개로 항상 이 초록 카드 디자인을 씀.
-private val NoteCardBg = ColorBrandForest
-private val NoteCream = ColorBackground
-private val NoteGold = ColorReward
-private val NoteStampColor = ColorWood
 
 /** Figma B06 · 카드 공개(winner) — "오늘의 틈 노트" 디자인 */
 @Composable
@@ -125,11 +104,11 @@ fun RevealScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // ⚠️ "오늘 카드 다시 보기"로 완료/중단된 미션을 다시 열었을 때도 이 화면 자체는
-            // 그대로 재사용됨. isFinished를 써서 "이 카드 실천하기"는 완전히 숨김("어차피
+            // 그대로 재사용됨. isFinished를 써서 "이 행동 시작하기"는 완전히 숨김("어차피
             // onStartAction이 다시 완료 화면으로 돌려보내니 눌러봤자 의미 없음).
             //
             // ⚠️ 2026-09-04 반영: 진행 중(ACTIVE/PAUSED)인 미션 화면에서 뒤로가기로 여기
-            // 돌아왔을 때 "이 카드 실천하기"가 그대로 보여서 마치 새로 시작하는 것처럼
+            // 돌아왔을 때 "이 행동 시작하기"가 그대로 보여서 마치 새로 시작하는 것처럼
             // 헷갈렸음. 이제 진행 중이면 "진행 중인 미션 확인"으로 문구만 바꿔서 보여줌 -
             // onStartAction은 이미 stepForRevealedCard()로 진행 상태에 맞는 화면(타이머
             // 진행/일시정지 등)으로 정확히 보내주므로 그대로 재사용.
@@ -138,7 +117,7 @@ fun RevealScreen(
             // 전부에서 없애기로 방향이 정해짐 - 이 화면(카드/B06)의 버튼도 제거.
             val isInProgress = card.state == "ACTIVE" || card.state == "PAUSED"
             // ⚠️ 2026-09-07 반영: 쉬어가기(REST) 중에 "오늘 카드 다시 보기"로 들어와서
-            // 여기서 곧장 "이 카드 실천하기"를 누르면, 서버에 쉬어가기 취소 절차
+            // 여기서 곧장 "이 행동 시작하기"를 누르면, 서버에 쉬어가기 취소 절차
             // (cancel_rest_day, C25) 없이 그냥 시작돼버려서 완료해도 쓴 쉬어가기 1회가
             // 안 돌아오는 문제가 있었음. READY 상태(아직 시작 전)에서만 숨기고, 이미
             // 시작된 미션(ACTIVE/PAUSED)은 계속 확인할 수 있어야 하니 그대로 둠 - "새로
@@ -147,7 +126,7 @@ fun RevealScreen(
             val isRestingBeforeStart = state.isTodayRestDay.value && !isInProgress && !isFinished
             if (!isFinished && !isRestingBeforeStart) {
                 TmtnPrimaryButton(
-                    text = if (isInProgress) "진행 중인 미션 확인" else "이 카드 실천하기",
+                    text = if (isInProgress) "진행 중인 미션 확인" else "이 행동 시작하기",
                     onClick = onStartAction,
                 )
             } else if (isRestingBeforeStart) {
@@ -169,122 +148,14 @@ fun RevealScreen(
             // ⚠️ 2026-09-06 반영: 완료/쉬어감 정보를 이 화면 하단에 보여주던 블록을
             // 다시 없앰 - "카드만 보이면 된다"는 방향으로 정리됨. 별도 축하 화면
             // (CompletedScreen)으로도 안 돌아가고, 그냥 이 카드 화면 자체만 보여줌.
-
-        }
-    }
-}
-
-@Composable
-fun NoteCard(card: CardRevealResponse, displayDate: java.time.LocalDate) {
-    val material = MATERIAL_NAMES[card.five_element]
-    val cardFont = com.tmtn.app.ui.theme.TmtnFontFamily
-    // 완료 카드에도 흰색 바탕과 숲색 테두리를 사용한다. 측정 방식은 배지로 안내한다.
-    val isModelMission = com.tmtn.app.ui.common.isModelRecognitionExecType(card.exec_type)
-    val ink = ColorOnSurface // V19 본문 색
-    val secondary = ColorOnSurfaceVariant // V19 보조정보 색
-
-    com.tmtn.app.ui.common.TarotCardFrame(
-        isBack = false,
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 650.dp), // V19: "기본 카드 너비 350, 최소 높이 650"
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 34.dp).padding(top = 40.dp, bottom = 56.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text("오늘의 틈", style = TmtnType.title.copy(fontFamily = cardFont), color = ink)
-
-            // 원형 메달리온에 재료 이미지
-            Box(
-                modifier = Modifier.size(90.dp).background(ColorSurface, CircleShape),
-                contentAlignment = Alignment.Center,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
             ) {
-                MaterialIcon(element = card.five_element, size = 56.dp)
-            }
-
-            if (material != null) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("${material.first} · ${card.domain ?: material.second}", style = TmtnType.label.copy(fontFamily = cardFont), color = ink)
-                    Text(displayDate.toKoreanDateLabel(), style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
+                TextButton(onClick = { state.step.value = CardHomeStep.REASON_DETAIL }) {
+                    Text("추천 이유 보기", style = TmtnType.label, color = colors.onSurfaceVariant)
                 }
             }
-
-            if (card.fortune_text != null) {
-                Text(card.fortune_text, style = TmtnType.title.copy(fontFamily = cardFont), color = ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            }
-
-            if (isModelMission) com.tmtn.app.ui.common.ModelMissionBadge()
-
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                LuckyRowV19(label = "행운의 행동", value = card.title, ink = ink, secondary = secondary, cardFont = cardFont)
-                if (card.lucky_location != null) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(Modifier.weight(1f)) {
-                            Text("행운의 위치", style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
-                            Text(card.lucky_location, style = TmtnType.label.copy(fontFamily = cardFont), color = ink)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("행운의 숫자", style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
-                            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Text("${card.target_value}", style = TmtnType.headline.copy(fontFamily = cardFont), color = ink)
-                                Text(card.unit, style = TmtnType.body.copy(fontFamily = cardFont), color = ink)
-                            }
-                        }
-                    }
-                } else {
-                    LuckyRowV19(label = "행운의 숫자", value = "${card.target_value}${card.unit}", ink = ink, secondary = secondary, cardFont = cardFont)
-                }
-            }
-
-            if (card.line_text != null) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(ColorSurface, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 13.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Text("오늘의 한 줄", style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
-                    Text(card.line_text, style = TmtnType.label.copy(fontFamily = cardFont), color = ink)
-                }
-            }
-
-            if (material != null) {
-                Text(
-                    // ⚠️ 2026-09-12 반영: V19 C08(완료 카드) - 완료 상태면 "실천하면"이
-                    // 아니라 "실천 완료 · 받았어요"로 바뀜. NoteCard를 완료 화면에서도
-                    // 재사용하기 위해 카드 자체 상태(card.state)로 분기.
-                    if (card.state == "COMPLETED") "실천 완료, ${material.first} 1개를 받았어요"
-                    else "실천하면 ${material.first} 1개",
-                    style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LuckyRowV19(label: String, value: String, ink: Color, secondary: Color, cardFont: androidx.compose.ui.text.font.FontFamily) {
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(label, style = TmtnType.caption.copy(fontFamily = cardFont), color = secondary)
-        Text(value, style = TmtnType.bodyLarge.copy(fontFamily = cardFont), color = ink)
-    }
-}
-
-@Composable
-private fun LuckyRow(label: String, value: String?, valueContent: (@Composable () -> Unit)? = null) {
-    Row(
-        modifier = Modifier.fillMaxWidth().height(60.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = TmtnType.caption, color = NoteCream.copy(alpha = 0.56f))
-        if (valueContent != null) {
-            valueContent()
-        } else if (value != null) {
-            Text(value, style = TmtnType.body, color = NoteCream)
         }
     }
 }

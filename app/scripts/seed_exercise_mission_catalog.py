@@ -5,6 +5,14 @@
 계열 중 시니어안전=Y인 것만 골랐다. 土(생활리듬)/金(기록)/水(수분)은 "운동우선" 풀 자체가
 비어있어 애초에 "틈새 운동"이라는 이름에 안 맞는다고 판단해 제외.
 
+⚠️ 2026-09-18 추가(EC2 운영 DB에 카탈로그가 비어 있던 문제 대응 + 팀 확인 회신 반영) -
+"운동우선+시니어안전Y" 조건을 그대로 적용하면 58개인데, 기존 6개 중 5개가 이미 그 안에
+포함돼 있어 신규 후보는 53개. 이 중 TIMER(SELF_TIMER) 5종은 앱/서버가 아직 "목표 시간
+전 조기 완료 확인"·"경과 시간 표시"·"일시정지"·"완료 시간 저장"을 제대로 처리 못 해서
+이번엔 제외(수정·검증 후 별도 추가 예정) - 남은 48개만 추가함. target_value는 CSV
+행운의숫자_최소를 그대로 쓰는 기존 원칙(import_missions_csv.py)을 그대로 따름 -
+이미 MissionTemplateVersion에 임포트돼 있는 값이라 새로 정할 필요 없음.
+
 실행:
     uv run python -m app.scripts.seed_exercise_mission_catalog
 
@@ -32,6 +40,55 @@ CANDIDATES = [
     ("CHAIR_STAND_01", 3),  # 의자에서 앉았다 일어서기 - CHECK, 5~15회
     ("WALL_PUSHUP_02", 4),  # 벽 짚고 밀기 - CHECK, 5~15회
     ("GRIP_OPEN_04", 5),  # 주먹 쥐었다 펴기 - CHECK, 10~20회
+    # ⚠️ 2026-09-18 추가 - 아래 48개(TIMER 5종 제외). 위 docstring 참고.
+    ("WALK_PARK_02", 6),  # 공원 한 바퀴 걷기 - MODEL_ACTIVE_TIME, 10~20분
+    ("WALK_AFTER_MEAL_03", 7),  # 식사 후 산책하기 - MODEL_ACTIVE_TIME, 10~15분
+    ("WALK_ERRAND_05", 8),  # 걸어서 볼일 보기 - MODEL_ACTIVE_TIME, 10~20분
+    ("WALK_PHONE_06", 9),  # 통화하며 걷기 - MODEL_ACTIVE_TIME, 5~10분
+    ("WALK_MORNING_07", 10),  # 상쾌하게 산책하기 - MODEL_ACTIVE_TIME, 5~15분
+    ("WALK_EVENING_08", 11),  # 느긋하게 산책하기 - MODEL_ACTIVE_TIME, 10~20분
+    ("WALK_FRIEND_14", 12),  # 누군가와 걷기 - MODEL_ACTIVE_TIME, 10~20분
+    ("WALK_SHOULDER_15", 13),  # 어깨 펴고 걷기 - MODEL_ACTIVE_TIME, 5~15분
+    ("WALK_SLOWDOWN_16", 14),  # 느린 걸음 즐기기 - MODEL_ACTIVE_TIME, 10~20분
+    ("WALK_ROUTE_17", 15),  # 새 길로 걷기 - MODEL_ACTIVE_TIME, 10~15분
+    ("WALK_PAUSE_18", 16),  # 자리에서 잠깐 걷기 - MODEL_ACTIVE_TIME, 2~4분
+    ("WALK_SUNLIGHT_26", 17),  # 밝은 곳까지 걷기 - MODEL_ACTIVE_TIME, 5~10분
+    ("WALK_BREATH_27", 18),  # 호흡 맞춰 걷기 - MODEL_ACTIVE_TIME, 5~10분
+    ("WALK_SHOP_29", 19),  # 가까운 가게 다녀오기 - SELF_CHECK, 1~2번
+    ("WALK_RAINY_30", 20),  # 실내에서 걷기 - MODEL_ACTIVE_TIME, 5~15분
+    ("WALK_REST_31", 21),  # 중간에 쉬며 걷기 - MODEL_ACTIVE_TIME, 10~20분
+    ("WALK_WARMUP_36", 22),  # 몸 풀고 걷기 - MODEL_ACTIVE_TIME, 5~10분
+    ("CALF_RAISE_03", 23),  # 까치발 들기 - SELF_CHECK, 10~20회
+    ("SEATED_KNEE_07", 24),  # 앉아서 무릎 들기 - SELF_CHECK, 10~20회
+    ("SEATED_LEG_08", 25),  # 앉아서 다리 펴기 - SELF_CHECK, 5~15회
+    ("TOE_RAISE_10", 26),  # 발끝 들기 - SELF_CHECK, 10~20회
+    ("HAND_PRESS_13", 27),  # 손바닥 맞대고 누르기 - SELF_CHECK, 5~10회
+    ("TOWEL_PULL_14", 28),  # 수건 양끝 당기기 - SELF_CHECK, 5~10회
+    ("WALL_REACH_18", 29),  # 벽에 손 뻗기 - SELF_CHECK, 5~15회
+    ("CHAIR_PRESS_19", 30),  # 의자 팔걸이 누르기 - SELF_CHECK, 5~10회
+    ("SEATED_HEEL_20", 31),  # 앉아서 발뒤꿈치 들기 - SELF_CHECK, 10~20회
+    ("WALL_ANGEL_28", 32),  # 벽에 기대 팔 움직이기 - SELF_CHECK, 5~10회
+    ("CHAIR_HALFSTAND_29", 33),  # 의자에서 반쯤 일어서기 - SELF_CHECK, 5~10회
+    ("WALL_LEAN_31", 34),  # 벽에 기대 몸 밀기 - SELF_CHECK, 5~10회
+    ("SEATED_MARCH_STRONG_32", 35),  # 앉아서 무릎 번갈아 들기 - SELF_CHECK, 10~20회
+    ("BOOK_REACH_34", 36),  # 가벼운 물건 들기 - SELF_CHECK, 3~5회
+    ("TOWEL_SQUEEZE_35", 37),  # 수건 말아 쥐기 - SELF_CHECK, 5~15회
+    ("MINI_SQUAT_38", 38),  # 작게 앉았다 일어서기 - SELF_CHECK, 5~10회
+    ("STAIR_COUNT_01", 39),  # 계단 10칸 이상 오르기 - MODEL_STAIR_COUNT, 10~15칸
+    ("STAIR_COUNT_02", 40),  # 계단 천천히 오르기 - MODEL_STAIR_COUNT, 10~20칸
+    ("STAIR_COUNT_03", 41),  # 난간 잡고 계단 오르기 - MODEL_STAIR_COUNT, 15~20칸
+    ("STAIR_COUNT_04", 42),  # 가까운 계단 오르기 - MODEL_STAIR_COUNT, 15~25칸
+    ("STAIR_COUNT_05", 43),  # 식사 뒤 계단 오르기 - MODEL_STAIR_COUNT, 10~20칸
+    ("STAIR_COUNT_06", 44),  # 계단 20칸 이상 오르기 - MODEL_STAIR_COUNT, 20~25칸
+    ("STAIR_COUNT_07", 45),  # 계단 쉬어가며 오르기 - MODEL_STAIR_COUNT, 20~30칸
+    ("STAIR_COUNT_08", 46),  # 계단으로 한 번 이동하기 - MODEL_STAIR_COUNT, 15~30칸
+    ("STAIR_COUNT_09", 47),  # 계단 오르기 - MODEL_STAIR_COUNT, 10~15칸
+    ("STAIR_COUNT_10", 48),  # 계단 오르기로 마무리하기 - MODEL_STAIR_COUNT, 25~30칸
+    ("BRISK_WALK_49", 49),  # 빠른 걸음으로 걷기 - MODEL_ACTIVE_TIME, 10~20분
+    ("BODYWEIGHT_SQUAT_48", 50),  # 맨몸 스쿼트 하기 - SELF_CHECK, 10~20회
+    ("KNEE_PUSHUP_50", 51),  # 무릎 대고 팔굽혀펴기 - SELF_CHECK, 8~16회
+    ("WALK_STEPUP_51", 52),  # 오래 걷기 - MODEL_ACTIVE_TIME, 20~30분
+    ("STEP_UP_STAIR_52", 53),  # 발판 오르내리기 - SELF_CHECK, 10~20회
 ]
 
 

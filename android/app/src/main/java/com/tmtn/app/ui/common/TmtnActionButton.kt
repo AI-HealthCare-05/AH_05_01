@@ -35,7 +35,7 @@ fun TmtnActionButton(
         TmtnActionStyle.Tonal -> colors.surface
         else -> Color.Transparent
     }
-    val foreground = if (style == TmtnActionStyle.Primary) ColorOnForest else colors.primary
+    val foreground = if (style == TmtnActionStyle.Primary) ButtonPrimaryLabel else colors.primary
     val minimum = if (style == TmtnActionStyle.Text) TmtnLayout.TouchTarget else TmtnLayout.ControlMin
     // One feedback layer: the bounded control dims on touch-down, without a second expanding disc.
     CompositionLocalProvider(LocalRippleConfiguration provides null) {

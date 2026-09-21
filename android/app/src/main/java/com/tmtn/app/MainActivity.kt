@@ -258,19 +258,29 @@ class MainActivity : ComponentActivity() {
                                             },
                                             onStopSensorTracking = { stopMissionService() },
                                             onStartStepInPlace = { startStepInPlaceTracking() },
+                                            onStartStepInPlaceResume = { count -> startStepInPlaceTrackingResume(count) },
                                             onStopStepInPlace = { stopStepInPlaceTracking() },
-                                            onStartWalking = { startWalkingTracking() },
+                                            // ⚠️ 2026-09-16 - suspend 함수(프로필 조회 포함, QA F11①)로 바뀌어서
+                                            // lifecycleScope.launch로 감쌈.
+                                            onStartWalking = { lifecycleScope.launch { startWalkingTracking() } },
+                                            onStartWalkingResume = { seconds -> lifecycleScope.launch { startWalkingTracking(seconds) } },
                                             onStopWalking = { stopWalkingTracking() },
                                             onStartRunningDistance = { startRunningDistanceTracking() },
-                                            onStartRunningDuration = { startRunningDurationTracking() },
+                                            onStartRunningDistanceResume = { meters -> startRunningDistanceTrackingResume(meters) },
+                                            onStartRunningDuration = { lifecycleScope.launch { startRunningDurationTracking() } },
+                                            onStartRunningDurationResume = { seconds -> lifecycleScope.launch { startRunningDurationTracking(seconds) } },
                                             onStopRunning = { stopRunningTracking() },
                                             onStartStairs = { startStairsTracking() },
+                                            onStartStairsResume = { count -> startStairsTrackingResume(count) },
                                             onStopStairs = { stopStairsTracking() },
                                             onPauseSensorTracking = { pauseMissionService() },
                                             onResumeSensorTracking = { resumeMissionService() },
                                             onForceSyncSensor = { forceSyncSensorNow() },
                                             onOpenSettings = { openAppSettings() },
-                                            onOpenTuntunScore = { currentTab = MainTab.REFERENCE },
+                                            onOpenTuntunScore = {
+                                                referenceState.openWeeklyJournal()
+                                                currentTab = MainTab.REFERENCE
+                                            },
                                             onOpenDam = { currentTab = MainTab.DAM },
                                             onImmersiveChange = { isImmersive = it },
                                             startAtDeckPick = deckPickOnEntry,
@@ -285,8 +295,7 @@ class MainActivity : ComponentActivity() {
                                             currentTab = MainTab.HOME
                                         },
                                         onOpenJournal = {
-                                            referenceState.journal.requestedEdition = 0
-                                            referenceState.step.value = com.tmtn.app.ui.reference.ReferenceStep.SUMMARY
+                                            referenceState.openWeeklyJournal()
                                             currentTab = MainTab.REFERENCE
                                         },
                                     ) }
@@ -502,6 +511,16 @@ class MainActivity : ComponentActivity() {
         sendServiceAction(MissionSensorService.ACTION_START_STEP_IN_PLACE)
     }
 
+    // ⚠️ 2026-09-16 추가(QA) - 화면을 나갔다 돌아온 "이어하기" 진입 시 서버가 준 마지막
+    // 걸음수부터 이어서 셈. resumeCount<=0이면 그냥 새로 시작하는 것과 동일.
+    private fun startStepInPlaceTrackingResume(resumeCount: Int) {
+        sendServiceAction(
+            MissionSensorService.ACTION_START_STEP_IN_PLACE,
+            MissionSensorService.EXTRA_RESUME_STEP_COUNT,
+            resumeCount,
+        )
+    }
+
     private fun stopStepInPlaceTracking() {
         sendServiceAction(MissionSensorService.ACTION_STOP_STEP_IN_PLACE)
     }
@@ -512,14 +531,55 @@ class MainActivity : ComponentActivity() {
         sendServiceAction(MissionSensorService.ACTION_START_STAIRS)
     }
 
+    // ⚠️ 2026-09-16 추가(QA F01) - 계단 이어하기용.
+    private fun startStairsTrackingResume(resumeCount: Int) {
+        sendServiceAction(
+            MissionSensorService.ACTION_START_STAIRS,
+            MissionSensorService.EXTRA_RESUME_STAIR_COUNT,
+            resumeCount,
+        )
+    }
+
     private fun stopStairsTracking() {
         sendServiceAction(MissionSensorService.ACTION_STOP_STAIRS)
     }
 
     // ⚠️ 2026-09-11 추가 - 틈새 운동의 나머지 센서형(걷기/달리기)도 이미 있던 독립 액션을
     // 그대로 재사용. 오늘의 카드 챌린지와 분리돼 있어서 서로 안 섞임.
-    private fun startWalkingTracking() {
-        sendServiceAction(MissionSensorService.ACTION_START_WALKING)
+    // ⚠️ 2026-09-16 버그 수정(QA F11①) - "이어하기" 파라미터에 더해 이제 프로필(키·나이)도
+    // 조회해서 같이 실어 보냄. 예전엔 이 조회 자체가 없어서 항상 기본값(키170cm·보정
+    // 없음) 임계값을 썼음 - startTrackingChallenge()가 오늘의 카드에서 이미 하던 걸
+    // 틈새 운동에도 그대로 적용.
+    private suspend fun startWalkingTracking(resumeSeconds: Int = 0) {
+        val (heightCm, ageYears) = fetchCalibration()
+        val intent = Intent(this, MissionSensorService::class.java).apply {
+            action = MissionSensorService.ACTION_START_WALKING
+            if (resumeSeconds > 0) putExtra(MissionSensorService.EXTRA_RESUME_WALK_SECONDS, resumeSeconds)
+            if (heightCm != null) putExtra(MissionSensorService.EXTRA_HEIGHT_CM, heightCm)
+            if (ageYears != null) putExtra(MissionSensorService.EXTRA_AGE_YEARS, ageYears)
+        }
+        ContextCompat.startForegroundService(this, intent)
+    }
+
+    // ⚠️ 2026-09-16 추가 - startTrackingChallenge()와 같은 방식(프로필 조회, 실패 시 null
+    // 반환 - 이 경우 매니저가 기본값을 씀)으로 틈새 운동 걷기/달리기 시간형이 공유해서 씀.
+    private suspend fun fetchCalibration(): Pair<Float?, Int?> {
+        val info = try {
+            val response = ApiClient.profileApi.getMe()
+            if (response.isSuccessful) response.body() else null
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+        val heightCm = info?.height_cm?.takeIf { it.isFinite() && it > 0 }
+        val now = java.time.LocalDate.now()
+        val birthYear = info?.birth_year
+        val birthMonth = info?.birth_month
+        val ageYears = if (birthYear != null && birthYear <= now.year && birthMonth != null && birthMonth in 1..12) {
+            (now.year - birthYear - if (now.monthValue < birthMonth) 1 else 0).takeIf { it >= 0 }
+        } else null
+        return heightCm to ageYears
     }
 
     private fun stopWalkingTracking() {
@@ -530,8 +590,25 @@ class MainActivity : ComponentActivity() {
         sendServiceAction(MissionSensorService.ACTION_START_RUNNING_DISTANCE)
     }
 
-    private fun startRunningDurationTracking() {
-        sendServiceAction(MissionSensorService.ACTION_START_RUNNING_DURATION)
+    // ⚠️ 2026-09-16 추가(QA F01) - 달리기 거리 이어하기용.
+    private fun startRunningDistanceTrackingResume(resumeMeters: Int) {
+        sendServiceAction(
+            MissionSensorService.ACTION_START_RUNNING_DISTANCE,
+            MissionSensorService.EXTRA_RESUME_RUNNING_METERS,
+            resumeMeters,
+        )
+    }
+
+    // ⚠️ 2026-09-16 버그 수정(QA F11①) - 걷기와 같은 이유·같은 수정.
+    private suspend fun startRunningDurationTracking(resumeSeconds: Int = 0) {
+        val (heightCm, ageYears) = fetchCalibration()
+        val intent = Intent(this, MissionSensorService::class.java).apply {
+            action = MissionSensorService.ACTION_START_RUNNING_DURATION
+            if (resumeSeconds > 0) putExtra(MissionSensorService.EXTRA_RESUME_RUNNING_SECONDS, resumeSeconds)
+            if (heightCm != null) putExtra(MissionSensorService.EXTRA_HEIGHT_CM, heightCm)
+            if (ageYears != null) putExtra(MissionSensorService.EXTRA_AGE_YEARS, ageYears)
+        }
+        ContextCompat.startForegroundService(this, intent)
     }
 
     private fun stopRunningTracking() {
@@ -541,6 +618,16 @@ class MainActivity : ComponentActivity() {
     private fun sendServiceAction(action: String) {
         val intent = Intent(this, MissionSensorService::class.java).apply {
             this.action = action
+        }
+        ContextCompat.startForegroundService(this, intent)
+    }
+
+    // ⚠️ 2026-09-16 추가(QA) - 틈새 운동 "이어하기"용. extra를 실어 보내야 해서 기존
+    // sendServiceAction(action: String)과 별개 오버로드로 분리 - 기존 호출부는 안 건드림.
+    private fun sendServiceAction(action: String, extraKey: String, extraValue: Int) {
+        val intent = Intent(this, MissionSensorService::class.java).apply {
+            this.action = action
+            putExtra(extraKey, extraValue)
         }
         ContextCompat.startForegroundService(this, intent)
     }

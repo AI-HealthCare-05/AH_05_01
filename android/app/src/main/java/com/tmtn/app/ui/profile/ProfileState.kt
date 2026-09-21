@@ -120,13 +120,19 @@ class ProfileState(private val profileApiProvider: () -> com.tmtn.app.network.Pr
 
     // Existing notification PATCH preserves enabled. The onboarding schedule POST always enables it.
     // Server mapping: wake / lunch + 1 hour / sleep - 2 hours. Local scheduling follows a successful save.
+    // ⚠️ 2026-09-18 버그 수정(UI/UX 핸드오프 P01~03) - 예전엔 계산된 슬롯만 보내서,
+    // 서버의 원본 시각(wake_time 등)이 최초 온보딩 값에 멈춰 있었음(재수정해도 안 바뀜).
+    // 이제 원본 시각도 같이 보내서 다음 재조회 때 정확한 값을 보여줄 수 있게 함.
     suspend fun saveWakeSleep(wakeTime: String, lunchTime: String, sleepTime: String) {
         updatePreference("시간을 저장하지 못했어요. 입력한 내용은 그대로예요.") {
             val response = profileApiProvider().updateNotificationSettings(
-                NotificationSettingUpdateRequest(slots = listOf(
-                    wakeTime, java.time.LocalTime.parse(lunchTime).plusHours(1).toString(),
-                    java.time.LocalTime.parse(sleepTime).minusHours(2).toString(),
-                ))
+                NotificationSettingUpdateRequest(
+                    slots = listOf(
+                        wakeTime, java.time.LocalTime.parse(lunchTime).plusHours(1).toString(),
+                        java.time.LocalTime.parse(sleepTime).minusHours(2).toString(),
+                    ),
+                    wake_time = wakeTime, lunch_time = lunchTime, sleep_time = sleepTime,
+                )
             )
             if (!response.isSuccessful) failWithMessage(parseErrorMessage(response))
             notificationSetting.value = response.body() ?: failWithMessage("저장한 알림을 확인하지 못했어요.")

@@ -1,0 +1,37 @@
+{
+  "config_sha256": "ec65d546dad92b7ed169f0dc885e3dcf771a625567e4e62bd4806b821c209da9",
+  "files": {
+    "diabetes/development_2019_2021.csv": {
+      "rows": 15720,
+      "sha256": "46c82d17cfe8ef87fcc4d0684f49ab17a8d29191ba87cade918ebc6a731aa854"
+    },
+    "hypertension/development_2019_2021.csv": {
+      "rows": 16325,
+      "sha256": "fafbecbae9abde5ad07a3517f57415e83e28295400a5e02773bb817a9052aedd"
+    },
+    "waist/development_2019_2021.csv": {
+      "rows": 16403,
+      "sha256": "f6677ef29ab58d848b9341cf5f22c05cf9f75738b5be8edc67dd1592cebf03ba"
+    }
+  },
+  "implementation_version": "v0.1",
+  "input_sha256": "dcfd76c8749469da2bd0432d497b23d8f3635ea42b85afcb821e7346b0474745",
+  "output_version": "development_v0_2",
+  "policy": {
+    "eligibility_missing_mapped_to_ineligible": {
+      "diabetes_target_eligible": 1,
+      "hypertension_target_eligible": 0,
+      "waist_target_eligible": 0
+    },
+    "evaluation_performed": false,
+    "feature_imputation_performed": false,
+    "reserved_year_accessed": false,
+    "training_performed": false
+  },
+  "schema_version": 1,
+  "source_years": [
+    2019,
+    2020,
+    2021
+  ]
+}

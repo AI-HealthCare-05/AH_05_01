@@ -37,6 +37,12 @@ class RunningManager(private val context: Context) : LocationListener {
     fun isRecentlyActive(now: Long = android.os.SystemClock.elapsedRealtime()): Boolean =
         lastAcceptedMovementAt > 0L && now - lastAcceptedMovementAt in 0L..3000L
 
+    // ⚠️ 2026-09-17 추가(QA Q06) - "권한/GPS는 켜져 있는데 아직 첫 위치를 못 받은" 상태를
+    // 화면이 구분해서 안내할 수 있게 함. onLocationChanged에서 정확도 기준(minAccuracyMeters)을
+    // 통과한 위치를 한 번이라도 lastLocation에 반영하면 true로 바뀜 - start()/reset()으로
+    // 새 구간을 시작하면 다시 false.
+    fun hasFix(): Boolean = lastLocation != null
+
     // 누적 달린 거리 (미터 단위)
     var totalDistanceMeters = 0f
         private set

@@ -58,7 +58,7 @@ internal fun scoreInputFacts(inputs: ScoreInputsResponse, area: String): List<Ed
         ?.let { java.math.BigDecimal.valueOf(it).stripTrailingZeros().toPlainString() + " " + unit } ?: "미입력"
     fun minutes(value: Int?) = value?.takeIf { it >= 0 }?.let { "${it}분 / 주" } ?: "미입력"
     val body = listOf(
-        EditorialFact("생년월", inputs.birth_month_label?.takeIf { it.isNotBlank() } ?: "미입력"),
+        EditorialFact("태어난 연·월", inputs.birth_month_label?.takeIf { it.isNotBlank() } ?: "미입력"),
         EditorialFact("성별", inputs.sex_label?.takeIf { it.isNotBlank() } ?: "미입력"),
         EditorialFact("키", number(inputs.height_cm, "cm")),
         EditorialFact("몸무게", number(inputs.weight_kg, "kg")),

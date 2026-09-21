@@ -1,0 +1,189 @@
+{
+  "schema_version": "tmtn-journal-editorial-v1",
+  "service_date": "2026-09-20",
+  "preview": false,
+  "sections": [
+    {
+      "section": "movement_column",
+      "status": "ready",
+      "articles": [
+        {
+          "id": "movement.walk_habit",
+          "section": "movement_column",
+          "title": "산책 시간을 따로 내기 어렵다면",
+          "text": "출근길 일부를 걷거나 가까운 가게에 걸어가는 방법이 있어요. 가족이나 친구와 저녁 식사 뒤 산책하는 것도 일상에 걷기를 넣는 선택지예요.",
+          "revision": "draft-1",
+          "content_sha256": "a53fd23aaf0486541ac9bd5a6d6b9dec258e1f1d845e308d7270784178152a1e",
+          "numeric_slot": false,
+          "source": {
+            "id": "nhs.walking",
+            "publisher": "영국 NHS",
+            "title": "Walking for health",
+            "url": "https://www.nhs.uk/live-well/exercise/walking-for-health/",
+            "edition": "2022-12-15 본문 검토 표시; 보편적인 걷기 방법만 사용",
+            "locator": "Staying motivated > Make it a habit",
+            "checked_on": "2026-09-16"
+          },
+          "topic": "walking",
+          "allowed_claim_scope": "일상 걷기 예시. 식후 특정 시간·혈당 감소량·정해진 걸음 수를 처방하지 않음.",
+          "audience_min_age": 19,
+          "audience_max_age": null
+        }
+      ]
+    },
+    {
+      "section": "table_column",
+      "status": "ready",
+      "articles": [
+        {
+          "id": "table.label_basis",
+          "section": "table_column",
+          "title": "숫자를 읽기 전에, 기준량부터",
+          "text": "영양표시는 포장 전체나 일정량을 기준으로 적혀 있을 수 있어요. 함량을 읽기 전에 어떤 양을 기준으로 한 숫자인지 확인해 보세요.",
+          "revision": "draft-1",
+          "content_sha256": "651b2f518c5cb04cbcf278be93b2c02910a1bca16874a43e14eba0f11fb67226",
+          "numeric_slot": false,
+          "source": {
+            "id": "mfds.label.2025",
+            "publisher": "식품의약품안전처",
+            "title": "영양표시를 보면 건강이 보여요!",
+            "url": "https://www.foodsafetykorea.go.kr/upload/20180629/nutrition/content/20250729.pdf",
+            "edition": "파일명 20250729 · PDF 생성일 2025-07-22 · 별도 발행일 미확인",
+            "locator": "PDF 2쪽: 영양성분 표시 이해하기 / 표시 기준량 안내",
+            "checked_on": "2026-09-15"
+          },
+          "topic": "label",
+          "allowed_claim_scope": "표시 기준량을 구분하는 법만 설명. 실제 섭취량을 알 수 없으면 섭취 영양량을 계산하지 않음.",
+          "audience_min_age": null,
+          "audience_max_age": null
+        }
+      ]
+    },
+    {
+      "section": "daily_column",
+      "status": "ready",
+      "articles": [
+        {
+          "id": "daily.bp_prepare",
+          "section": "daily_column",
+          "title": "혈압을 재기 전, 잠깐 쉬어가요",
+          "text": "혈압을 재기 전에는 등을 받치고 앉아 적어도 5분 쉬어요. 측정 직전의 카페인·흡연·운동은 결과에 영향을 줄 수 있어요.",
+          "revision": "draft-1",
+          "content_sha256": "76a4aa64d726b3ba01c25094d70d74814a5424672298c9d5a8bb19a9d29f6420",
+          "numeric_slot": true,
+          "source": {
+            "id": "cdc.bp_measure",
+            "publisher": "미국 질병통제예방센터 CDC",
+            "title": "Measuring Your Blood Pressure",
+            "url": "https://www.cdc.gov/high-blood-pressure/measure/index.html",
+            "edition": "2026-09-04 업데이트 표시",
+            "locator": "Things that can potentially affect a blood pressure reading / The correct way to measure your blood pressure",
+            "checked_on": "2026-09-16"
+          },
+          "topic": "measurement",
+          "allowed_claim_scope": "일반적인 혈압 측정 준비. 진단 기준·복약 변경·앱 참고점수에서 실제 혈압 추정은 제공하지 않음.",
+          "audience_min_age": 19,
+          "audience_max_age": null
+        }
+      ]
+    }
+  ],
+  "related_readings": {
+    "diabetes": [
+      {
+        "id": "movement.walk_habit",
+        "section": "movement_column",
+        "title": "산책 시간을 따로 내기 어렵다면",
+        "text": "출근길 일부를 걷거나 가까운 가게에 걸어가는 방법이 있어요. 가족이나 친구와 저녁 식사 뒤 산책하는 것도 일상에 걷기를 넣는 선택지예요.",
+        "revision": "draft-1",
+        "content_sha256": "a53fd23aaf0486541ac9bd5a6d6b9dec258e1f1d845e308d7270784178152a1e",
+        "numeric_slot": false,
+        "source": {
+          "id": "nhs.walking",
+          "publisher": "영국 NHS",
+          "title": "Walking for health",
+          "url": "https://www.nhs.uk/live-well/exercise/walking-for-health/",
+          "edition": "2022-12-15 본문 검토 표시; 보편적인 걷기 방법만 사용",
+          "locator": "Staying motivated > Make it a habit",
+          "checked_on": "2026-09-16"
+        },
+        "topic": "walking",
+        "allowed_claim_scope": "일상 걷기 예시. 식후 특정 시간·혈당 감소량·정해진 걸음 수를 처방하지 않음.",
+        "audience_min_age": 19,
+        "audience_max_age": null
+      },
+      {
+        "id": "table.carbs_vs_sugars",
+        "section": "table_column",
+        "title": "탄수화물과 당류, 왜 따로 적혀 있을까요?",
+        "text": "탄수화물에는 당류뿐 아니라 전분도 포함돼요. 탄수화물 숫자만으로 당류의 양을 알 수는 없어서, 영양표시의 두 항목을 구분해 살펴봐요.",
+        "revision": "draft-1",
+        "content_sha256": "78a5e9ed8115a4632c69a293c97f9f03d3d352dd4b391f019370580dee157098",
+        "numeric_slot": false,
+        "source": {
+          "id": "nhs.sugar",
+          "publisher": "영국 NHS",
+          "title": "Sugar: the facts",
+          "url": "https://www.nhs.uk/live-well/eat-well/food-types/how-does-sugar-in-our-diet-affect-our-health/",
+          "edition": "2023-05-19 본문 검토 표시; 수치 권장량은 사용하지 않음",
+          "locator": "Nutrition labels and sugars: carbohydrate includes starchy carbohydrates",
+          "checked_on": "2026-09-16"
+        },
+        "topic": "food_label",
+        "allowed_claim_scope": "영양소 분류의 일반 정보. 당류가 적으면 혈당 영향이 없다는 의미가 아니며 인슐린 계산에 사용하지 않음.",
+        "audience_min_age": 19,
+        "audience_max_age": null
+      }
+    ],
+    "hypertension": [
+      {
+        "id": "daily.bp_log",
+        "section": "daily_column",
+        "title": "혈압은 숫자와 측정 기록을 함께 봐요",
+        "text": "집에서 혈압을 잰다면 비슷한 시간에 측정하고 결과를 기록해요. 기록을 진료 때 함께 살펴보면 좋고, 측정 시기와 빈도는 의료진과 상의해요.",
+        "revision": "draft-1",
+        "content_sha256": "8d1c3e4531ccbf15778c63574303b466f4708bf8ac8d257d01efbb700256ef51",
+        "numeric_slot": false,
+        "source": {
+          "id": "cdc.bp_measure",
+          "publisher": "미국 질병통제예방센터 CDC",
+          "title": "Measuring Your Blood Pressure",
+          "url": "https://www.cdc.gov/high-blood-pressure/measure/index.html",
+          "edition": "2026-09-04 업데이트 표시",
+          "locator": "How to measure your blood pressure at home",
+          "checked_on": "2026-09-16"
+        },
+        "topic": "measurement",
+        "allowed_claim_scope": "측정 기록과 의료진 상담에 관한 일반 정보. 매일 측정을 모든 사용자에게 처방하거나 약을 조절하지 않음.",
+        "audience_min_age": 19,
+        "audience_max_age": null
+      },
+      {
+        "id": "daily.bp_prepare",
+        "section": "daily_column",
+        "title": "혈압을 재기 전, 잠깐 쉬어가요",
+        "text": "혈압을 재기 전에는 등을 받치고 앉아 적어도 5분 쉬어요. 측정 직전의 카페인·흡연·운동은 결과에 영향을 줄 수 있어요.",
+        "revision": "draft-1",
+        "content_sha256": "76a4aa64d726b3ba01c25094d70d74814a5424672298c9d5a8bb19a9d29f6420",
+        "numeric_slot": true,
+        "source": {
+          "id": "cdc.bp_measure",
+          "publisher": "미국 질병통제예방센터 CDC",
+          "title": "Measuring Your Blood Pressure",
+          "url": "https://www.cdc.gov/high-blood-pressure/measure/index.html",
+          "edition": "2026-09-04 업데이트 표시",
+          "locator": "Things that can potentially affect a blood pressure reading / The correct way to measure your blood pressure",
+          "checked_on": "2026-09-16"
+        },
+        "topic": "measurement",
+        "allowed_claim_scope": "일반적인 혈압 측정 준비. 진단 기준·복약 변경·앱 참고점수에서 실제 혈압 추정은 제공하지 않음.",
+        "audience_min_age": 19,
+        "audience_max_age": null
+      }
+    ]
+  },
+  "model_explanation": {
+    "status": "separate_endpoint",
+    "endpoint": "/api/v1/tuntun-score/personal"
+  }
+}

@@ -11,6 +11,8 @@ from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from app.core import config
+from app.core.config import Env
 from app.core.time_utils import service_today
 from app.dtos.journal_editorial import (
     JournalEditorialResponse,
@@ -116,7 +118,14 @@ def age_bounds(user: User, today: date) -> tuple[int, int] | None:
 
 
 def eligibility_errors(
-    item: dict, source: dict, approval: dict, *, today: date, ages: tuple[int, int] | None, preview: bool = False
+    item: dict,
+    source: dict,
+    approval: dict,
+    *,
+    today: date,
+    ages: tuple[int, int] | None,
+    preview: bool = False,
+    internal_review: bool = False,
 ) -> list[str]:
     errors = []
     try:
@@ -135,14 +144,23 @@ def eligibility_errors(
         if not item["title"].strip() or not item["text"].strip() or not item["locator"].strip():
             errors.append("empty_copy")
         if not preview:
-            errors.extend(approval_errors(item, source, approval, today))
+            errors.extend(approval_errors(item, source, approval, today, internal_review=internal_review))
     except (KeyError, TypeError, ValueError, AttributeError):
         errors.append("invalid_catalog_record")
     return errors
 
 
-def approval_errors(item: dict, source: dict, approval: dict, today: date) -> list[str]:
+def approval_errors(
+    item: dict, source: dict, approval: dict, today: date, *, internal_review: bool = False
+) -> list[str]:
     errors = []
+    internal_approval = (
+        internal_review
+        and approval.get("scope") == "team_internal_demo"
+        and date.fromisoformat(approval.get("approved_on", "9999-12-31")) <= today
+    )
+    if approval.get("scope") == "team_internal_demo" and not internal_approval:
+        errors.append("internal_only")
     if not (
         approval.get("status") == "approved"
         and approval.get("reviewer")
@@ -150,10 +168,9 @@ def approval_errors(item: dict, source: dict, approval: dict, today: date) -> li
         and all(approval.get(key) == item[key] for key in ("id", "revision", "content_sha256", "source_id"))
     ):
         errors.append("content_unapproved")
-    if not (
-        approval.get("source_edition") == source["edition"]
-        and approval.get("rights_status") == "cleared_for_app_summary"
-        and approval.get("rights_review_id")
+    if approval.get("source_edition") != source["edition"] or (
+        not internal_approval
+        and not (approval.get("rights_status") == "cleared_for_app_summary" and approval.get("rights_review_id"))
     ):
         errors.append("source_use_unconfirmed")
     if today > date.fromisoformat(approval.get("expires_on", "0001-01-01")):
@@ -162,7 +179,14 @@ def approval_errors(item: dict, source: dict, approval: dict, today: date) -> li
 
 
 def select_editorial(
-    catalog: list, sources: list, approvals: list, *, today: date, ages: tuple[int, int] | None, preview: bool = False
+    catalog: list,
+    sources: list,
+    approvals: list,
+    *,
+    today: date,
+    ages: tuple[int, int] | None,
+    preview: bool = False,
+    internal_review: bool = False,
 ) -> JournalEditorialResponse:
     """Preview is an offline export facility, never exposed by the HTTP route."""
     source_map = {source["id"]: source for source in sources}
@@ -182,7 +206,13 @@ def select_editorial(
                 continue
             source = source_map.get(item.get("source_id"), {})
             if eligibility_errors(
-                item, source, approval_map.get(item.get("id"), {}), today=today, ages=ages, preview=preview
+                item,
+                source,
+                approval_map.get(item.get("id"), {}),
+                today=today,
+                ages=ages,
+                preview=preview,
+                internal_review=internal_review,
             ):
                 continue
             articles.append(
@@ -224,18 +254,30 @@ def select_editorial(
     )
 
 
-def load_catalog(directory: Path = CATALOG_DIR) -> tuple[list, list, list]:
+def load_catalog(directory: Path = CATALOG_DIR, *, internal_review: bool = False) -> tuple[list, list, list]:
     def read(name: str):
         return json.loads((directory / name).read_text(encoding="utf-8-sig"))
 
-    return read("knowledge.json"), read("sources.json"), read("approvals.json")["knowledge"]
+    # 배포자가 승인 파일을 아직 제공하지 않았다면 공개할 문장은 없다.
+    approvals = read("approvals.json")["knowledge"] if (directory / "approvals.json").exists() else []
+    if internal_review and (directory / "internal_approvals.json").exists():
+        # 사용자에게 승인받은 내부 시연 범위만 읽는다. 공개 승인·출처 이용허락을 만들어내지 않는다.
+        internal = read("internal_approvals.json")["knowledge"]
+        approvals = list({item["id"]: item for item in internal + approvals}.values())
+    return read("knowledge.json"), read("sources.json"), approvals
 
 
 class JournalEditorialService:
     async def get_editorial(self, user: User) -> JournalEditorialResponse:
         today = service_today(user.id)
         try:
-            return select_editorial(*load_catalog(), today=today, ages=age_bounds(user, today))
+            internal = config.ENV in (Env.LOCAL, Env.DEV)
+            return select_editorial(
+                *load_catalog(internal_review=internal),
+                today=today,
+                ages=age_bounds(user, today),
+                internal_review=internal,
+            )
         except (OSError, ValueError, TypeError, KeyError):
             # No personal data or raw catalog text in logs; records still work.
             logger.warning("Journal catalog unavailable; serving empty reading sections")

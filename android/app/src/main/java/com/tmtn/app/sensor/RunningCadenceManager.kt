@@ -79,10 +79,11 @@ class RunningCadenceManager(
     // isCurrentlyRunning/runningStartedAt이 안 지워져서, 일시정지 직후 checkTimeout()의
     // 뒤늦은 정산(최대 runningTimeoutMs)까지 값이 안 멈추고 있다가 한번에 확 뛰는 것처럼
     // 보였음. 일시정지 시점에 바로 정산.
+    // ⚠️ 2026-09-16 버그 수정(QA F11④) - WalkingCadenceManager와 같은 이유·같은 수정.
     fun settleOngoing() {
         if (!isCurrentlyRunning) return
         runningStartedAt?.let { started ->
-            accumulatedRunningSeconds += ((System.currentTimeMillis() - started) / 1000).toInt()
+            accumulatedRunningSeconds += ((android.os.SystemClock.elapsedRealtime() - started) / 1000).toInt()
         }
         isCurrentlyRunning = false
         runningStartedAt = null
@@ -106,10 +107,11 @@ class RunningCadenceManager(
         lastStepDetectedAt = 0L
     }
 
+    // ⚠️ 2026-09-16 버그 수정(QA F11④) - WalkingCadenceManager와 같은 이유·같은 수정.
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type != Sensor.TYPE_STEP_DETECTOR) return
 
-        val now = System.currentTimeMillis()
+        val now = event.timestamp / 1_000_000L
         lastStepDetectedAt = now
         recentStepTimestamps.addLast(now)
 
@@ -128,7 +130,7 @@ class RunningCadenceManager(
     fun checkTimeout() {
         if (!isCurrentlyRunning) return
 
-        val now = System.currentTimeMillis()
+        val now = android.os.SystemClock.elapsedRealtime()
         if (now - lastStepDetectedAt > runningTimeoutMs) {
             runningStartedAt?.let { started ->
                 accumulatedRunningSeconds += ((lastStepDetectedAt - started) / 1000).toInt()
@@ -156,9 +158,13 @@ class RunningCadenceManager(
         }
     }
 
+    // ⚠️ 2026-09-16 버그 수정(QA F03) - WalkingCadenceManager와 완전히 같은 원인·같은
+    // 수정. checkTimeout()이 lastStepDetectedAt까지만 확정하는데 이 함수는 지금까지
+    // System.currentTimeMillis()까지 낙관적으로 세고 있어서, timeout 순간 화면에
+    // 이미 보여준 시간이 줄어드는 되감김이 있었음.
     fun getCurrentTotalSeconds(): Int {
         val ongoing = if (isCurrentlyRunning && runningStartedAt != null) {
-            ((System.currentTimeMillis() - runningStartedAt!!) / 1000).toInt()
+            ((lastStepDetectedAt - runningStartedAt!!) / 1000).toInt()
         } else 0
         return accumulatedRunningSeconds + ongoing
     }

@@ -40,6 +40,12 @@ class NotificationSettingUpdateRequest(BaseModel):
     slots: list[str] | None = None
     weekdays: list[str] | None = None
     quiet_hours: dict | None = None
+    # ⚠️ 2026-09-18 추가(UI/UX 핸드오프 P01~03) - "생활시간 바꾸기" 화면(WakeSleepEditScreen)
+    # 재수정 시에도 원본 시각을 최신으로 유지하기 위함. 슬롯만 계속 바뀌고 원본이 예전
+    # 값으로 남아있으면, 다음에 재조회할 때 낡은 원본값을 보여주게 됨.
+    wake_time: str | None = None
+    lunch_time: str | None = None
+    sleep_time: str | None = None
 
     @field_validator("slots")
     @classmethod
@@ -47,6 +53,13 @@ class NotificationSettingUpdateRequest(BaseModel):
         if v is not None:
             for slot in v:
                 _validate_time_string(slot)
+        return v
+
+    @field_validator("wake_time", "lunch_time", "sleep_time")
+    @classmethod
+    def _check_original_time_format(cls, v: str | None) -> str | None:
+        if v is not None:
+            _validate_time_string(v)
         return v
 
 
@@ -57,3 +70,8 @@ class NotificationSettingResponse(BaseSerializerModel):
     quiet_hours: dict | None = None
     enabled: bool
     updated_at: datetime
+    # ⚠️ 2026-09-18 추가(UI/UX 핸드오프 P01~03) - 원본 기상/점심/취침 재조회용.
+    # 기존 사용자(마이그레이션 이전 가입)는 이 값이 없을 수 있어 전부 null 허용.
+    wake_time: str | None = None
+    lunch_time: str | None = None
+    sleep_time: str | None = None

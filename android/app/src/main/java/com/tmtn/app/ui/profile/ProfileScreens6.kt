@@ -56,7 +56,7 @@ fun PrivacyDataScreen(
             ) {
                 Text("무엇을 저장하나요", style = TmtnType.label, color = colors.onSurface)
                 DataCategoryRow("행동 기록", "완료 여부 · 시각 · 걸린 시간")
-                DataCategoryRow("입력한 값", "생년월 · 성별 · 키 · 몸무게 · 주당 운동량")
+                DataCategoryRow("입력한 값", "태어난 연·월 · 성별 · 키 · 몸무게 · 주당 운동량")
                 DataCategoryRow("계정", "이메일 · 로그인 기록")
             }
 
@@ -134,7 +134,7 @@ fun ExportDataScreen(
                     .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp)),
             ) {
                 ProfileListItem("행동 기록", "완료 여부 · 시각 · 걸린 시간")
-                ProfileListItem("입력한 값", "생년월 · 성별 · 키 · 몸무게 · 주당 운동량")
+                ProfileListItem("입력한 값", "태어난 연·월 · 성별 · 키 · 몸무게 · 주당 운동량")
                 ProfileListItem("계정 정보", "이메일 · 로그인 기록")
             }
 

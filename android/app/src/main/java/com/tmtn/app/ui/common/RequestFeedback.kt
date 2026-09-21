@@ -63,7 +63,7 @@ private fun fieldGuidance(item: JsonElement): String? = runCatching {
         "password", "new_password", "current_password" -> "비밀번호"
         "name" -> "이름"
         "nickname" -> "별명"
-        "birth_year", "birth_month" -> "생년월"
+        "birth_year", "birth_month" -> "태어난 연·월"
         "gender", "sex" -> "성별"
         "is_pregnant" -> "임신 여부"
         "height_cm" -> "키"

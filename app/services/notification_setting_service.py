@@ -35,7 +35,14 @@ class NotificationSettingService:
           - 아침 준비 = 기상 시각 그대로(일어난 직후)
           - 점심 뒤   = 입력한 점심 시각 + 1시간
           - 자기 전   = 취침 - 2시간
-        F02 화면에서 나중에 개별 슬롯을 껐다 켰다 할 수 있음(별도 PATCH API)."""
+        F02 화면에서 나중에 개별 슬롯을 껐다 켰다 할 수 있음(별도 PATCH API).
+
+        ⚠️ 2026-09-18 수정(UI/UX 핸드오프 P01~03) - 계산된 slots뿐 아니라 원본 입력값
+        (wake_time/lunch_time/sleep_time)도 그대로 저장해서 나중에 재조회 가능하게 함.
+        또한 "가입 POST와 수정 PATCH를 구분하고 enabled를 보존한다"는 계약에 맞춰,
+        이미 레코드가 있으면(이 엔드포인트 재호출 - 예: 온보딩 재시도) enabled를
+        무조건 True로 덮어쓰지 않고 기존 값을 유지함 - 최초 생성일 때만 True로 시작.
+        """
 
         slots = [
             request.wake_time,
@@ -44,7 +51,15 @@ class NotificationSettingService:
         ]
 
         instance = await self.repo.get_or_create(user.id)
-        updated = await self.repo.update(instance, slots=slots, enabled=True)
+        is_first_submission = instance.wake_time is None
+        updated = await self.repo.update(
+            instance,
+            slots=slots,
+            wake_time=request.wake_time,
+            lunch_time=request.lunch_time,
+            sleep_time=request.sleep_time,
+            enabled=True if is_first_submission else None,
+        )
         return NotificationSettingResponse.model_validate(updated)
 
     async def get_current(self, user: User) -> NotificationSettingResponse:
@@ -59,5 +74,10 @@ class NotificationSettingService:
             slots=request.slots,
             weekdays=request.weekdays,
             quiet_hours=request.quiet_hours,
+            # ⚠️ 2026-09-18 추가(UI/UX 핸드오프 P01~03) - "생활시간 바꾸기" 재수정 시
+            # 원본 시각도 같이 최신화. 안 보내면(None) repo.update()가 그 필드는 안 건드림.
+            wake_time=request.wake_time,
+            lunch_time=request.lunch_time,
+            sleep_time=request.sleep_time,
         )
         return NotificationSettingResponse.model_validate(updated)

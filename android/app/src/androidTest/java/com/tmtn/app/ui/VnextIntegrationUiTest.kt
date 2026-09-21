@@ -60,7 +60,7 @@ class VnextIntegrationUiTest {
     @Test fun homeExplainsWhenExtraExerciseUnlocks() {
         val state = CardHomeState().apply { todayChallengeState.value = "READY" }
         compose.setContent { TMTNv1Theme { ExtraExerciseHomeEntry(state) } }
-        compose.onNodeWithText("오늘의 카드를 마치면 열려요.").assertIsDisplayed()
+        compose.onNodeWithText("오늘의 카드 다음, 하루 5가지 운동을 만나요.").assertIsDisplayed()
         compose.onNodeWithText("틈새 운동 둘러보기").assertDoesNotExist()
     }
     @Test fun nativeJournalShowsCompositePointsAndTheServersExactDomainRank() {

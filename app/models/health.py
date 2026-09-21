@@ -48,6 +48,7 @@ class ExerciseHabitSnapshot(models.Model):
     user = fields.ForeignKeyField("models.User", related_name="exercise_habit_snapshots")
 
     strength_weekly_count = fields.SmallIntField()  # 0(안 함)~5(주5회 이상)
+    strength_frequency_unit = fields.CharField(max_length=8, null=True)  # 일수/횟수, 기존 값은 미확인
     strength_intensity = fields.CharEnumField(enum_type=StrengthIntensity, null=True)  # count=0이면 null 허용
 
     aerobic_low_minutes = fields.SmallIntField(default=0)  # 저강도 유산소, 분/주

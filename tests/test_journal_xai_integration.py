@@ -79,6 +79,7 @@ def inputs():
         SimpleNamespace(id="health-1", input_values={"height_cm": 170, "weight_kg": 64}),
         SimpleNamespace(
             id="habit-1",
+            strength_frequency_unit="days",
             strength_weekly_count=4,
             strength_intensity="MODERATE",
             aerobic_low_minutes=60,

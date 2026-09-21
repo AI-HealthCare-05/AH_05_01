@@ -1,0 +1,25 @@
+{
+  "files": {
+    "README.md": "e2032e98bdd44f9a118150af612d78ce795209448b896d33dc9a10147978c393",
+    "d0_inference.py": "bcc88a3f919e76fcf980f93c1065a05d7e2aa782dd278d04db787bcf24e22a9e",
+    "diabetes_model.joblib": "192cdf62004d82e0e76bb9514af050ed446803d2d8608f2dcc2e620e8566ff3f",
+    "diabetes_platt.joblib": "13c4c8160c1138fd72c0ed526e27cc7bebd08f444fc00dc1c612f0d2a5333155",
+    "hypertension_model.joblib": "47c410add1b73fe1a95ab09387b8d5a1cf531d77054137aa16f63b12db3fc080",
+    "hypertension_platt.joblib": "86e04df48f3ca80bde8b2751583c57ebc3a56d75d1f025079679062c4725534e",
+    "input_schema.json": "ec5c1c42db973496ddc0e413ae72c27f4c09018a528450dec6dd548f7f2113dc",
+    "metadata.json": "ad52c5ad18896568c78ab189fa2c4c55563a2932d5a59ff218fae104b675a159",
+    "provenance/REVIEW_RESPONSE_TEMPLATE.md": "b80baefc0de3333cbf12d95abcf877d17ec7a189e24309462de0e7fb931b3089",
+    "provenance/build_tuntun_input_frame.py": "3d0ffcae1195d945eddd8fa98b02bd95fe4907068e74d149d8c71fa1f109d7fb",
+    "provenance/d0_single_pipeline_selection_v0_1_owner_approved.yaml": "31e72cbbc9583239877a4784fcca65426a435f94c2eabe18e4598f5080afbd24",
+    "provenance/disease_model_pipeline.py": "bfa8a5cc7e440649a69ca5cfa784fadeb02a0fdfd70b30494b058fdae5fc226b",
+    "provenance/manifest_sha256.json": "eb871ef829b07375f1e68d2bc3e4605ee170fafd854833dac3f138ce44d4a873",
+    "provenance/refit_d0_production.py": "835e8daedda969ff1d83eb5f2c441d6212caaf93fc00df26ba0bb03d87e67115",
+    "provenance/select_d0_single_pipeline.py": "b63643a9add51301085bb2abe1936140253ab75778a3fc25dec4eefcf4fb91f3",
+    "provenance/selected_combinations.json": "5a0fcd4795aade33b785db2e5b8eaeadd30f238ed54983e4caed182308a6f5a2",
+    "provenance/validation_summary.json": "493a9e667285ce449f6273754c74c804090bc1ab7bed7b440f65ae7741a55c56",
+    "refit_contract.yaml": "5279bac2bf09a9392d3a343612510a3f9e132854279714546011b44c4cc8e606",
+    "requirements.txt": "3cb42a7b550b16a0fd6348ff8c0b7ad18a7741b6d0f5753587478c1138fa4478",
+    "smoke_cases.json": "c64b3d4726a8cd30cae8153e498e8028db3d13eef46667d1ab1089cfa7d880af",
+    "validation_summary.json": "541f581239168fa4aea333978f427e1addd548b5634d744beb201ba0f2b378f9"
+  }
+}

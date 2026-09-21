@@ -79,7 +79,7 @@ class SeptemberQaFixesTest {
                 HomeWaistCard(WaistEstimateUi.Available(BigDecimal("79.2"),null),expanded,{expanded=!expanded},{})
             }
         } }
-        compose.onNodeWithText("79.2").assertIsDisplayed()
+        compose.onNodeWithText("79.2 cm").assertIsDisplayed()
         capture("03-waist-summary")
         compose.onNodeWithText("허리둘레 자세히 보기").performClick()
         compose.onNodeWithContentDescription("모델이 추정한 허리둘레 약 79.2 센티미터").assertIsDisplayed()
@@ -188,7 +188,7 @@ class SeptemberQaFixesTest {
         compose.setContent { Page { SensorMeasuringScreen(state, rememberCoroutineScope(), {}, {}, {}) } }
         compose.onNodeWithText("0 m").assertIsDisplayed()
         compose.onNodeWithText("목표 200 m").assertIsDisplayed()
-        compose.onNodeWithText("0%").assertIsDisplayed()
+        compose.onNodeWithText("0% 달성").assertIsDisplayed()
         capture("14-distance-meters")
     }
 }

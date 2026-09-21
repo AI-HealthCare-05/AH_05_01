@@ -70,7 +70,7 @@ class AppFlowPolishTest {
         }
         compose.setContent { Stage { CardHomeScreen(state, rememberCoroutineScope(), showDebugTools = false) } }
         compose.onNodeWithText(card.title).assertIsDisplayed()
-        compose.onNodeWithText("틈튼 움직임 인식").assertIsDisplayed()
+        compose.onNodeWithText("센서형 · 움직임 측정").assertIsDisplayed()
         capture("home-selected")
     }
 

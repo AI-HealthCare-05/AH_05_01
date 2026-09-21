@@ -68,7 +68,7 @@ fun A15CompleteScreen(state: OnboardingState, onOnboardingComplete: () -> Unit) 
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text("반영한 값", style = TmtnType.label, color = colors.onSurface)
-            SummaryRow("생년월", "${state.birthYear.value}년 ${state.birthMonth.value}월")
+            SummaryRow("태어난 연·월", "${state.birthYear.value}년 ${state.birthMonth.value}월")
             SummaryRow("성별", if (state.gender.value == "MALE") "남성" else "여성")
             SummaryRow("키", "${state.heightCm.value.ifBlank { "-" }} cm")
             SummaryRow("몸무게", "${state.weightKg.value.ifBlank { "-" }} kg")

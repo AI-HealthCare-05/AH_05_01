@@ -1,0 +1,356 @@
+{
+  "status": "ready",
+  "reason": null,
+  "snapshot": {
+    "schema_version": "tmtn-personal-xai-v1",
+    "snapshot_id": "5ded84e6-5e90-414d-b948-f92afa90c5b4",
+    "input_revision": "9db54c8dafe9491d44a707f692c50f7d5d3b2ddcbbf1e8edbc581289a04af4c1",
+    "computed_at": "2026-09-19T13:10:14.690779Z",
+    "reference_date": "2026-09-19",
+    "release_sha256": "bdca54917705cde75fc2d1b275c49a91ebfef05f56f45472d29e4b97ba77c2e9",
+    "model_version": "tuntun_integrated_candidate_v0_1",
+    "reference_version": "peer-fixed-model42-unweighted-broad-v0.1-20260907",
+    "formula_version": "peer-equal-four-v0.1-candidate",
+    "input_mapping_version": "birth-month-app-inputs-v0.2",
+    "display_policy_version": "peer-rank100-v0.2",
+    "age_notice": "출생연월과 기준일로 만 나이를 계산했습니다.",
+    "release_stage": "candidate",
+    "is_mock": false,
+    "status": "ready",
+    "reason": null,
+    "composite_score": 75.6,
+    "domains": [
+      {
+        "domain": "diabetes",
+        "rank": 34,
+        "rank_range": [
+          34,
+          34
+        ],
+        "reference_group": "19-39:1",
+        "reference_n": 1984,
+        "output_target": "calibrated_reference_score_before_peer_percentile",
+        "unit": "internal_reference_score_point",
+        "base_value": 86.912675745862,
+        "output_value": 98.90584264767556,
+        "feature_order": [
+          "age_years",
+          "sex_code",
+          "height_cm",
+          "weight_kg",
+          "leisure_aerobic_moderate_equivalent_min_week",
+          "strength_days_week"
+        ],
+        "contributions": [
+          {
+            "key": "age_years",
+            "label": "나이",
+            "value": 10.749972344149018
+          },
+          {
+            "key": "sex_code",
+            "label": "성별",
+            "value": -0.7684829899461301
+          },
+          {
+            "key": "height_cm",
+            "label": "키",
+            "value": 0.7620176210948877
+          },
+          {
+            "key": "weight_kg",
+            "label": "몸무게",
+            "value": 0.0851525807854987
+          },
+          {
+            "key": "leisure_aerobic_moderate_equivalent_min_week",
+            "label": "유산소 활동 시간",
+            "value": 0.7262904486166732
+          },
+          {
+            "key": "strength_days_week",
+            "label": "근력운동 일수",
+            "value": 0.43821689711399525
+          }
+        ],
+        "background_sha256": "62407693c4570a4e0bd15a6a8122cdcad59c4a180a127996b7520bcc97df0fb9",
+        "background_rows": 300,
+        "explainer": "ExactExplainer",
+        "masker": "Independent",
+        "link": "identity",
+        "shap_version": "0.49.1",
+        "additivity_error": 3.836930773104541e-13,
+        "narrative": {
+          "version": "tmtn-shap-story-v2",
+          "domain": "diabetes",
+          "title": "당뇨 참고지표, 내 속도로 차곡차곡",
+          "summary": "습관은 내 생활에 들어갈 자리가 있을 때 이어가기 편해요. 오늘은 일상 틈에 넣기 좋은 미션 하나부터 골라볼까요?",
+          "intro_kind": "challenge_encouragement",
+          "calculation_title": "당뇨 계산에서 먼저 보이는 나이",
+          "calculation_summary": "당뇨 계산에서는 나이 항목이 참고점수를 높이는 쪽으로 가장 크게 반영됐어요. 그다음인 성별 항목은 낮추는 쪽이에요.",
+          "context_note": "참고점수는 실천의 성적표가 아니에요. 나이·성별도 계산에 쓰이지만, 챌린지에서 바꿔야 할 목표는 아니에요.",
+          "focus_keys": [
+            "age_years"
+          ],
+          "activity_text": "입력한 유산소 활동 시간과 근력운동 일수는 모두 당뇨 참고점수를 높이는 쪽으로 반영됐어요.",
+          "activity_keys": [
+            "leisure_aerobic_moderate_equivalent_min_week",
+            "strength_days_week"
+          ],
+          "comparison_text": "가장 큰 항목 다음으로는 당뇨 계산에서 성별, 혈압 계산에서 몸무게 항목이 눈에 들어와요.",
+          "comparison_kind": "different_next_tier",
+          "comparison_keys": [
+            "sex_code",
+            "weight_kg"
+          ],
+          "scope_note": "이번 모델 계산을 풀어 본 설명이에요. 실제 혈당·혈압의 변화나 운동 효과를 뜻하지는 않아요."
+        }
+      },
+      {
+        "domain": "hypertension",
+        "rank": 19,
+        "rank_range": [
+          19,
+          19
+        ],
+        "reference_group": "19-39:1",
+        "reference_n": 2068,
+        "output_target": "calibrated_reference_score_before_peer_percentile",
+        "unit": "internal_reference_score_point",
+        "base_value": 84.72768774524985,
+        "output_value": 96.68255635412217,
+        "feature_order": [
+          "age_years",
+          "sex_code",
+          "height_cm",
+          "weight_kg",
+          "leisure_aerobic_moderate_equivalent_min_week",
+          "strength_days_week"
+        ],
+        "contributions": [
+          {
+            "key": "age_years",
+            "label": "나이",
+            "value": 7.711039507362435
+          },
+          {
+            "key": "sex_code",
+            "label": "성별",
+            "value": -1.3663198772556888
+          },
+          {
+            "key": "height_cm",
+            "label": "키",
+            "value": 1.1513289078423696
+          },
+          {
+            "key": "weight_kg",
+            "label": "몸무게",
+            "value": 1.5366629726966483
+          },
+          {
+            "key": "leisure_aerobic_moderate_equivalent_min_week",
+            "label": "유산소 활동 시간",
+            "value": 1.487088782330627
+          },
+          {
+            "key": "strength_days_week",
+            "label": "근력운동 일수",
+            "value": 1.4350683158952995
+          }
+        ],
+        "background_sha256": "62407693c4570a4e0bd15a6a8122cdcad59c4a180a127996b7520bcc97df0fb9",
+        "background_rows": 300,
+        "explainer": "ExactExplainer",
+        "masker": "Independent",
+        "link": "identity",
+        "shap_version": "0.49.1",
+        "additivity_error": 6.252776074688882e-13,
+        "narrative": {
+          "version": "tmtn-shap-story-v2",
+          "domain": "hypertension",
+          "title": "혈압 참고지표, 실천은 부담 없이",
+          "summary": "매일 같은 만큼 해내지 않아도 괜찮아요. 오늘의 컨디션에 맞는 미션을 골라, 할 수 있는 만큼 이어가 봐요.",
+          "intro_kind": "challenge_encouragement",
+          "calculation_title": "혈압 계산에서 먼저 보이는 나이",
+          "calculation_summary": "혈압 계산에서는 나이 항목이 참고점수를 높이는 쪽으로 가장 크게 반영됐어요. 그다음인 몸무게 항목은 높이는 쪽이에요.",
+          "context_note": "참고점수는 실천의 성적표가 아니에요. 나이·성별도 계산에 쓰이지만, 챌린지에서 바꿔야 할 목표는 아니에요.",
+          "focus_keys": [
+            "age_years"
+          ],
+          "activity_text": "입력한 유산소 활동 시간과 근력운동 일수는 모두 혈압 참고점수를 높이는 쪽으로 반영됐어요.",
+          "activity_keys": [
+            "leisure_aerobic_moderate_equivalent_min_week",
+            "strength_days_week"
+          ],
+          "comparison_text": "가장 큰 항목 다음으로는 혈압 계산에서 몸무게, 당뇨 계산에서 성별 항목이 눈에 들어와요.",
+          "comparison_kind": "different_next_tier",
+          "comparison_keys": [
+            "weight_kg",
+            "sex_code"
+          ],
+          "scope_note": "이번 모델 계산을 풀어 본 설명이에요. 실제 혈당·혈압의 변화나 운동 효과를 뜻하지는 않아요."
+        }
+      }
+    ],
+    "activity_comparison": {
+      "status": "ready",
+      "reference_version": "knhanes-activity-2019-2021-weighted-v1",
+      "source_sha256": "9f90ba20624d0afac93fbbb4968ce9e0226946892bf518574b4f4bb35f8ab787",
+      "input_revision": "9db54c8dafe9491d44a707f692c50f7d5d3b2ddcbbf1e8edbc581289a04af4c1",
+      "reference_date": "2026-09-19",
+      "group_key": "19-39:1",
+      "group_label": "만 19~39세 남성",
+      "n": 2165,
+      "source_kind": "knhanes_population_survey",
+      "years": [
+        2019,
+        2020,
+        2021
+      ],
+      "source_label": "국민건강영양조사 2019~2021",
+      "source_url": "https://knhanes.kdca.go.kr/knhanes/main.do",
+      "scope_note": "평균은 운동 목표가 아니에요. 내 몸에 맞는 속도로 이어가세요.",
+      "activity_unit_note": "저장한 운동 설문을 바탕으로 비교했어요.",
+      "method_note": "조사 가중치를 적용한 평균이에요. 운동하지 않는다는 응답도 포함하고, 무응답은 제외했어요. 항목별 응답 인원은 다를 수 있어요.",
+      "grouping": "age19_39_40_64_65plus_by_survey_sex",
+      "cards": [
+        {
+          "key": "leisure_aerobic_moderate_equivalent_min_week",
+          "label": "유산소 활동량",
+          "unit": "분",
+          "n": 2087,
+          "mean": 155.33183148636854,
+          "value": 120.0,
+          "mean_display": "155",
+          "value_display": "120",
+          "delta": -35.33183148636854,
+          "title": "유산소 활동을 나란히 보면",
+          "text": "설문에 답한 유산소 활동량은 주 120분이에요. 같은 나이대·성별의 평균은 주 155분이에요.",
+          "comparison_text": "평균보다 약 35분 적게 답하셨어요.",
+          "unit_note": "여가 중·고강도 활동을 중강도 기준으로 정리한 설문 활동량이에요.",
+          "ci95": [
+            141.37020914133947,
+            169.2934538313976
+          ],
+          "topcoded": false,
+          "coaching_hint": {
+            "version": "tmtn-activity-hint-v1",
+            "basis": "survey_reported",
+            "title": "오늘의 틈을 찾아볼까요?",
+            "text": "오늘 일정에는 어떤 움직임을 끼워 넣기 편할까요? 잠깐의 여유에 할 수 있는 작은 실천을 떠올려봐요.",
+            "reason": "유산소 활동량을 알려주셔서, 생활 속에서 이어갈 힌트를 담았어요."
+          }
+        },
+        {
+          "key": "strength_days_week",
+          "label": "근력운동 일수",
+          "unit": "일",
+          "n": 2087,
+          "mean": 1.4743229489905658,
+          "value": 4.0,
+          "mean_display": "1.5",
+          "value_display": "4",
+          "delta": 2.525677051009434,
+          "title": "근력운동을 챙긴 날은",
+          "text": "설문에서 근력운동을 주 4일 한다고 알려주셨어요. 같은 나이대·성별의 평균은 주 1.5일이에요.",
+          "comparison_text": "평균보다 약 2.5일 많게 답하셨어요.",
+          "unit_note": "조사의 ‘주 5일 이상’ 응답은 5일로 계산한 평균이에요.",
+          "ci95": [
+            1.3774912562780026,
+            1.571154641703129
+          ],
+          "topcoded": false,
+          "coaching_hint": {
+            "version": "tmtn-activity-hint-v1",
+            "basis": "survey_reported",
+            "title": "내 운동 리듬에 맞춰",
+            "text": "알려주신 운동 리듬에 맞춰 이어가 볼까요? 오늘의 컨디션에 어울리는 작은 실천을 떠올려봐요.",
+            "reason": "근력운동을 한다고 알려주셔서, 내 리듬에 맞춰 이어갈 힌트를 담았어요."
+          }
+        }
+      ],
+      "survey_recorded_at": "2026-09-01T03:00:00Z"
+    }
+  },
+  "retry_after_seconds": null,
+  "activity_comparison": {
+    "status": "ready",
+    "reference_version": "knhanes-activity-2019-2021-weighted-v1",
+    "source_sha256": "9f90ba20624d0afac93fbbb4968ce9e0226946892bf518574b4f4bb35f8ab787",
+    "input_revision": "9db54c8dafe9491d44a707f692c50f7d5d3b2ddcbbf1e8edbc581289a04af4c1",
+    "reference_date": "2026-09-19",
+    "group_key": "19-39:1",
+    "group_label": "만 19~39세 남성",
+    "n": 2165,
+    "source_kind": "knhanes_population_survey",
+    "years": [
+      2019,
+      2020,
+      2021
+    ],
+    "source_label": "국민건강영양조사 2019~2021",
+    "source_url": "https://knhanes.kdca.go.kr/knhanes/main.do",
+    "scope_note": "평균은 운동 목표가 아니에요. 내 몸에 맞는 속도로 이어가세요.",
+    "activity_unit_note": "저장한 운동 설문을 바탕으로 비교했어요.",
+    "method_note": "조사 가중치를 적용한 평균이에요. 운동하지 않는다는 응답도 포함하고, 무응답은 제외했어요. 항목별 응답 인원은 다를 수 있어요.",
+    "grouping": "age19_39_40_64_65plus_by_survey_sex",
+    "cards": [
+      {
+        "key": "leisure_aerobic_moderate_equivalent_min_week",
+        "label": "유산소 활동량",
+        "unit": "분",
+        "n": 2087,
+        "mean": 155.33183148636854,
+        "value": 120.0,
+        "mean_display": "155",
+        "value_display": "120",
+        "delta": -35.33183148636854,
+        "title": "유산소 활동을 나란히 보면",
+        "text": "설문에 답한 유산소 활동량은 주 120분이에요. 같은 나이대·성별의 평균은 주 155분이에요.",
+        "comparison_text": "평균보다 약 35분 적게 답하셨어요.",
+        "unit_note": "여가 중·고강도 활동을 중강도 기준으로 정리한 설문 활동량이에요.",
+        "ci95": [
+          141.37020914133947,
+          169.2934538313976
+        ],
+        "topcoded": false,
+        "coaching_hint": {
+          "version": "tmtn-activity-hint-v1",
+          "basis": "survey_reported",
+          "title": "오늘의 틈을 찾아볼까요?",
+          "text": "오늘 일정에는 어떤 움직임을 끼워 넣기 편할까요? 잠깐의 여유에 할 수 있는 작은 실천을 떠올려봐요.",
+          "reason": "유산소 활동량을 알려주셔서, 생활 속에서 이어갈 힌트를 담았어요."
+        }
+      },
+      {
+        "key": "strength_days_week",
+        "label": "근력운동 일수",
+        "unit": "일",
+        "n": 2087,
+        "mean": 1.4743229489905658,
+        "value": 4.0,
+        "mean_display": "1.5",
+        "value_display": "4",
+        "delta": 2.525677051009434,
+        "title": "근력운동을 챙긴 날은",
+        "text": "설문에서 근력운동을 주 4일 한다고 알려주셨어요. 같은 나이대·성별의 평균은 주 1.5일이에요.",
+        "comparison_text": "평균보다 약 2.5일 많게 답하셨어요.",
+        "unit_note": "조사의 ‘주 5일 이상’ 응답은 5일로 계산한 평균이에요.",
+        "ci95": [
+          1.3774912562780026,
+          1.571154641703129
+        ],
+        "topcoded": false,
+        "coaching_hint": {
+          "version": "tmtn-activity-hint-v1",
+          "basis": "survey_reported",
+          "title": "내 운동 리듬에 맞춰",
+          "text": "알려주신 운동 리듬에 맞춰 이어가 볼까요? 오늘의 컨디션에 어울리는 작은 실천을 떠올려봐요.",
+          "reason": "근력운동을 한다고 알려주셔서, 내 리듬에 맞춰 이어갈 힌트를 담았어요."
+        }
+      }
+    ],
+    "survey_recorded_at": "2026-09-01T03:00:00Z"
+  }
+}

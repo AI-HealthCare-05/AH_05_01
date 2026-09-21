@@ -127,11 +127,15 @@ internal fun JournalActivityHint(card: PersonalActivityCard, context: JournalPra
     val completed = day?.challengeState == "COMPLETED"
     // 완료·휴식 안내는 아래의 상태 카드 한 곳에서 보여줍니다.
     if (resting || completed) return
+    var why by remember(card.key, card.value) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(12.dp)).padding(14.dp)
         .testTag("activity-hint-${card.key}"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(hint.title.orEmpty(), style = TmtnType.label, color = colors.onSurface)
         Text(hint.text.orEmpty(), style = TmtnType.body, color = colors.onSurface)
-
+        TextButton(onClick = { why = !why }, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(if (why) "힌트 이유 접기" else "이 힌트가 나온 이유", style = TmtnType.label)
+        }
+        if (why) Text(hint.reason.orEmpty() + " 또래 평균을 채워야 할 목표로 사용하지 않아요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
     }
 }
 
@@ -141,6 +145,7 @@ internal fun JournalPracticeCoach(context: JournalPracticeContext, onGo: (() -> 
     val records = recentPractice(context)
     val copy = practiceCopy(context)
     var recordsOpen by remember(records) { mutableStateOf(false) }
+    var why by remember(copy) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().testTag("activity-practice-coach"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(copy.title, style = TmtnType.title, color = colors.onSurface, modifier = Modifier.semantics { heading() })
         if (records.isNotEmpty()) {
@@ -152,12 +157,14 @@ internal fun JournalPracticeCoach(context: JournalPracticeContext, onGo: (() -> 
             Text("해낸 미션 돌아보기", style = TmtnType.label)
         }
         if (context.collection == JournalLoad.Failed || context.exercises == JournalLoad.Failed)
-            Text("완료 기록을 모두 불러오지 못했어요. 기록란에서 다시 불러올 수 있어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
+            Text("완료 기록을 모두 불러오지 못했어요. 새로고침하면 다시 확인할 수 있어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
         else if (context.collection == JournalLoad.Loading || context.exercises == JournalLoad.Loading)
             Text("해낸 미션을 불러오고 있어요.", style = TmtnType.caption, color = colors.onSurfaceVariant)
         if (onGo != null) Button(onClick = onGo, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("practice-go-home")) {
             Text(copy.action, style = TmtnType.label)
         }
+        TextButton(onClick = { why = !why }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (why) "안내 이유 접기" else "이렇게 안내한 이유", style = TmtnType.label) }
+        if (why) Text(copy.reason, style = TmtnType.caption, color = colors.onSurfaceVariant)
     }
     if (recordsOpen) AlertDialog(onDismissRequest = { recordsOpen = false }, title = { Text("최근에 해낸 미션", style = TmtnType.title) },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {

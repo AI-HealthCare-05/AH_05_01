@@ -36,7 +36,7 @@ class SensorSessionUiTest {
             SensorDataHolder.updateStepInPlaceCount(42)
             SensorDataHolder.updateStepDetectedNow(true)
         }
-        compose.onNodeWithText("움직임을 확인했어요").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("움직임 인식 중").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("42 걸음").assertIsDisplayed()
         compose.onNodeWithContentDescription("오늘 미션 진행").assert(
             SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.42f, 0f..1f)))

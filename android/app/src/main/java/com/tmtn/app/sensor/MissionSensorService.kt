@@ -71,7 +71,9 @@ class MissionSensorService : Service() {
             if (android.os.Build.VERSION.SDK_INT >= 29) {
                 startForeground(notificationId, buildNotification(), SensorPermissions.serviceType(measurement, android.os.Build.VERSION.SDK_INT))
             } else startForeground(notificationId, buildNotification())
-        } catch (_: SecurityException) {
+        } catch (e: SecurityException) {
+            // ⚠️ 2026-09-17 추가(QA F07/F14) - 권한 거부로 측정을 시작 못 한 원인 확인용.
+            android.util.Log.e("MissionDiag", "start denied: measurement=$measurement error=${e.message}")
             SensorDataHolder.setServiceRunning(false)
             SensorDataHolder.setServiceError("측정 권한을 확인해 주세요. 잰 기록은 남아 있어요.")
             stopSelf()
@@ -235,6 +237,11 @@ class MissionSensorService : Service() {
             // 공통으로 이걸 씀 — 지금 CurrentChallengeHolder에 어떤 exec_type이 돌고 있는지
             // 보고 그것만 정확히 멈춤 (다른 매니저는 안 건드림).
             ACTION_STOP_TRACKING -> {
+                // ⚠️ 2026-09-17 추가(QA F08/F14) - 측정 종료 시점의 원인 확인용 로그.
+                android.util.Log.i(
+                    "MissionDiag",
+                    "measurement stop: challengeId=${CurrentChallengeHolder.challengeId} execType=${CurrentChallengeHolder.execType}",
+                )
                 when (CurrentChallengeHolder.execType) {
                     "SENSOR_STEPS" -> stepCounterManager.stop()
                     "SENSOR_FLOORS_CLIMBED" -> stairClimbManager.stop()
@@ -258,7 +265,17 @@ class MissionSensorService : Service() {
             }
 
             ACTION_START_STEP_IN_PLACE -> {
-                stepInPlaceManager.reset()
+                // ⚠️ 2026-09-16 버그 수정(QA) - 예전엔 무조건 reset()해서, 화면을 나갔다
+                // 돌아오면(홈 버튼 등) 서버 세션은 이어지는데 로컬 카운터만 0부터 다시
+                // 셌음("걸음수 리셋됨" 버그의 실제 원인). 서버가 준 누적값이 있으면
+                // resumeFrom()으로 이어서 셈 - 오늘의 카드 타이머가 서버 경과시간으로
+                // 재동기화하는 것과 같은 원칙.
+                val resumeCount = intent.getIntExtra(EXTRA_RESUME_STEP_COUNT, 0)
+                if (resumeCount > 0) {
+                    stepInPlaceManager.resumeFrom(resumeCount)
+                } else {
+                    stepInPlaceManager.reset()
+                }
                 stepInPlaceManager.start()
                 SensorDataHolder.setStepInPlaceActive(true)
                 // ⚠️ 2026-09-15 버그 수정 - 이 액션(그리고 아래 틈새 운동 전용 액션들)이
@@ -271,6 +288,7 @@ class MissionSensorService : Service() {
             ACTION_STOP_STEP_IN_PLACE -> {
                 stepInPlaceManager.stop()
                 SensorDataHolder.setStepInPlaceActive(false)
+                stopExerciseMissionTrackingIfIdle()
             }
 
             // ⚠️ 2026-09-11 추가 - 틈새 운동(계단) 실제 센서 연동. stairClimbManager는
@@ -278,12 +296,15 @@ class MissionSensorService : Service() {
             // 똑같은 패턴으로 재사용 - 오늘의 카드 챌린지(ACTION_START_TRACKING_CHALLENGE)와
             // 완전히 분리된 별도 액션.
             ACTION_START_STAIRS -> {
-                stairClimbManager.reset()
+                // ⚠️ 2026-09-16 이어하기 추가(QA F01) - 제자리걷기/천천히걷기와 같은 이유.
+                val resumeCount = intent.getIntExtra(EXTRA_RESUME_STAIR_COUNT, 0)
+                if (resumeCount > 0) stairClimbManager.resumeFrom(resumeCount) else stairClimbManager.reset()
                 stairClimbManager.start()
                 startUpdateLoop()
             }
             ACTION_STOP_STAIRS -> {
                 stairClimbManager.stop()
+                stopExerciseMissionTrackingIfIdle()
             }
 
             ACTION_START_STAIR_IN_PLACE -> {
@@ -298,13 +319,26 @@ class MissionSensorService : Service() {
             }
 
             ACTION_START_RUNNING_DISTANCE -> {
-                runningManager.reset()
+                // ⚠️ 2026-09-16 이어하기 추가(QA F01) - 같은 이유.
+                val resumeMeters = intent.getIntExtra(EXTRA_RESUME_RUNNING_METERS, 0)
+                if (resumeMeters > 0) runningManager.resumeFrom(resumeMeters) else runningManager.reset()
                 runningManager.start()
                 SensorDataHolder.setRunningActive(true)
+                // ⚠️ 2026-09-17 추가(QA Q06) - 새 구간을 시작하는 순간은 아직 첫 신호를 못 받은 상태.
+                SensorDataHolder.setRunningSignalAcquired(false)
                 startUpdateLoop()
             }
             ACTION_START_RUNNING_DURATION -> {
-                runningCadenceManager.reset()
+                // ⚠️ 2026-09-16 버그 수정(QA F11①) - 걷기와 같은 이유·같은 수정.
+                val heightCm = if (intent.hasExtra(EXTRA_HEIGHT_CM)) intent.getFloatExtra(EXTRA_HEIGHT_CM, 0f) else null
+                val ageYears = if (intent.hasExtra(EXTRA_AGE_YEARS)) intent.getIntExtra(EXTRA_AGE_YEARS, 0) else null
+                if (heightCm != null || ageYears != null) {
+                    runningCadenceManager.stop()
+                    runningCadenceManager = RunningCadenceManager(this, heightCm ?: 176f, ageYears ?: 0)
+                }
+                // ⚠️ 2026-09-16 이어하기 추가(QA F01) - 같은 이유.
+                val resumeSeconds = intent.getIntExtra(EXTRA_RESUME_RUNNING_SECONDS, 0)
+                if (resumeSeconds > 0) runningCadenceManager.resumeFrom(resumeSeconds) else runningCadenceManager.reset()
                 runningCadenceManager.start()
                 SensorDataHolder.setRunningActive(true)
                 startUpdateLoop()
@@ -313,10 +347,32 @@ class MissionSensorService : Service() {
                 runningManager.stop()
                 runningCadenceManager.stop()
                 SensorDataHolder.setRunningActive(false)
+                SensorDataHolder.setRunningSignalAcquired(false)
+                stopExerciseMissionTrackingIfIdle()
             }
 
             ACTION_START_WALKING -> {
-                walkingCadenceManager.reset()
+                // ⚠️ 2026-09-16 버그 수정(QA F11①) - 예전엔 틈새 운동의 걷기 매니저가
+                // onCreate() 때 만들어진 기본값(키170cm·보정없음)을 계속 썼음. 오늘의
+                // 카드(ACTION_START_TRACKING_CHALLENGE)만 프로필을 읽어서 보정값을
+                // 넘겨주고 있었는데, 틈새 운동엔 그 경로가 없었음 - 같은 방식으로
+                // 보정값이 왔으면 매니저를 다시 만듦(resumeFrom/reset보다 먼저 해야
+                // 새 인스턴스에 적용됨).
+                val heightCm = if (intent.hasExtra(EXTRA_HEIGHT_CM)) intent.getFloatExtra(EXTRA_HEIGHT_CM, 0f) else null
+                val ageYears = if (intent.hasExtra(EXTRA_AGE_YEARS)) intent.getIntExtra(EXTRA_AGE_YEARS, 0) else null
+                if (heightCm != null || ageYears != null) {
+                    walkingCadenceManager.stop()
+                    walkingCadenceManager = WalkingCadenceManager(this, heightCm ?: 170f, ageYears ?: 0)
+                }
+                // ⚠️ 2026-09-16 버그 수정(QA) - 화면을 나갔다 돌아오면("이어하기") 서버
+                // 세션은 이어지는데 로컬 시간만 0부터 다시 셌음(제자리 걷기와 같은 원인).
+                // 서버가 준 누적 초가 있으면 resumeFrom()으로 이어서 잼.
+                val resumeSeconds = intent.getIntExtra(EXTRA_RESUME_WALK_SECONDS, 0)
+                if (resumeSeconds > 0) {
+                    walkingCadenceManager.resumeFrom(resumeSeconds)
+                } else {
+                    walkingCadenceManager.reset()
+                }
                 walkingCadenceManager.start()
                 SensorDataHolder.setWalkingActive(true)
                 startUpdateLoop()
@@ -324,6 +380,7 @@ class MissionSensorService : Service() {
             ACTION_STOP_WALKING -> {
                 walkingCadenceManager.stop()
                 SensorDataHolder.setWalkingActive(false)
+                stopExerciseMissionTrackingIfIdle()
             }
 
             else -> {
@@ -354,6 +411,13 @@ class MissionSensorService : Service() {
         ageYears: Int? = null,
         targetValue: Int? = null,
     ) {
+        // ⚠️ 2026-09-17 추가(QA F14, 홍주님 회신) - 측정 시작 시점의 원인 확인용 로그.
+        // 인증 토큰·설문 원문 등 민감정보는 남기지 않고, 세션 식별에 필요한 값만 남긴다.
+        android.util.Log.i(
+            "MissionDiag",
+            "measurement start: challengeId=$challengeId execType=$execType resumeCount=$resumeCount " +
+                "appVersion=${com.tmtn.app.BuildConfig.VERSION_NAME}",
+        )
         CurrentChallengeHolder.challengeId = challengeId
         CurrentChallengeHolder.execType = execType
         CurrentChallengeHolder.targetValue = targetValue
@@ -439,6 +503,8 @@ class MissionSensorService : Service() {
                 SensorDataHolder.updateStepInPlaceCount(stepInPlaceManager.stepCount)
                 SensorDataHolder.updateStairInPlaceFloors(stairInPlaceManager.floorsClimbed)
                 SensorDataHolder.updateRunningDistanceM(runningManager.totalDistanceMeters)
+                // ⚠️ 2026-09-17 추가(QA Q06) - 거리(GPS)와 같은 주기에 신호 확보 상태도 같이 반영.
+                SensorDataHolder.setRunningSignalAcquired(runningManager.hasFix())
                 SensorDataHolder.updateRunningSeconds(runningCadenceManager.getCurrentTotalSeconds())
                 SensorDataHolder.updateWalkingSeconds(walkingCadenceManager.getCurrentTotalSeconds())
                 // ⚠️ 2026-09-07 QA 반영: "지금 이 순간 실제로 케이던스가 감지되는지"를
@@ -471,6 +537,17 @@ class MissionSensorService : Service() {
                         walkSeconds = walkingCadenceManager.getCurrentTotalSeconds(),
                         timestamp = now
                     )
+                    // ⚠️ 2026-09-17 추가(QA 리뷰 #3) - 위 saveToLocalDbAndSync()는 "오늘의
+                    // 카드" challengeId 기준이라 틈새 운동 세션엔 동작 안 함. 같은 주기에
+                    // 얹어서 틈새 운동 세션의 누적값도 서버에 반영한다(이어하기가 0부터
+                    // 다시 시작하지 않도록).
+                    syncExerciseSessionIfActive(
+                        stepInPlace = stepInPlaceManager.stepCount,
+                        floors = floors,
+                        runDistanceM = runningManager.totalDistanceMeters,
+                        runSeconds = runningCadenceManager.getCurrentTotalSeconds(),
+                        walkSeconds = walkingCadenceManager.getCurrentTotalSeconds(),
+                    )
                     lastSavedAt = now
                 }
 
@@ -496,6 +573,63 @@ class MissionSensorService : Service() {
      * 찍히고 있었음 - 기능상 계단값 자체는 정상 전송됐지만, 불필요한 DB 쓰기·네트워크
      * 페이로드·로그 노이즈였음. 지금 CurrentChallengeHolder.execType에 해당하는 것만 저장.
      */
+    // ⚠️ 2026-09-17 추가(QA 리뷰 #4) - "정상 완료·취소 후 화면이 보내는 틈새운동별
+    // STOP도 센서 매니저만 중지하며, 갱신 작업 취소·포그라운드 해제·서비스 종료로
+    // 이어지지 않는다"는 지적 대응. ACTION_STOP_TRACKING(오늘의 카드 전용)은 이미
+    // updateJob 취소·stopForeground·stopSelf까지 하는데, 틈새운동 전용 STOP 액션들에는
+    // 이게 없었음. "오늘의 카드 완료 후에만 틈새 운동 시작 가능"이라는 제품 규칙 덕에,
+    // 이 시점에 CurrentChallengeHolder.challengeId도 비어 있으면 정말 아무것도 더 돌고
+    // 있지 않다고 안전하게 판단할 수 있다.
+    private fun stopExerciseMissionTrackingIfIdle() {
+        CurrentExerciseSessionHolder.clear()
+        if (CurrentChallengeHolder.challengeId == null) {
+            updateJob?.cancel()
+            SensorDataHolder.setServiceRunning(false)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+    }
+
+    // ⚠️ 2026-09-17 추가(QA 리뷰 #3) - 틈새 운동 세션 누적값 주기 동기화. 상태는 안
+    // 바꾸는(ACTIVE 유지) PATCH .../sync를 쏜다 - pause/resume과 달리 실패해도(버전
+    // 경합, 이미 완료됨 등) 사용자에게 보여줄 오류가 아니라 조용히 넘어가고 다음
+    // 주기에 다시 시도한다(best-effort).
+    private fun syncExerciseSessionIfActive(
+        stepInPlace: Int,
+        floors: Int,
+        runDistanceM: Float,
+        runSeconds: Int,
+        walkSeconds: Int,
+    ) {
+        val sessionId = CurrentExerciseSessionHolder.sessionId ?: return
+        val execType = CurrentExerciseSessionHolder.execType ?: return
+        val accumulatedCount: Int? = when (execType) {
+            "SENSOR_STEPS_IN_PLACE" -> stepInPlace
+            "SENSOR_FLOORS_CLIMBED" -> floors
+            "SENSOR_RUNNING_DISTANCE" -> runDistanceM.toInt()
+            else -> null
+        }
+        val accumulatedDurationSeconds: Int? = when (execType) {
+            "SENSOR_RUNNING_DURATION" -> runSeconds
+            "SENSOR_WALKING_DURATION" -> walkSeconds
+            else -> null
+        }
+        if (accumulatedCount == null && accumulatedDurationSeconds == null) return
+        val sessionUuid = runCatching { java.util.UUID.fromString(sessionId) }.getOrNull() ?: return
+        serviceScope.launch {
+            runCatching {
+                com.tmtn.app.network.ApiClient.exerciseMissionApi.patchSession(
+                    sessionUuid,
+                    com.tmtn.app.network.model.ExerciseMissionActionRequest(
+                        action = "sync",
+                        accumulated_count = accumulatedCount,
+                        accumulated_duration_seconds = accumulatedDurationSeconds,
+                    ),
+                )
+            }
+        }
+    }
+
     private fun saveToLocalDbAndSync(
         steps: Int,
         floors: Int,
@@ -650,6 +784,19 @@ class MissionSensorService : Service() {
         const val EXTRA_HEIGHT_CM = "EXTRA_HEIGHT_CM"
         // ⚠️ 2026-09-07 추가(신장×연령 이중 보정): 없으면 보정 없음(×1.0).
         const val EXTRA_AGE_YEARS = "EXTRA_AGE_YEARS"
+        // ⚠️ 2026-09-16 추가(QA) - 틈새 운동 "이어하기"용. 서버의 세션이 이미 갖고 있던
+        // 마지막 누적 걸음수(accumulated_count)를 실어 보내면, 0부터 다시 세지 않고
+        // 그 값부터 이어서 셈(StepCounterManager.resumeFrom()과 동일 원리).
+        const val EXTRA_RESUME_STEP_COUNT = "EXTRA_RESUME_STEP_COUNT"
+        // ⚠️ 2026-09-16 추가(QA) - "천천히 걷기"(SENSOR_WALKING_DURATION) 이어하기용.
+        // 서버가 준 마지막 경과 초(accumulated_duration_seconds)를 실어 보내면
+        // WalkingCadenceManager.resumeFrom()으로 이어서 잼.
+        const val EXTRA_RESUME_WALK_SECONDS = "EXTRA_RESUME_WALK_SECONDS"
+        // ⚠️ 2026-09-16 추가(QA F01/F02 순서 진행) - 계단·달리기 이어하기용. 각각
+        // StairClimbManager/RunningManager/RunningCadenceManager의 resumeFrom()과 짝.
+        const val EXTRA_RESUME_STAIR_COUNT = "EXTRA_RESUME_STAIR_COUNT"
+        const val EXTRA_RESUME_RUNNING_METERS = "EXTRA_RESUME_RUNNING_METERS"
+        const val EXTRA_RESUME_RUNNING_SECONDS = "EXTRA_RESUME_RUNNING_SECONDS"
 
         const val ACTION_START_STEP_IN_PLACE = "com.tmtn.app.ACTION_START_STEP_IN_PLACE"
         const val ACTION_STOP_STEP_IN_PLACE = "com.tmtn.app.ACTION_STOP_STEP_IN_PLACE"
